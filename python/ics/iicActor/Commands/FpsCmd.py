@@ -17,7 +17,7 @@ class FpsCmd(object):
         #
         self.vocab = [
             ('startBoresightAcquisition', '', self.startBoresightAcquisition),
-            ('addBoresightRotation', '', self.addBoresightRotation),
+            ('addBoresightPosition', '', self.addBoresightPosition),
             ('reduceBoresightData', '', self.reduceBoresightData),
             ('abortBoresightAcquisition', '', self.abortBoresightAcquisition),
         ]
