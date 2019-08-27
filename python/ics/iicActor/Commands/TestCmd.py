@@ -1,6 +1,10 @@
+from importlib import reload
+
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from opscore.utility.qstr import qstr
+
+from ics.iicActor import visit
 
 class TestCmd(object):
 
@@ -10,6 +14,7 @@ class TestCmd(object):
 
         self.vocab = [
             ('testMcs1', '', self.testMcs1),
+            ('reloadVisitor', '', self.reloadVisitor),
         ]
 
         # Define typed command arguments for the above commands.
@@ -23,3 +28,10 @@ class TestCmd(object):
         axes = gen2Model['tel_axes'].getValue()
         cmd.inform(f'text="axes={axes}"')
         cmd.finish('')
+
+    def reloadVisitor(self, cmd):
+        reload(visit)
+
+        self.actor.visitor = visit.VisitManager(self.actor)
+
+        cmd.finish()
