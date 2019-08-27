@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import actorcore.ICC
+from ics.mcsActor import visit
 
 class IicActor(actorcore.ICC.ICC):
     def __init__(self, name,
@@ -18,7 +19,7 @@ class IicActor(actorcore.ICC.ICC):
         # "clocks" of the PFS is the single visit, for which the IIC
         # is responsible for distributing to sub actors.
         #
-        self.activeVisit = None
+        self.visitor = visit.VisitManager(self)
 
         self.everConnected = False
 
@@ -29,12 +30,10 @@ class IicActor(actorcore.ICC.ICC):
 
             _needModels = [self.name, "gen2",
                            "fps", "mcs"]
-            self.logger.info(f'adding models: {_needModels}')
+            self.logger.info(f'adding models: {sorted(_needModels)}')
             self.addModels(_needModels)
-            self.logger.info(f'added models: {self.models.keys()}')
+            self.logger.info(f'added models: {sorted(self.models.keys())}')
 
-#
-# To work
 def main():
     theActor = IicActor('iic', productName='iicActor')
     theActor.run()
