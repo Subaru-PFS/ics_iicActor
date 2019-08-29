@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import actorcore.ICC
-from ics.mcsActor import visit
+from ics.iicActor import visit
 
 class IicActor(actorcore.ICC.ICC):
     def __init__(self, name,
