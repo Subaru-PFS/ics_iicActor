@@ -94,11 +94,12 @@ class FpsCmd(object):
             raise
 
         fpsVisit = ourVisit.visitId
-
+        timeLim = 30+(15+expTime)*cnt
+        cmd.inform(f'text="setting timeout for nexp={cnt} exptime={expTime} to {timeLim}"')
         try:
             ret = self.actor.cmdr.call(actor='fps',
                                        cmdStr=f'testLoop cnt={cnt} expTime={expTime:0.2f} visit={fpsVisit}',
-                                       timeLim=(5+expTime)*cnt)
+                                       timeLim=timeLim)
             if ret.didFail:
                 raise RuntimeError("FPS failed to run a testLoop!")
         finally:
