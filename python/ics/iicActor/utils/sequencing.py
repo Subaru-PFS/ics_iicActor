@@ -6,7 +6,7 @@ from ics.iicActor.utils import stripQuotes, stripField
 class SubCmd(object):
     """ Placeholder to handle subcommand processing, status and error"""
 
-    def __init__(self, actor, cmdStr, timeLim=300, idleTime=5.0):
+    def __init__(self, actor, cmdStr, timeLim, idleTime):
         object.__init__(self)
         self.actor = actor
         self.cmdStr = cmdStr
@@ -33,12 +33,14 @@ class SubCmd(object):
                     forUserCmd=cmd,
                     timeLim=self.timeLim)
 
+    def call(self, cmd):
+        """ Call subcommand """
+        cmdVar = self.sequence.actor.cmdr.call(**(self.build(cmd=cmd)))
+        return int(cmdVar.didFail), cmdVar.replyList[-1].keywords.canonical(delimiter=';'), cmdVar
+
     def callAndUpdate(self, cmd):
         """ Call subcommand, handle reply and generate status """
-        cmdVar = self.sequence.actor.cmdr.call(**(self.build(cmd=cmd)))
-        self.didFail = int(cmdVar.didFail)
-        self.lastReply = cmdVar.replyList[-1].keywords.canonical(delimiter=';')
-        self.visit = self.getVisit(cmdVar)
+        self.didFail, self.lastReply, cmdVar = self.call(cmd)
         self.inform(cmd=cmd)
         return cmdVar
 
@@ -47,16 +49,50 @@ class SubCmd(object):
         cmd.inform(
             f'subCommand={self.sequence.id},{self.id},"{self.fullCmd}",{self.didFail},"{stripQuotes(self.lastReply)}"')
 
-    def getVisit(self, cmdVar):
-        """ Retrieve visit from cmdVar """
-        visit = -1
-        if not self.didFail:
-            try:
-                visit = int(cmdVar.replyList[-1].keywords['visit'].values[0])
-            except KeyError:
-                pass
+    def getVisit(self):
+        """ getVisit prototype"""
+        pass
 
-        return visit
+    def releaseVisit(self):
+        """ releaseVisit prototype"""
+        pass
+
+
+class SpsExpose(SubCmd):
+    """ Placeholder to handle sps expose command specificities"""
+
+    def __init__(self, *args, **kwargs):
+        SubCmd.__init__(self, *args, **kwargs)
+
+    def build(self, cmd):
+        """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visit """
+        return dict(actor=self.actor, cmdStr=self.cmdStr.format(visit=self.visit), forUserCmd=cmd, timeLim=self.timeLim)
+
+    def call(self, cmd):
+        """ Get visit from gen2, Call subcommand, release visit """
+        try:
+            self.visit = self.getVisit()
+        except Exception as e:
+            return 1, stripQuotes(str(e)), None
+
+        ret = SubCmd.call(self, cmd)
+        self.releaseVisit()
+        return ret
+
+    def getVisit(self):
+        """ Get visit from ics.iicActor.visit.Visit """
+        ourVisit = self.sequence.actor.visitor.newVisit('sps')
+        return ourVisit.visitId
+
+    def releaseVisit(self):
+        """ Release visit """
+        self.sequence.actor.visitor.releaseVisit()
+
+
+class DualCmd(SpsExpose):
+    def __init__(self, actor, cmdStr, timeLim=300, idleTime=5.0):
+        cls = SpsExpose if 'sps expose' in f'{actor} {cmdStr}' else SubCmd
+        cls.__init__(self, actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime)
 
 
 class Sequence(list):
@@ -86,7 +122,7 @@ class Sequence(list):
     def addSubCmd(self, actor, cmdStr, duplicate=1, timeLim=300, idleTime=5.0):
         """ Append duplicate * subcommand to sequence """
         for i in range(duplicate):
-            self.append(SubCmd(actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime))
+            self.append(DualCmd(actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime))
 
     def inform(self, cmd):
         """ Generate sps_sequence status """
@@ -117,14 +153,14 @@ class Sequence(list):
         """ Process each subcommand, handle error or abortion """
         cmdVar = subCmd.callAndUpdate(cmd=cmd)
 
-        if cmdVar.didFail and doRaise:
+        if subCmd.didFail and doRaise:
             self.handleError(cmd=cmd, cmdId=subCmd.id, cmdVar=cmdVar)
-            raise RuntimeError('subCmd has failed.. sequence aborted..')
+            raise RuntimeError('Sub-command has failed.. sequence aborted..')
 
         aborted = self.waitUntil(time.time() + subCmd.idleTime)
         if aborted and doRaise:
             self.handleError(cmd=cmd, cmdId=subCmd.id)
-            raise RuntimeError('abort sequence requested..')
+            raise RuntimeError('Abort sequence requested..')
 
     def handleError(self, cmd, cmdId, cmdVar=None):
         """ Release remaining subcommand, generate warnings"""
@@ -133,7 +169,6 @@ class Sequence(list):
             self.subCmds[id].inform(cmd)
 
         if cmdVar is None:
-            cmd.warn("""text="command failed: UserWarning('Abort requested') in waitUntil()""")
             return
 
         cmdErrors = [r.keywords.canonical(delimiter=';') for r in cmdVar.replyList]
