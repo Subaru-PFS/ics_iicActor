@@ -21,6 +21,10 @@ class SubCmd(object):
     def fullCmd(self):
         return (f'{self.actor} {self.cmdStr}').strip()
 
+    @property
+    def isLast(self):
+        return self.sequence.subCmds[-1] == self
+
     def setId(self, sequence, cmdId):
         """ Assign sequence and id to subcommand """
         self.sequence = sequence
@@ -48,6 +52,12 @@ class SubCmd(object):
         """ Generate subcommand status """
         cmd.inform(
             f'subCommand={self.sequence.id},{self.id},"{self.fullCmd}",{self.didFail},"{stripQuotes(self.lastReply)}"')
+
+    def abort(self, cmd):
+        """ abort prototype"""
+
+    def finish(self, cmd):
+        """ finish prototype"""
 
     def getVisit(self):
         """ getVisit prototype"""
@@ -88,6 +98,24 @@ class SpsExpose(SubCmd):
         """ Release visit """
         self.sequence.actor.visitor.releaseVisit()
 
+    def abort(self, cmd):
+        ret = self.sequence.actor.cmdr.call(actor='sps',
+                                            cmdStr='exposure abort',
+                                            forUserCmd=cmd,
+                                            timeLim=10)
+        if ret.didFail:
+            cmd.warn(ret.replyList[-1].keywords.canonical(delimiter=';'))
+            raise RuntimeError("Failed to abort exposure")
+
+    def finish(self, cmd):
+        ret = self.sequence.actor.cmdr.call(actor='sps',
+                                            cmdStr='exposure finish',
+                                            forUserCmd=cmd,
+                                            timeLim=10)
+        if ret.didFail:
+            cmd.warn(ret.replyList[-1].keywords.canonical(delimiter=';'))
+            raise RuntimeError("Failed to finish exposure")
+
 
 class DualCmd(SpsExpose):
     def __init__(self, actor, cmdStr, timeLim=300, idleTime=5.0):
@@ -118,6 +146,10 @@ class Sequence(list):
     @property
     def visits(self):
         return [subCmd.visit for subCmd in self.subCmds if subCmd.visit != -1]
+
+    @property
+    def current(self):
+        return self.subCmds[[sub.didFail for sub in self.subCmds].index(-1)]
 
     def addSubCmd(self, actor, cmdStr, duplicate=1, timeLim=300, idleTime=5.0):
         """ Append duplicate * subcommand to sequence """
@@ -156,6 +188,9 @@ class Sequence(list):
         if subCmd.didFail and doRaise:
             self.handleError(cmd=cmd, cmdId=subCmd.id, cmdVar=cmdVar)
             raise RuntimeError('Sub-command has failed.. sequence aborted..')
+
+        if subCmd.isLast:
+            return
 
         aborted = self.waitUntil(time.time() + subCmd.idleTime)
         if aborted and doRaise:
@@ -198,9 +233,15 @@ class Sequence(list):
         del self.tail
         list.clear(self)
 
-    def abort(self):
+    def abort(self, cmd):
         """ Abort current sequence """
         self.aborted = True
+        self.current.abort(cmd=cmd)
+
+    def finish(self, cmd):
+        """ Finish current sequence """
+        self.aborted = True
+        self.current.finish(cmd=cmd)
 
     def store(self):
         """ Store sequence in database """
