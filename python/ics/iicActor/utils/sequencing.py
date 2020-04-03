@@ -1,6 +1,7 @@
 import time
 
 from ics.iicActor.utils import stripQuotes, stripField
+from pfs.utils.opdb import opDB
 
 
 class SubCmd(object):
@@ -24,6 +25,10 @@ class SubCmd(object):
     @property
     def isLast(self):
         return self.sequence.subCmds[-1] == self
+
+    @property
+    def visited(self):
+        return not self.didFail and self.visit != -1
 
     def setId(self, sequence, cmdId):
         """ Assign sequence and id to subcommand """
@@ -51,7 +56,7 @@ class SubCmd(object):
     def inform(self, cmd):
         """ Generate subcommand status """
         cmd.inform(
-            f'subCommand={self.sequence.id},{self.id},"{self.fullCmd}",{self.didFail},"{stripQuotes(self.lastReply)}"')
+            f'subCommand={self.sequence.visit_set_id},{self.id},"{self.fullCmd}",{self.didFail},"{stripQuotes(self.lastReply)}"')
 
     def abort(self, cmd):
         """ abort prototype"""
@@ -132,8 +137,9 @@ class Sequence(list):
         self.comments = comments
         self.head = Head(head)
         self.tail = Tail(tail)
-        self.id = 1
         self.aborted = False
+        self.errorTrace = ''
+        self.visit_set_id = self.lastVisitSetId() + 1
 
     @property
     def cmdList(self):
@@ -145,11 +151,26 @@ class Sequence(list):
 
     @property
     def visits(self):
-        return [subCmd.visit for subCmd in self.subCmds if subCmd.visit != -1]
+        return [subCmd.visit for subCmd in self.subCmds if subCmd.visited]
 
     @property
     def current(self):
         return self.subCmds[[sub.didFail for sub in self.subCmds].index(-1)]
+
+    @property
+    def status(self):
+        if self.aborted:
+            return 'aborted'
+        elif self.errorTrace:
+            return self.errorTrace
+        else:
+            return 'complete'
+
+    def lastVisitSetId(self):
+        """ get last visit_set_id from opDB """
+        visit_set_id, = opDB.fetchone('select max(visit_set_id) from sps_sequence')
+        visit_set_id = 0 if visit_set_id is None else visit_set_id
+        return int(visit_set_id)
 
     def addSubCmd(self, actor, cmdStr, duplicate=1, timeLim=300, idleTime=5.0):
         """ Append duplicate * subcommand to sequence """
@@ -158,7 +179,7 @@ class Sequence(list):
 
     def inform(self, cmd):
         """ Generate sps_sequence status """
-        cmd.inform(f'sps_sequence={self.id},{self.seqtype},"{self.cmdStr}","{self.name}","{self.comments}"')
+        cmd.inform(f'sps_sequence={self.visit_set_id},{self.seqtype},"{self.cmdStr}","{self.name}","{self.comments}"')
 
     def register(self, cmd):
         """ Register sequence and underlying subcommand"""
@@ -207,6 +228,7 @@ class Sequence(list):
             return
 
         cmdErrors = [r.keywords.canonical(delimiter=';') for r in cmdVar.replyList]
+        self.errorTrace = ';'.join(cmdErrors)
 
         for cmdError in cmdErrors:
             cmd.warn(cmdError)
@@ -246,7 +268,11 @@ class Sequence(list):
     def store(self):
         """ Store sequence in database """
         if self.visits:
-            pass
+            opDB.insert('sps_sequence', visit_set_id=self.visit_set_id, sequence_type=self.seqtype, name=self.name,
+                        comments=self.comments, cmd_str=self.cmdStr, status=self.status)
+
+            for visit in self.visits:
+                opDB.insert('visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
 
 
 class Head(Sequence):
