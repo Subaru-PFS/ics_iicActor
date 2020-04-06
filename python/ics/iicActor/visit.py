@@ -1,4 +1,6 @@
 import threading
+from pfscore.gen2 import fetchVisitFromGen2
+from pfs.utils.opdb import opDB
 
 class VisitActiveError(Exception):
     pass
@@ -30,6 +32,8 @@ class VisitManager(object):
         visit = self._fetchVisitFromGen2()
 
         self.activeVisit = Visit(visitId=visit, name=name)
+        self.activeVisit.store()
+
         return self.activeVisit
 
     def releaseVisit(self):
@@ -41,18 +45,9 @@ class VisitManager(object):
 
     def _fetchVisitFromGen2(self):
         """Actually get a new visit from Gen2.
-
-
         What PFS calls a "visit", Gen2 calls a "frame".
-
         """
-
-        ret = self.actor.cmdr.call(actor='gen2', cmdStr='getVisit', timeLim=10.0)
-        if ret.didFail:
-            raise RuntimeError("VisitManager failed to get a visit number in 10s!")
-
-        visit = self.actor.models['gen2'].keyVarDict['visit'].valueList[0]
-        return visit
+        return fetchVisitFromGen2(self.actor)
 
 
 class Visit(object):
@@ -96,3 +91,6 @@ class Visit(object):
             self.__fpsFrameId += 1
 
         return self.visitId*100 + frameIdx
+
+    def store(self):
+        opDB.insert('pfs_visit', pfs_visit_id=self.visitId, pfs_visit_description=self.name)
