@@ -55,3 +55,25 @@ class Arc(Sequence):
                        cmdStr=f'expose arc exptime={exptime} visit={{visit}} {cams}',
                        timeLim=120 + exptime,
                        duplicate=duplicate)
+
+
+class Flat(Sequence):
+    """ Flat sequence """
+
+    def __init__(self, exptime, switchOff, attenuator, force, duplicate, cams, name, comments, head, tail):
+        Sequence.__init__(self, 'flats', name=name, comments=comments, head=head, tail=tail)
+
+        attenuator = f'attenuator={attenuator}' if attenuator is not None else ''
+        force = 'force' if force else ''
+        self.head.addSubCmd(actor='dcb',
+                            cmdStr="arc on=halogen %s %s" % (attenuator, force),
+                            timeLim=300)
+
+        if switchOff:
+            self.tail.insert(actor='dcb',
+                             cmdStr="arc off=halogen")
+
+        self.addSubCmd(actor='sps',
+                       cmdStr=f'expose flat exptime={exptime} visit={{visit}} {cams}',
+                       timeLim=120 + exptime,
+                       duplicate=duplicate)

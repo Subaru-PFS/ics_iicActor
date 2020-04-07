@@ -36,6 +36,7 @@ class SpsCmd(object):
             ('bias', f'{optArgs}', self.doBias),
             ('dark', f'<exptime> {optArgs}', self.doDark),
             ('expose', f'arc <exptime> [<switchOn>] [<switchOff>] [<attenuator>] [force] {optArgs}', self.doArc),
+            ('expose', f'flat <exptime> [switchOff] [<attenuator>] [force] {optArgs}', self.doFlat),
 
         ]
 
@@ -69,7 +70,7 @@ class SpsCmd(object):
         cmd.finish()
 
     def doBias(self, cmd):
-        """sps biases. """
+        """sps bias(es). """
         cmdKeys = cmd.cmd.keywords
 
         self.seq = spsSequence.Bias(**cmdKwargs(cmdKeys))
@@ -81,7 +82,7 @@ class SpsCmd(object):
         cmd.finish()
 
     def doDark(self, cmd):
-        """sps dark with given exptime. """
+        """sps dark(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         exptime = cmdKeys['exptime'].values[0]
 
@@ -94,7 +95,7 @@ class SpsCmd(object):
         cmd.finish()
 
     def doArc(self, cmd):
-        """sps dark with given exptime. """
+        """sps arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         exptime = cmdKeys['exptime'].values[0]
         switchOn = cmdKeys['switchOn'].values if 'switchOn' in cmdKeys else None
@@ -104,6 +105,24 @@ class SpsCmd(object):
 
         self.seq = spsSequence.Arc(exptime=exptime, switchOn=switchOn, switchOff=switchOff, attenuator=attenuator,
                                    force=force, **cmdKwargs(cmdKeys))
+        try:
+            self.seq.start(self.actor, cmd=cmd)
+        finally:
+            self.seq = None
+
+        cmd.finish()
+
+    def doFlat(self, cmd):
+        """sps flat(s) with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+        exptime = cmdKeys['exptime'].values[0]
+
+        switchOff = 'switchOff' in cmdKeys
+        attenuator = cmdKeys['attenuator'].values[0] if 'attenuator' in cmdKeys else None
+        force = 'force' in cmdKeys
+
+        self.seq = spsSequence.Flat(exptime=exptime, switchOff=switchOff, attenuator=attenuator,
+                                    force=force, **cmdKwargs(cmdKeys))
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:
