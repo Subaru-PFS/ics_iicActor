@@ -19,10 +19,11 @@ class SpsCmd(object):
         # associated methods when matched. The callbacks will be
         # passed a single argument, the parsed and typed command.
         #
-        self.vocab = [('expose',
-                       '<exptime> [<duplicate>] [<cam>] [<name>] [<comments>] [<name>] [<comments>] [<head>] [<tail>]',
-                       self.doExpose)
-                      ]
+        self.vocab = [
+            ('expose', '<exptime> [<duplicate>] [<cam>] [<name>] [<comments>] [<head>] [<tail>]', self.doExpose),
+            ('bias', '[<duplicate>] [<cam>] [<name>] [<comments>] [<head>] [<tail>]', self.doBias),
+
+            ]
 
         # Define typed command arguments for the above commands.
         self.keys = keys.KeysDictionary("iic_iic", (1, 1),
@@ -48,6 +49,24 @@ class SpsCmd(object):
 
         self.seq = spsSequence.Object(exptime=exptime, duplicate=duplicate, cams=cams, name=name, comments=comments,
                                       head=head, tail=tail)
+        try:
+            self.seq.start(self.actor, cmd=cmd)
+        finally:
+            self.seq = None
+
+        cmd.finish()
+
+    def doBias(self, cmd):
+        """sps biases. """
+        cmdKeys = cmd.cmd.keywords
+        duplicate = cmdKeys['duplicate'].values[0] if "duplicate" in cmdKeys else 1
+        cams = 'cams=%s' % ','.join(cmdKeys['cam'].values) if 'cam' in cmdKeys else ''
+        name = cmdKeys['name'].values[0] if 'name' in cmdKeys else ''
+        comments = cmdKeys['comments'].values[0] if 'comments' in cmdKeys else ''
+        head = cmdKeys['head'].values if 'head' in cmdKeys else None
+        tail = cmdKeys['tail'].values if 'tail' in cmdKeys else None
+
+        self.seq = spsSequence.Bias(duplicate=duplicate, cams=cams, name=name, comments=comments, head=head, tail=tail)
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:
