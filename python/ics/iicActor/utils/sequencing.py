@@ -172,6 +172,12 @@ class Sequence(list):
         for i in range(duplicate):
             self.append(cls(actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime))
 
+    def insert(self, actor, cmdStr, duplicate=1, timeLim=300, idleTime=5.0, index=0):
+        """ Insert duplicate * subcommand to sequence """
+        cls = SpsExpose if 'sps expose' in f'{actor} {cmdStr}' else SubCmd
+        for i in range(duplicate):
+            list.insert(self, index, cls(actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime))
+
     def inform(self, cmd):
         """ Generate sps_sequence status """
         cmd.inform(f'sps_sequence={self.visit_set_id},{self.seqtype},"{self.cmdStr}","{self.name}","{self.comments}"')
