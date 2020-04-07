@@ -166,7 +166,7 @@ class Sequence(list):
         visit_set_id = 0 if visit_set_id is None else visit_set_id
         return int(visit_set_id)
 
-    def addSubCmd(self, actor, cmdStr, duplicate=1, timeLim=300, idleTime=5.0):
+    def add(self, actor, cmdStr, duplicate=1, timeLim=300, idleTime=5.0):
         """ Append duplicate * subcommand to sequence """
         cls = SpsExpose if 'sps expose' in f'{actor} {cmdStr}' else SubCmd
         for i in range(duplicate):
@@ -282,7 +282,7 @@ class Head(Sequence):
 
         for fullCmd in cmdList:
             actor, cmdStr = fullCmd.split(' ', 1)
-            self.addSubCmd(actor=actor, cmdStr=cmdStr)
+            self.add(actor=actor, cmdStr=cmdStr)
 
 
 class Tail(Sequence):
@@ -291,4 +291,4 @@ class Tail(Sequence):
 
         for fullCmd in cmdList:
             actor, cmdStr = fullCmd.split(' ', 1)
-            self.addSubCmd(actor=actor, cmdStr=cmdStr)
+            self.add(actor=actor, cmdStr=cmdStr)
