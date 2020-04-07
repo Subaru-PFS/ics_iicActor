@@ -32,6 +32,8 @@ class SpsCmd(object):
         self.vocab = [
             ('expose', f'<exptime> {optArgs}', self.doExpose),
             ('bias', f'{optArgs}', self.doBias),
+            ('dark', f'<exptime> {optArgs}', self.doDark),
+
 
             ]
 
@@ -64,6 +66,19 @@ class SpsCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         self.seq = spsSequence.Bias(**cmdKwargs(cmdKeys))
+        try:
+            self.seq.start(self.actor, cmd=cmd)
+        finally:
+            self.seq = None
+
+        cmd.finish()
+
+    def doDark(self, cmd):
+        """sps dark with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+        exptime = cmdKeys['exptime'].values[0]
+
+        self.seq = spsSequence.Dark(exptime=exptime, **cmdKwargs(cmdKeys))
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:

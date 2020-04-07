@@ -20,3 +20,13 @@ class Bias(Sequence):
                        cmdStr=f'expose bias visit={{visit}} {cams}',
                        timeLim=120,
                        duplicate=duplicate)
+
+class Dark(Sequence):
+    """ Simple darks sequence """
+
+    def __init__(self, exptime, duplicate, cams, name, comments, head, tail):
+        Sequence.__init__(self, 'darks', name=name, comments=comments, head=head, tail=tail)
+        self.addSubCmd(actor='sps',
+                       cmdStr=f'expose dark exptime={exptime} visit={{visit}} {cams}',
+                       timeLim=120 + exptime,
+                       duplicate=duplicate)
