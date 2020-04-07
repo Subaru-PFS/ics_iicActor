@@ -122,12 +122,6 @@ class SpsExpose(SubCmd):
             raise RuntimeError("Failed to finish exposure")
 
 
-class DualCmd(SpsExpose):
-    def __init__(self, actor, cmdStr, timeLim=300, idleTime=5.0):
-        cls = SpsExpose if 'sps expose' in f'{actor} {cmdStr}' else SubCmd
-        cls.__init__(self, actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime)
-
-
 class Sequence(list):
     """ Placeholder to handle sequence of subcommand """
 
@@ -174,8 +168,9 @@ class Sequence(list):
 
     def addSubCmd(self, actor, cmdStr, duplicate=1, timeLim=300, idleTime=5.0):
         """ Append duplicate * subcommand to sequence """
+        cls = SpsExpose if 'sps expose' in f'{actor} {cmdStr}' else SubCmd
         for i in range(duplicate):
-            self.append(DualCmd(actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime))
+            self.append(cls(actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime))
 
     def inform(self, cmd):
         """ Generate sps_sequence status """
