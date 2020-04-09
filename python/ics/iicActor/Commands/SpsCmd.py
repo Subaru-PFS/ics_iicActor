@@ -1,6 +1,7 @@
 from importlib import reload
 
 import ics.iicActor.sps as spsSequence
+import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from pfscore.spectroIds import getSite
@@ -10,12 +11,29 @@ reload(spsSequence)
 
 def cmdKwargs(cmdKeys):
     duplicate = cmdKeys['duplicate'].values[0] if "duplicate" in cmdKeys else 1
-    cams = 'cams=%s' % ','.join(cmdKeys['cam'].values) if 'cam' in cmdKeys else ''
+    cams = f'cams={",".join(cmdKeys["cam"].values)}' if 'cam' in cmdKeys else ''
     name = cmdKeys['name'].values[0] if 'name' in cmdKeys else ''
     comments = cmdKeys['comments'].values[0] if 'comments' in cmdKeys else ''
     head = cmdKeys['head'].values if 'head' in cmdKeys else None
     tail = cmdKeys['tail'].values if 'tail' in cmdKeys else None
     return dict(duplicate=duplicate, cams=cams, name=name, comments=comments, head=head, tail=tail)
+
+
+def attenArgs(cmdKeys):
+    value = cmdKeys['attenuator'].values[0] if 'attenuator' in cmdKeys else None
+
+    if value is not None and getSite() != 'L':
+        raise ValueError('You can only set attenuator at LAM')
+    args = [f'attenuator={value}'] if value is not None else []
+    args += (['force'] if 'force' in cmdKeys else [])
+    return args
+
+
+def dcbArgs(cmdKeys):
+    onArgs = [f'on={",".join(cmdKeys["switchOn"].values)}'] if 'switchOn' in cmdKeys else []
+    onArgs += attenArgs(cmdKeys)
+    offArgs = [f'off={",".join(cmdKeys["switchOff"].values)}'] if 'switchOff' in cmdKeys else []
+    return onArgs, offArgs
 
 
 class SpsCmd(object):
@@ -31,13 +49,15 @@ class SpsCmd(object):
         # passed a single argument, the parsed and typed command.
         #
         optArgs = '[<duplicate>] [<cam>] [<name>] [<comments>] [<head>] [<tail>]'
+        attenArgs = '[<attenuator>] [force]'
+        dcbArgs = f'[<switchOn>] [<switchOff>] {attenArgs}'
 
         self.vocab = [
             ('expose', f'<exptime> {optArgs}', self.doExpose),
             ('bias', f'{optArgs}', self.doBias),
             ('dark', f'<exptime> {optArgs}', self.doDark),
-            ('expose', f'arc <exptime> [<switchOn>] [<switchOff>] [<attenuator>] [force] {optArgs}', self.doArc),
-            ('expose', f'flat <exptime> [switchOff] [<attenuator>] [force] {optArgs}', self.doFlat),
+            ('expose', f'arc <exptime> {dcbArgs} {optArgs}', self.doArc),
+            ('expose', f'flat <exptime> [switchOff] {attenArgs} {optArgs}', self.doFlat),
 
         ]
 
@@ -99,16 +119,9 @@ class SpsCmd(object):
         """sps arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         exptime = cmdKeys['exptime'].values[0]
-        switchOn = cmdKeys['switchOn'].values if 'switchOn' in cmdKeys else None
-        switchOff = cmdKeys['switchOff'].values if 'switchOff' in cmdKeys else None
-        attenuator = cmdKeys['attenuator'].values[0] if 'attenuator' in cmdKeys else None
-        force = 'force' in cmdKeys
+        onArgs, offArgs = dcbArgs(cmdKeys)
 
-        if attenuator is not None and getSite() != 'L':
-            raise ValueError('You can only set attenuator at LAM')
-
-        self.seq = spsSequence.Arc(exptime=exptime, switchOn=switchOn, switchOff=switchOff, attenuator=attenuator,
-                                   force=force, **cmdKwargs(cmdKeys))
+        self.seq = spsSequence.Arc(exptime=exptime, onArgs=onArgs, offArgs=offArgs, **cmdKwargs(cmdKeys))
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:
@@ -120,16 +133,10 @@ class SpsCmd(object):
         """sps flat(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         exptime = cmdKeys['exptime'].values[0]
-
         switchOff = 'switchOff' in cmdKeys
-        attenuator = cmdKeys['attenuator'].values[0] if 'attenuator' in cmdKeys else None
-        force = 'force' in cmdKeys
 
-        if attenuator is not None and getSite() != 'L':
-            raise ValueError('You can only set attenuator at LAM')
-
-        self.seq = spsSequence.Flat(exptime=exptime, switchOff=switchOff, attenuator=attenuator,
-                                    force=force, **cmdKwargs(cmdKeys))
+        self.seq = spsSequence.Flat(exptime=exptime, attenArgs=attenArgs(cmdKeys), switchOff=switchOff,
+                                    **cmdKwargs(cmdKeys))
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:

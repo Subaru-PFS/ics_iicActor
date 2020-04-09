@@ -37,20 +37,17 @@ class Dark(Sequence):
 class Arc(Sequence):
     """ Arcs sequence """
 
-    def __init__(self, exptime, switchOn, switchOff, attenuator, force, duplicate, cams, name, comments, head, tail):
+    def __init__(self, exptime, onArgs, offArgs, duplicate, cams, name, comments, head, tail):
         Sequence.__init__(self, 'arcs', name=name, comments=comments, head=head, tail=tail)
 
-        if switchOn is not None:
-            args = [f'on={",".join(switchOn)}']
-            args += ([f'attenuator={attenuator}'] if attenuator is not None else [])
-            args += (['force'] if force else [])
+        if onArgs:
             self.head.add(actor='dcb',
-                          cmdStr=f'arc {" ".join(args)}',
+                          cmdStr=f'arc {" ".join(onArgs)}',
                           timeLim=300)
 
-        if switchOff is not None:
+        if offArgs:
             self.tail.insert(actor='dcb',
-                             cmdStr=f'arc off={",".join(switchOff)}')
+                             cmdStr=f'arc {" ".join(offArgs)}')
 
         self.add(actor='sps',
                  cmdStr=f'expose arc exptime={exptime} visit={{visit}} {cams}',
@@ -61,13 +58,11 @@ class Arc(Sequence):
 class Flat(Sequence):
     """ Flat sequence """
 
-    def __init__(self, exptime, switchOff, attenuator, force, duplicate, cams, name, comments, head, tail):
+    def __init__(self, exptime, attenArgs, switchOff, duplicate, cams, name, comments, head, tail):
         Sequence.__init__(self, 'flats', name=name, comments=comments, head=head, tail=tail)
 
-        args = [f'attenuator={attenuator}'] if attenuator is not None else []
-        args += (['force'] if force else [])
         self.head.add(actor='dcb',
-                      cmdStr=f'arc on=halogen {" ".join(args)}',
+                      cmdStr=f'arc on=halogen {" ".join(attenArgs)}',
                       timeLim=300)
 
         if switchOff:
