@@ -1,18 +1,23 @@
 import threading
+
 from pfscore.gen2 import fetchVisitFromGen2
-from pfs.utils.opdb import opDB
+
 
 class VisitActiveError(Exception):
     pass
 
+
 class VisitNotActiveError(Exception):
     pass
+
 
 class VisitOverflowed(object):
     pass
 
+
 class VisitAlreadyDone(object):
     pass
+
 
 class VisitManager(object):
     def __init__(self, actor):
@@ -21,6 +26,7 @@ class VisitManager(object):
 
     def __enter__(self):
         return self.newVisit()
+
     def __exit__(self):
         self.releaseVisit()
 
@@ -32,7 +38,6 @@ class VisitManager(object):
         visit = self._fetchVisitFromGen2()
 
         self.activeVisit = Visit(visitId=visit, name=name)
-        self.activeVisit.store()
 
         return self.activeVisit
 
@@ -78,7 +83,7 @@ class Visit(object):
                 raise VisitOverflowed()
             self.__agcFrameId += 1
 
-        return self.visitId*100 + frameIdx
+        return self.visitId * 100 + frameIdx
 
     def frameForFPS(self):
         if self.iAmDead:
@@ -90,7 +95,4 @@ class Visit(object):
                 raise VisitOverflowed()
             self.__fpsFrameId += 1
 
-        return self.visitId*100 + frameIdx
-
-    def store(self):
-        opDB.insert('pfs_visit', pfs_visit_id=self.visitId, pfs_visit_description=self.name)
+        return self.visitId * 100 + frameIdx
