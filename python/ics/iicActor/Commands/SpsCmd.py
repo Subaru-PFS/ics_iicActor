@@ -3,6 +3,7 @@ from importlib import reload
 import ics.iicActor.sps as spsSequence
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from pfscore.spectroIds import getSite
 
 reload(spsSequence)
 
@@ -103,6 +104,9 @@ class SpsCmd(object):
         attenuator = cmdKeys['attenuator'].values[0] if 'attenuator' in cmdKeys else None
         force = 'force' in cmdKeys
 
+        if attenuator is not None and getSite() != 'L':
+            raise ValueError('You can only set attenuator at LAM')
+
         self.seq = spsSequence.Arc(exptime=exptime, switchOn=switchOn, switchOff=switchOff, attenuator=attenuator,
                                    force=force, **cmdKwargs(cmdKeys))
         try:
@@ -120,6 +124,9 @@ class SpsCmd(object):
         switchOff = 'switchOff' in cmdKeys
         attenuator = cmdKeys['attenuator'].values[0] if 'attenuator' in cmdKeys else None
         force = 'force' in cmdKeys
+
+        if attenuator is not None and getSite() != 'L':
+            raise ValueError('You can only set attenuator at LAM')
 
         self.seq = spsSequence.Flat(exptime=exptime, switchOff=switchOff, attenuator=attenuator,
                                     force=force, **cmdKwargs(cmdKeys))
