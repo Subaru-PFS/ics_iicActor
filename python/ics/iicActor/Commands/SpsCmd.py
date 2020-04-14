@@ -79,6 +79,7 @@ class SpsCmd(object):
             ('expose', f'arc <exptime> {dcbArgs} {optArgs}', self.doArc),
             ('expose', f'flat <exptime> [switchOff] {attenArgs} {optArgs}', self.doFlat),
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
+            ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
 
         ]
 
@@ -98,6 +99,7 @@ class SpsCmd(object):
                                         keys.Key("attenuator", types.Int(), help='Attenuator value.'),
                                         keys.Key('position', types.Float() * (1, 3),
                                                  help='slit/motor position for throughfocus same args as np.linspace'),
+                                        keys.Key('tilt', types.Float() * (1, 3), help='motor tilt (a, b, c)'),
                                         )
 
     def doExpose(self, cmd):
@@ -176,6 +178,23 @@ class SpsCmd(object):
 
         self.seq = spsSequence.SlitThroughFocus(exptime=exptime, positions=positions,
                                                 **dcbKwargs(cmdKeys), **cmdKwargs(cmdKeys))
+        try:
+            self.seq.start(self.actor, cmd=cmd)
+        finally:
+            self.seq = None
+
+        cmd.finish()
+
+    def detThroughFocus(self, cmd):
+        """sps slit through focus with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+        exptime = cmdKeys['exptime'].values[0]
+        start, stop, num = cmdKeys['position'].values
+        tilt = np.array(cmdKeys['tilt'].values) if 'tilt' in cmdKeys else np.zeros(3)
+        positions = np.array([np.linspace(start, stop - np.max(tilt), num=int(num)), ] * 3).transpose() + tilt
+
+        self.seq = spsSequence.DetThroughFocus(exptime=exptime, positions=positions.round(2),
+                                               **dcbKwargs(cmdKeys), **cmdKwargs(cmdKeys))
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:

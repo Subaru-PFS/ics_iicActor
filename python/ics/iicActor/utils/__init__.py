@@ -22,7 +22,7 @@ def parseArgs(**kwargs):
     """ Strip given text field from rawCmd """
     args = []
     for k, v in kwargs.items():
-        if v is None or not v:
+        if v is None or v is False:
             continue
         args.append(k if v is True else f'{k}={v}')
 

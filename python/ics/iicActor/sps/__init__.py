@@ -90,3 +90,21 @@ class SlitThroughFocus(Sequence):
         for position in positions:
             self.add(actor='sps', cmdStr='slit', focus=position, cams=cams, timeLim=30)
             self.expose(exptype='arc', exptime=exptime, duplicate=duplicate, cams='{cams}')
+
+
+class DetThroughFocus(Sequence):
+    """ Detector through focus sequence """
+
+    def __init__(self, exptime, positions, switchOn, attenuator, force, switchOff, duplicate, cams, **kwargs):
+        Sequence.__init__(self, 'detThroughFocus', **kwargs)
+
+        if switchOn is not None or attenuator is not None:
+            self.head.add(actor='dcb', cmdStr='arc', on=switchOn, attenuator=attenuator, force=force, timeLim=300)
+
+        if switchOff is not None:
+            self.tail.insert(actor='dcb', cmdStr='arc', off=switchOff)
+
+        for motorA, motorB, motorC in positions:
+            self.add(actor='sps', cmdStr='ccdMotors move', a=motorA, b=motorB, c=motorC, cams=cams, timeLim=30)
+            self.expose(exptype='arc', exptime=exptime, duplicate=duplicate, cams='{cams}')
+
