@@ -1,13 +1,13 @@
 import time
 
-from ics.iicActor.utils import stripQuotes, stripField
+from ics.iicActor.utils import stripQuotes, stripField, parseArgs
 from pfs.utils.opdb import opDB
 
 
 class SubCmd(object):
     """ Placeholder to handle subcommand processing, status and error"""
 
-    def __init__(self, actor, cmdStr, timeLim, idleTime):
+    def __init__(self, actor, cmdStr, timeLim=300, idleTime=5.0):
         object.__init__(self)
         self.actor = actor
         self.cmdStr = cmdStr
@@ -76,12 +76,14 @@ class SubCmd(object):
 class SpsExpose(SubCmd):
     """ Placeholder to handle sps expose command specificities"""
 
-    def __init__(self, *args, **kwargs):
-        SubCmd.__init__(self, *args, **kwargs)
+    def __init__(self, exptype, exptime, **kwargs):
+        cmdStr = ' '.join(['expose', exptype, f'exptime={exptime}'] + parseArgs(**kwargs))
+        SubCmd.__init__(self, actor='sps', cmdStr=cmdStr, timeLim=120 + exptime)
 
     def build(self, cmd):
         """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visit """
-        return dict(actor=self.actor, cmdStr=self.cmdStr.format(visit=self.visit), forUserCmd=cmd, timeLim=self.timeLim)
+        return dict(actor=self.actor, cmdStr=self.cmdStr.format(visit=self.visit, cams=self.sequence.exposable),
+                    forUserCmd=cmd, timeLim=self.timeLim)
 
     def call(self, cmd):
         """ Get visit from gen2, Call subcommand, release visit """
@@ -160,23 +162,37 @@ class Sequence(list):
         else:
             return 'complete'
 
+    @property
+    def exposable(self):
+        try:
+            cams = self.actor.models['sps'].keyVarDict['exposable'].getValue()
+        except:
+            return None
+
+        return ','.join(cams)
+
     def lastVisitSetId(self):
         """ get last visit_set_id from opDB """
         visit_set_id, = opDB.fetchone('select max(visit_set_id) from sps_sequence')
         visit_set_id = 0 if visit_set_id is None else visit_set_id
         return int(visit_set_id)
 
-    def add(self, actor, cmdStr, duplicate=1, timeLim=300, idleTime=5.0):
-        """ Append duplicate * subcommand to sequence """
-        cls = SpsExpose if 'sps expose' in f'{actor} {cmdStr}' else SubCmd
+    def expose(self, exptype, exptime, cams=None, duplicate=1):
+        """ Append duplicate * sps expose to sequence """
         for i in range(duplicate):
-            self.append(cls(actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime))
+            self.append(SpsExpose(exptype, exptime, visit='{visit}', cams=cams))
 
-    def insert(self, actor, cmdStr, duplicate=1, timeLim=300, idleTime=5.0, index=0):
-        """ Insert duplicate * subcommand to sequence """
-        cls = SpsExpose if 'sps expose' in f'{actor} {cmdStr}' else SubCmd
+    def add(self, actor, cmdStr, duplicate=1, timeLim=300, idleTime=5.0, **kwargs):
+        """ Append duplicate * subcommand to sequence """
+        cmdStr = ' '.join([cmdStr] + parseArgs(**kwargs))
         for i in range(duplicate):
-            list.insert(self, index, cls(actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime))
+            self.append(SubCmd(actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime))
+
+    def insert(self, actor, cmdStr, duplicate=1, timeLim=300, idleTime=5.0, index=0, **kwargs):
+        """ Insert duplicate * subcommand to sequence """
+        cmdStr = ' '.join([cmdStr] + parseArgs(**kwargs))
+        for i in range(duplicate):
+            list.insert(self, index, SubCmd(actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime))
 
     def inform(self, cmd):
         """ Generate sps_sequence status """
