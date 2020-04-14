@@ -73,3 +73,20 @@ class Flat(Sequence):
                  cmdStr=f'expose flat exptime={exptime} visit={{visit}} {cams}',
                  timeLim=120 + exptime,
                  duplicate=duplicate)
+
+
+class SlitThroughFocus(Sequence):
+    """ Slit through focus sequence """
+
+    def __init__(self, exptime, positions, switchOn, attenuator, force, switchOff, duplicate, cams, **kwargs):
+        Sequence.__init__(self, 'slitThroughFocus', **kwargs)
+
+        if switchOn is not None:
+            self.head.add(actor='dcb', cmdStr='arc', on=switchOn, attenuator=attenuator, force=force, timeLim=300)
+
+        if switchOff is not None:
+            self.tail.insert(actor='dcb', cmdStr='arc', off=switchOff)
+
+        for position in positions:
+            self.add(actor='sps', cmdStr='slit', focus=position, cams=cams, timeLim=30)
+            self.expose(exptype='arc', exptime=exptime, duplicate=duplicate, cams='{cams}')

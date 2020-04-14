@@ -11,7 +11,7 @@ reload(spsSequence)
 
 def cmdKwargs(cmdKeys):
     duplicate = cmdKeys['duplicate'].values[0] if "duplicate" in cmdKeys else 1
-    cams = f'cams={",".join(cmdKeys["cam"].values)}' if 'cam' in cmdKeys else ''
+    cams = ','.join(cmdKeys['cam'].values) if 'cam' in cmdKeys else None
     name = cmdKeys['name'].values[0] if 'name' in cmdKeys else ''
     comments = cmdKeys['comments'].values[0] if 'comments' in cmdKeys else ''
     head = cmdKeys['head'].values if 'head' in cmdKeys else None
@@ -36,6 +36,26 @@ def dcbArgs(cmdKeys):
     return onArgs, offArgs
 
 
+def dcbKwargs(cmdKeys):
+    switchOn = ','.join(cmdKeys["switchOn"].values) if 'switchOn' in cmdKeys else None
+
+    if 'switchOff' in cmdKeys:
+        try:
+            switchOff = ','.join(cmdKeys["switchOff"].values)
+        except:
+            switchOff = True
+    else:
+        switchOff = None
+
+    value = cmdKeys['attenuator'].values[0] if 'attenuator' in cmdKeys else None
+    force = 'force' in cmdKeys
+
+    if value is not None and getSite() != 'L':
+        raise ValueError('You can only set attenuator at LAM')
+
+    return dict(switchOn=switchOn, switchOff=switchOff, attenuator=value, force=force)
+
+
 class SpsCmd(object):
 
     def __init__(self, actor):
@@ -58,6 +78,7 @@ class SpsCmd(object):
             ('dark', f'<exptime> {optArgs}', self.doDark),
             ('expose', f'arc <exptime> {dcbArgs} {optArgs}', self.doArc),
             ('expose', f'flat <exptime> [switchOff] {attenArgs} {optArgs}', self.doFlat),
+            ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
 
         ]
 
@@ -75,6 +96,8 @@ class SpsCmd(object):
                                         keys.Key("switchOff", types.String() * (1, None),
                                                  help='which arc lamp to switch off.'),
                                         keys.Key("attenuator", types.Int(), help='Attenuator value.'),
+                                        keys.Key('position', types.Float() * (1, 3),
+                                                 help='slit/motor position for throughfocus same args as np.linspace'),
                                         )
 
     def doExpose(self, cmd):
@@ -137,6 +160,22 @@ class SpsCmd(object):
 
         self.seq = spsSequence.Flat(exptime=exptime, attenArgs=attenArgs(cmdKeys), switchOff=switchOff,
                                     **cmdKwargs(cmdKeys))
+        try:
+            self.seq.start(self.actor, cmd=cmd)
+        finally:
+            self.seq = None
+
+        cmd.finish()
+
+    def slitThroughFocus(self, cmd):
+        """sps slit through focus with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+        exptime = cmdKeys['exptime'].values[0]
+        start, stop, num = cmdKeys['position'].values
+        positions = np.linspace(start, stop, num=int(num))
+
+        self.seq = spsSequence.SlitThroughFocus(exptime=exptime, positions=positions,
+                                                **dcbKwargs(cmdKeys), **cmdKwargs(cmdKeys))
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:
