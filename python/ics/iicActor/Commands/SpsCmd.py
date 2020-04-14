@@ -19,23 +19,6 @@ def cmdKwargs(cmdKeys):
     return dict(duplicate=duplicate, cams=cams, name=name, comments=comments, head=head, tail=tail)
 
 
-def attenArgs(cmdKeys):
-    value = cmdKeys['attenuator'].values[0] if 'attenuator' in cmdKeys else None
-
-    if value is not None and getSite() != 'L':
-        raise ValueError('You can only set attenuator at LAM')
-    args = [f'attenuator={value}'] if value is not None else []
-    args += (['force'] if 'force' in cmdKeys else [])
-    return args
-
-
-def dcbArgs(cmdKeys):
-    onArgs = [f'on={",".join(cmdKeys["switchOn"].values)}'] if 'switchOn' in cmdKeys else []
-    onArgs += attenArgs(cmdKeys)
-    offArgs = [f'off={",".join(cmdKeys["switchOff"].values)}'] if 'switchOff' in cmdKeys else []
-    return onArgs, offArgs
-
-
 def dcbKwargs(cmdKeys):
     switchOn = ','.join(cmdKeys["switchOn"].values) if 'switchOn' in cmdKeys else None
 
@@ -108,6 +91,7 @@ class SpsCmd(object):
         exptime = cmdKeys['exptime'].values[0]
 
         self.seq = spsSequence.Object(exptime=exptime, **cmdKwargs(cmdKeys))
+
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:
@@ -120,6 +104,7 @@ class SpsCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         self.seq = spsSequence.Bias(**cmdKwargs(cmdKeys))
+
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:
@@ -133,6 +118,7 @@ class SpsCmd(object):
         exptime = cmdKeys['exptime'].values[0]
 
         self.seq = spsSequence.Dark(exptime=exptime, **cmdKwargs(cmdKeys))
+
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:
@@ -144,9 +130,9 @@ class SpsCmd(object):
         """sps arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         exptime = cmdKeys['exptime'].values[0]
-        onArgs, offArgs = dcbArgs(cmdKeys)
 
-        self.seq = spsSequence.Arc(exptime=exptime, onArgs=onArgs, offArgs=offArgs, **cmdKwargs(cmdKeys))
+        self.seq = spsSequence.Arc(exptime=exptime, **dcbKwargs(cmdKeys), **cmdKwargs(cmdKeys))
+
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:
@@ -158,10 +144,9 @@ class SpsCmd(object):
         """sps flat(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         exptime = cmdKeys['exptime'].values[0]
-        switchOff = 'switchOff' in cmdKeys
 
-        self.seq = spsSequence.Flat(exptime=exptime, attenArgs=attenArgs(cmdKeys), switchOff=switchOff,
-                                    **cmdKwargs(cmdKeys))
+        self.seq = spsSequence.Flat(exptime=exptime, **dcbKwargs(cmdKeys), **cmdKwargs(cmdKeys))
+
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:

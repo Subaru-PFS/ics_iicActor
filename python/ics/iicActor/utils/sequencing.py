@@ -77,7 +77,8 @@ class SpsExpose(SubCmd):
     """ Placeholder to handle sps expose command specificities"""
 
     def __init__(self, exptype, exptime, **kwargs):
-        cmdStr = ' '.join(['expose', exptype, f'exptime={exptime}'] + parseArgs(**kwargs))
+        fexptime = [f'exptime={exptime}'] if exptime > 0 else []
+        cmdStr = ' '.join(['expose', exptype] + fexptime + parseArgs(**kwargs))
         SubCmd.__init__(self, actor='sps', cmdStr=cmdStr, timeLim=120 + exptime)
 
     def build(self, cmd):
@@ -177,7 +178,7 @@ class Sequence(list):
         visit_set_id = 0 if visit_set_id is None else visit_set_id
         return int(visit_set_id)
 
-    def expose(self, exptype, exptime, cams=None, duplicate=1):
+    def expose(self, exptype, exptime=0, cams=None, duplicate=1):
         """ Append duplicate * sps expose to sequence """
         for i in range(duplicate):
             self.append(SpsExpose(exptype, exptime, visit='{visit}', cams=cams))
