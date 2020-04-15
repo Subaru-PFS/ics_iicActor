@@ -58,6 +58,7 @@ class SpsCmd(object):
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
             ('dither', f'flat <exptime> <pixels> [<nPositions>] [switchOff] {attenArgs} {optArgs}', self.ditheredFlats),
+            ('dither', f'arc <exptime> <pixels> {dcbArgs} {optArgs}', self.ditheredArcs),
 
         ]
 
@@ -139,7 +140,7 @@ class SpsCmd(object):
         cmd.finish()
 
     def doFlat(self, cmd):
-        """sps flat(s) with given exptime. """
+        """sps flat(s), also known as fiberTrace, with given exptime. """
         cmdKeys = cmd.cmd.keywords
         exptime = cmdKeys['exptime'].values[0]
 
@@ -169,7 +170,7 @@ class SpsCmd(object):
         cmd.finish()
 
     def detThroughFocus(self, cmd):
-        """sps slit through focus with given exptime. """
+        """sps detector motors through focus with given exptime. """
         cmdKeys = cmd.cmd.keywords
         exptime = cmdKeys['exptime'].values[0]
         start, stop, num = cmdKeys['position'].values
@@ -186,7 +187,7 @@ class SpsCmd(object):
         cmd.finish()
 
     def ditheredFlats(self, cmd):
-        """sps flat(s) with given exptime. """
+        """dithered flat(fiberTrace) with given exptime. Used to construct masterFlat """
         cmdKeys = cmd.cmd.keywords
         exptime = cmdKeys['exptime'].values[0]
         pixels = cmdKeys['pixels'].values[0]
@@ -195,6 +196,22 @@ class SpsCmd(object):
         positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1)
         self.seq = spsSequence.DitheredFlats(exptime=exptime, positions=positions.round(5), **dcbKwargs(cmdKeys),
                                              **cmdKwargs(cmdKeys))
+
+        try:
+            self.seq.start(self.actor, cmd=cmd)
+        finally:
+            self.seq = None
+
+        cmd.finish()
+
+    def ditheredArcs(self, cmd):
+        """dithered Arc(s) with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+        exptime = cmdKeys['exptime'].values[0]
+        pixels = cmdKeys['pixels'].values[0]
+
+        self.seq = spsSequence.DitheredArcs(exptime=exptime, pixels=pixels, **dcbKwargs(cmdKeys),
+                                            **cmdKwargs(cmdKeys))
 
         try:
             self.seq.start(self.actor, cmd=cmd)

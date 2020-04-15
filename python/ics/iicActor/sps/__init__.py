@@ -108,3 +108,21 @@ class DitheredFlats(Sequence):
 
         self.add(actor='sps', cmdStr='slit dither', x=0, cams=cams, timeLim=30)
         self.expose(exptype='flat', exptime=exptime, cams='{cams}', duplicate=duplicate)
+
+
+class DitheredArcs(Sequence):
+    """ Dithered Arcs sequence """
+
+    def __init__(self, exptime, pixels, switchOn, attenuator, force, switchOff, duplicate, cams, **kwargs):
+        Sequence.__init__(self, 'ditheredArcs', **kwargs)
+
+        if switchOn is not None or attenuator is not None:
+            self.head.add(actor='dcb', cmdStr='arc', on=switchOn, attenuator=attenuator, force=force, timeLim=300)
+
+        if switchOff is not None:
+            self.tail.insert(actor='dcb', cmdStr='arc', off=switchOff)
+
+        for x in range(int(1 / pixels)):
+            for y in range(int(1 / pixels)):
+                self.add(actor='sps', cmdStr='slit dither', x=x * pixels, y=y * pixels, cams=cams, timeLim=30)
+                self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate)
