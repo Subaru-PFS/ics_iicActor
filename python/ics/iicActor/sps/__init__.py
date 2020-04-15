@@ -1,4 +1,5 @@
 from ics.iicActor.utils.sequencing import Sequence
+from pfs.utils.ncaplar import defocused_exposure_times_single_position
 
 
 class Object(Sequence):
@@ -41,7 +42,7 @@ class Arc(Sequence):
 
 
 class Flat(Sequence):
-    """ Flat sequence """
+    """ Flat / fiberTrace sequence """
 
     def __init__(self, exptime, switchOn, attenuator, force, switchOff, duplicate, cams, **kwargs):
         Sequence.__init__(self, 'flats', **kwargs)
@@ -126,3 +127,26 @@ class DitheredArcs(Sequence):
             for y in range(int(1 / pixels)):
                 self.add(actor='sps', cmdStr='slit dither', x=x * pixels, y=y * pixels, cams=cams, timeLim=30)
                 self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate)
+
+
+class Defocus(Sequence):
+    """ Defocus sequence """
+
+    def __init__(self, exptime, positions, switchOn, attenuator, force, switchOff, duplicate, cams, **kwargs):
+        Sequence.__init__(self, 'defocusedArc', **kwargs)
+
+        if switchOn is not None:
+            self.head.add(actor='dcb', cmdStr='arc', on=switchOn, attenuator=attenuator, force=force, timeLim=300)
+
+        if switchOff is not None:
+            self.tail.insert(actor='dcb', cmdStr='arc', off=switchOff)
+
+        for position in positions:
+            cexptime, catten = defocused_exposure_times_single_position(exp_time_0=exptime,
+                                                                        att_value_0=attenuator,
+                                                                        defocused_value=position)
+            if attenuator is not None:
+                self.add(actor='dcb', cmdStr='arc', attenuator=catten, timeLim=300)
+
+            self.add(actor='sps', cmdStr='slit', focus=position, cams=cams, timeLim=30)
+            self.expose(exptype='arc', exptime=cexptime, cams='{cams}', duplicate=duplicate)

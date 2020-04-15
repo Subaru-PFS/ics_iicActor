@@ -59,6 +59,7 @@ class SpsCmd(object):
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
             ('dither', f'flat <exptime> <pixels> [<nPositions>] [switchOff] {attenArgs} {optArgs}', self.ditheredFlats),
             ('dither', f'arc <exptime> <pixels> {dcbArgs} {optArgs}', self.ditheredArcs),
+            ('defocus', f'<exptime> <position> {dcbArgs} {optArgs}', self.defocus),
 
         ]
 
@@ -212,6 +213,23 @@ class SpsCmd(object):
 
         self.seq = spsSequence.DitheredArcs(exptime=exptime, pixels=pixels, **dcbKwargs(cmdKeys),
                                             **cmdKwargs(cmdKeys))
+
+        try:
+            self.seq.start(self.actor, cmd=cmd)
+        finally:
+            self.seq = None
+
+        cmd.finish()
+
+    def defocus(self, cmd):
+        """dithered Arc(s) with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+        exptime = cmdKeys['exptime'].values[0]
+        start, stop, num = cmdKeys['position'].values
+        positions = np.linspace(start, stop, num=int(num))
+
+        self.seq = spsSequence.Defocus(exptime=exptime, positions=positions, **dcbKwargs(cmdKeys),
+                                       **cmdKwargs(cmdKeys))
 
         try:
             self.seq.start(self.actor, cmd=cmd)
