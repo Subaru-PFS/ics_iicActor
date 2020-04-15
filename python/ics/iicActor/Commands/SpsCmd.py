@@ -21,14 +21,8 @@ def cmdKwargs(cmdKeys):
 
 def dcbKwargs(cmdKeys):
     switchOn = ','.join(cmdKeys["switchOn"].values) if 'switchOn' in cmdKeys else None
-
-    if 'switchOff' in cmdKeys:
-        try:
-            switchOff = ','.join(cmdKeys["switchOff"].values)
-        except:
-            switchOff = True
-    else:
-        switchOff = None
+    switchOff = ','.join(cmdKeys["switchOff"].values) if 'switchOff' in cmdKeys else None
+    switchOff = True if not switchOff and switchOff is not None else switchOff
 
     value = cmdKeys['attenuator'].values[0] if 'attenuator' in cmdKeys else None
     force = 'force' in cmdKeys
@@ -63,6 +57,7 @@ class SpsCmd(object):
             ('expose', f'flat <exptime> [switchOff] {attenArgs} {optArgs}', self.doFlat),
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
+            ('dither', f'flat <exptime> <pixels> [<nPositions>] [switchOff] {attenArgs} {optArgs}', self.ditheredFlats),
 
         ]
 
@@ -83,6 +78,9 @@ class SpsCmd(object):
                                         keys.Key('position', types.Float() * (1, 3),
                                                  help='slit/motor position for throughfocus same args as np.linspace'),
                                         keys.Key('tilt', types.Float() * (1, 3), help='motor tilt (a, b, c)'),
+                                        keys.Key("nPositions", types.Int(),
+                                                 help="Number of position for dithered flats (default : 20)"),
+                                        keys.Key("pixels", types.Float(), help="dithering step in pixels"),
                                         )
 
     def doExpose(self, cmd):
@@ -180,6 +178,24 @@ class SpsCmd(object):
 
         self.seq = spsSequence.DetThroughFocus(exptime=exptime, positions=positions.round(2),
                                                **dcbKwargs(cmdKeys), **cmdKwargs(cmdKeys))
+        try:
+            self.seq.start(self.actor, cmd=cmd)
+        finally:
+            self.seq = None
+
+        cmd.finish()
+
+    def ditheredFlats(self, cmd):
+        """sps flat(s) with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+        exptime = cmdKeys['exptime'].values[0]
+        pixels = cmdKeys['pixels'].values[0]
+        nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
+        nPositions = (nPositions // 2) * 2
+        positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1)
+        self.seq = spsSequence.DitheredFlats(exptime=exptime, positions=positions.round(5), **dcbKwargs(cmdKeys),
+                                             **cmdKwargs(cmdKeys))
+
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:

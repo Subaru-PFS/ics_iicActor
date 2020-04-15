@@ -68,7 +68,7 @@ class SlitThroughFocus(Sequence):
 
         for position in positions:
             self.add(actor='sps', cmdStr='slit', focus=position, cams=cams, timeLim=30)
-            self.expose(exptype='arc', exptime=exptime, duplicate=duplicate, cams='{cams}')
+            self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate)
 
 
 class DetThroughFocus(Sequence):
@@ -85,4 +85,26 @@ class DetThroughFocus(Sequence):
 
         for motorA, motorB, motorC in positions:
             self.add(actor='sps', cmdStr='ccdMotors move', a=motorA, b=motorB, c=motorC, cams=cams, timeLim=30)
-            self.expose(exptype='arc', exptime=exptime, duplicate=duplicate, cams='{cams}')
+            self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate)
+
+
+class DitheredFlats(Sequence):
+    """ Dithered Flats sequence """
+
+    def __init__(self, exptime, positions, switchOn, attenuator, force, switchOff, duplicate, cams, **kwargs):
+        Sequence.__init__(self, 'ditheredFlats', **kwargs)
+
+        self.head.add(actor='dcb', cmdStr='arc', on='halogen', attenuator=attenuator, force=force, timeLim=300)
+
+        if switchOff:
+            self.tail.insert(actor='dcb', cmdStr='arc', off='halogen')
+
+        self.add(actor='sps', cmdStr='slit dither', x=0, cams=cams, timeLim=30)
+        self.expose(exptype='flat', exptime=exptime, cams='{cams}', duplicate=duplicate)
+
+        for position in positions:
+            self.add(actor='sps', cmdStr='slit dither', x=position, cams=cams, timeLim=30)
+            self.expose(exptype='flat', exptime=exptime, cams='{cams}', duplicate=duplicate)
+
+        self.add(actor='sps', cmdStr='slit dither', x=0, cams=cams, timeLim=30)
+        self.expose(exptype='flat', exptime=exptime, cams='{cams}', duplicate=duplicate)
