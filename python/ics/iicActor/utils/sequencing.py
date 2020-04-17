@@ -7,7 +7,7 @@ from pfs.utils.opdb import opDB
 class SubCmd(object):
     """ Placeholder to handle subcommand processing, status and error"""
 
-    def __init__(self, actor, cmdStr, timeLim=300, idleTime=5.0):
+    def __init__(self, actor, cmdStr, timeLim=60, idleTime=5.0):
         object.__init__(self)
         self.actor = actor
         self.cmdStr = cmdStr
@@ -183,13 +183,13 @@ class Sequence(list):
         for i in range(duplicate):
             self.append(SpsExpose(exptype, exptime, visit='{visit}', cams=cams))
 
-    def add(self, actor, cmdStr, duplicate=1, timeLim=300, idleTime=5.0, **kwargs):
+    def add(self, actor, cmdStr, duplicate=1, timeLim=60, idleTime=5.0, **kwargs):
         """ Append duplicate * subcommand to sequence """
         cmdStr = ' '.join([cmdStr] + parseArgs(**kwargs))
         for i in range(duplicate):
             self.append(SubCmd(actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime))
 
-    def insert(self, actor, cmdStr, duplicate=1, timeLim=300, idleTime=5.0, index=0, **kwargs):
+    def insert(self, actor, cmdStr, duplicate=1, timeLim=60, idleTime=5.0, index=0, **kwargs):
         """ Insert duplicate * subcommand to sequence """
         cmdStr = ' '.join([cmdStr] + parseArgs(**kwargs))
         for i in range(duplicate):
