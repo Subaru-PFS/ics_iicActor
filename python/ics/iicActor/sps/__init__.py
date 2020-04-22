@@ -29,14 +29,14 @@ class Dark(Sequence):
 class Arc(Sequence):
     """ Arcs sequence """
 
-    def __init__(self, exptime, switchOn, attenuator, force, switchOff, duplicate, cams, **kwargs):
+    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, **kwargs):
         Sequence.__init__(self, 'arcs', **kwargs)
 
-        if switchOn is not None or attenuator is not None:
-            self.head.add(actor='dcb', cmdStr='arc', on=switchOn, attenuator=attenuator, force=force, timeLim=300)
+        if any(dcbOn.values()):
+            self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
-        if switchOff is not None:
-            self.tail.insert(actor='dcb', cmdStr='arc', off=switchOff)
+        if any(dcbOff.values()):
+            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
 
         self.expose(exptype='arc', exptime=exptime, cams=cams, duplicate=duplicate)
 
@@ -44,28 +44,28 @@ class Arc(Sequence):
 class Flat(Sequence):
     """ Flat / fiberTrace sequence """
 
-    def __init__(self, exptime, switchOn, attenuator, force, switchOff, duplicate, cams, **kwargs):
+    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, **kwargs):
         Sequence.__init__(self, 'flats', **kwargs)
 
-        self.head.add(actor='dcb', cmdStr='arc', on='halogen', attenuator=attenuator, force=force, timeLim=300)
+        if any(dcbOn.values()):
+            self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
-        if switchOff:
-            self.tail.insert(actor='dcb', cmdStr='arc', off='halogen')
-
+        if any(dcbOff.values()):
+            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
         self.expose(exptype='flat', exptime=exptime, cams=cams, duplicate=duplicate)
 
 
 class SlitThroughFocus(Sequence):
     """ Slit through focus sequence """
 
-    def __init__(self, exptime, positions, switchOn, attenuator, force, switchOff, duplicate, cams, **kwargs):
+    def __init__(self, exptime, positions, duplicate, cams, dcbOn, dcbOff, **kwargs):
         Sequence.__init__(self, 'slitThroughFocus', **kwargs)
 
-        if switchOn is not None:
-            self.head.add(actor='dcb', cmdStr='arc', on=switchOn, attenuator=attenuator, force=force, timeLim=300)
+        if any(dcbOn.values()):
+            self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
-        if switchOff is not None:
-            self.tail.insert(actor='dcb', cmdStr='arc', off=switchOff)
+        if any(dcbOff.values()):
+            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
 
         for position in positions:
             self.add(actor='sps', cmdStr='slit', focus=position, abs=True, cams=cams)
@@ -77,14 +77,14 @@ class SlitThroughFocus(Sequence):
 class DetThroughFocus(Sequence):
     """ Detector through focus sequence """
 
-    def __init__(self, exptime, positions, switchOn, attenuator, force, switchOff, duplicate, cams, **kwargs):
+    def __init__(self, exptime, positions, duplicate, cams, dcbOn, dcbOff, **kwargs):
         Sequence.__init__(self, 'detThroughFocus', **kwargs)
 
-        if switchOn is not None or attenuator is not None:
-            self.head.add(actor='dcb', cmdStr='arc', on=switchOn, attenuator=attenuator, force=force, timeLim=300)
+        if any(dcbOn.values()):
+            self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
-        if switchOff is not None:
-            self.tail.insert(actor='dcb', cmdStr='arc', off=switchOff)
+        if any(dcbOff.values()):
+            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
 
         for motorA, motorB, motorC in positions:
             self.add(actor='sps', cmdStr='ccdMotors move',
@@ -95,13 +95,14 @@ class DetThroughFocus(Sequence):
 class DitheredFlats(Sequence):
     """ Dithered Flats sequence """
 
-    def __init__(self, exptime, positions, switchOn, attenuator, force, switchOff, duplicate, cams, **kwargs):
+    def __init__(self, exptime, positions, duplicate, cams, dcbOn, dcbOff, **kwargs):
         Sequence.__init__(self, 'ditheredFlats', **kwargs)
 
-        self.head.add(actor='dcb', cmdStr='arc', on='halogen', attenuator=attenuator, force=force, timeLim=300)
+        if any(dcbOn.values()):
+            self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
-        if switchOff:
-            self.tail.insert(actor='dcb', cmdStr='arc', off='halogen')
+        if any(dcbOff.values()):
+            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
 
         self.add(actor='sps', cmdStr='slit dither', x=0, pixels=True, abs=True, cams=cams)
         self.expose(exptype='flat', exptime=exptime, cams='{cams}', duplicate=duplicate)
@@ -117,18 +118,19 @@ class DitheredFlats(Sequence):
 class DitheredArcs(Sequence):
     """ Dithered Arcs sequence """
 
-    def __init__(self, exptime, pixels, switchOn, attenuator, force, switchOff, duplicate, cams, **kwargs):
+    def __init__(self, exptime, pixels, duplicate, cams, dcbOn, dcbOff, **kwargs):
         Sequence.__init__(self, 'ditheredArcs', **kwargs)
 
-        if switchOn is not None or attenuator is not None:
-            self.head.add(actor='dcb', cmdStr='arc', on=switchOn, attenuator=attenuator, force=force, timeLim=300)
+        if any(dcbOn.values()):
+            self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
-        if switchOff is not None:
-            self.tail.insert(actor='dcb', cmdStr='arc', off=switchOff)
+        if any(dcbOff.values()):
+            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
 
         for x in range(int(1 / pixels)):
             for y in range(int(1 / pixels)):
-                self.add(actor='sps', cmdStr='slit dither', x=x * pixels, y=y * pixels, pixels=True, abs=True, cams=cams)
+                self.add(actor='sps', cmdStr='slit dither',
+                         x=x * pixels, y=y * pixels, pixels=True, abs=True, cams=cams)
                 self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate)
 
         self.add(actor='sps', cmdStr='slit dither', x=0, y=0, pixels=True, abs=True, cams=cams)
@@ -137,23 +139,24 @@ class DitheredArcs(Sequence):
 class Defocus(Sequence):
     """ Defocus sequence """
 
-    def __init__(self, exptime, positions, switchOn, attenuator, force, switchOff, duplicate, cams, **kwargs):
+    def __init__(self, exp_time_0, positions, duplicate, cams, dcbOn, dcbOff, **kwargs):
         Sequence.__init__(self, 'defocusedArcs', **kwargs)
+        att_value_0 = dcbOn['attenuator']
 
-        if switchOn is not None:
-            self.head.add(actor='dcb', cmdStr='arc', on=switchOn, attenuator=attenuator, force=force, timeLim=300)
+        if any(dcbOn.values()):
+            self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
-        if switchOff is not None:
-            self.tail.insert(actor='dcb', cmdStr='arc', off=switchOff)
+        if any(dcbOff.values()):
+            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
 
         for position in positions:
-            cexptime, catten = defocused_exposure_times_single_position(exp_time_0=exptime,
-                                                                        att_value_0=attenuator,
-                                                                        defocused_value=position)
-            if attenuator is not None:
-                self.add(actor='dcb', cmdStr='arc', attenuator=catten, timeLim=300)
+            exptime, attenuator = defocused_exposure_times_single_position(exp_time_0=exp_time_0,
+                                                                           att_value_0=att_value_0,
+                                                                           defocused_value=position)
+            if att_value_0 is not None:
+                self.add(actor='dcb', cmdStr='arc', attenuator=attenuator, timeLim=300)
 
             self.add(actor='sps', cmdStr='slit', focus=position, abs=True, cams=cams)
-            self.expose(exptype='arc', exptime=cexptime, cams='{cams}', duplicate=duplicate)
+            self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate)
 
         self.add(actor='sps', cmdStr='slit', focus=0, abs=True, cams=cams)
