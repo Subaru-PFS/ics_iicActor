@@ -20,17 +20,25 @@ def cmdKwargs(cmdKeys):
 
 
 def dcbKwargs(cmdKeys):
-    switchOn = ','.join(cmdKeys["switchOn"].values) if 'switchOn' in cmdKeys else None
-    switchOff = ','.join(cmdKeys["switchOff"].values) if 'switchOff' in cmdKeys else None
-    switchOff = True if not switchOff and switchOff is not None else switchOff
+    switchOn = ','.join(cmdKeys['switchOn'].values) if 'switchOn' in cmdKeys else None
+    switchOff = ','.join(cmdKeys['switchOff'].values) if 'switchOff' in cmdKeys else None
+    switchOff = 'halogen' if not switchOff and switchOff is not None else switchOff
 
+    warmingTime = cmdKeys['warmingTime'].values[0] if 'warmingTime' in cmdKeys else None
     value = cmdKeys['attenuator'].values[0] if 'attenuator' in cmdKeys else None
     force = 'force' in cmdKeys
 
     if value is not None and getSite() != 'L':
         raise ValueError('You can only set attenuator at LAM')
 
-    return dict(switchOn=switchOn, switchOff=switchOff, attenuator=value, force=force)
+    timeLim = 60 if value is not None else None
+    timeLim = 180 if switchOn is not None else timeLim
+    timeLim = (warmingTime + 30) if warmingTime is not None else timeLim
+
+    dcbOn = dict(on=switchOn, warmingTime=warmingTime, attenuator=value, force=force, timeLim=timeLim)
+    dcbOff = dict(off=switchOff)
+
+    return dcbOn, dcbOff
 
 
 class SpsCmd(object):
@@ -46,43 +54,43 @@ class SpsCmd(object):
         # passed a single argument, the parsed and typed command.
         #
         optArgs = '[<duplicate>] [<cam>] [<name>] [<comments>] [<head>] [<tail>]'
-        attenArgs = '[<attenuator>] [force]'
-        dcbArgs = f'[<switchOn>] [<switchOff>] {attenArgs}'
+        dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [<attenuator>] [force]'
 
         self.vocab = [
             ('expose', f'<exptime> {optArgs}', self.doExpose),
             ('bias', f'{optArgs}', self.doBias),
             ('dark', f'<exptime> {optArgs}', self.doDark),
             ('expose', f'arc <exptime> {dcbArgs} {optArgs}', self.doArc),
-            ('expose', f'flat <exptime> [switchOff] {attenArgs} {optArgs}', self.doFlat),
+            ('expose', f'flat <exptime> [switchOff] {dcbArgs} {optArgs}', self.doFlat),
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
-            ('dither', f'flat <exptime> <pixels> [<nPositions>] [switchOff] {attenArgs} {optArgs}', self.ditheredFlats),
+            ('dither', f'flat <exptime> <pixels> [<nPositions>] [switchOff] {dcbArgs} {optArgs}', self.ditheredFlats),
             ('dither', f'arc <exptime> <pixels> {dcbArgs} {optArgs}', self.ditheredArcs),
             ('defocus', f'arc <exptime> <position> {dcbArgs} {optArgs}', self.defocus),
 
         ]
 
         # Define typed command arguments for the above commands.
-        self.keys = keys.KeysDictionary("iic_iic", (1, 1),
-                                        keys.Key("exptime", types.Float(), help="Seconds for exposure"),
-                                        keys.Key("duplicate", types.Int(), help="exposure duplicate (1 is default)"),
-                                        keys.Key("cam", types.String() * (1,), help='camera(s) to take exposure from'),
-                                        keys.Key("name", types.String(), help='sps_sequence name'),
-                                        keys.Key("comments", types.String(), help='sps_sequence comments'),
-                                        keys.Key("head", types.String() * (1,), help='cmdStr list to process before'),
-                                        keys.Key("tail", types.String() * (1,), help='cmdStr list to process after'),
-                                        keys.Key("switchOn", types.String() * (1, None),
-                                                 help='which arc lamp to switch on.'),
-                                        keys.Key("switchOff", types.String() * (1, None),
-                                                 help='which arc lamp to switch off.'),
-                                        keys.Key("attenuator", types.Int(), help='Attenuator value.'),
+        self.keys = keys.KeysDictionary('iic_iic', (1, 1),
+                                        keys.Key('exptime', types.Float(), help='Seconds for exposure'),
+                                        keys.Key('duplicate', types.Int(), help='exposure duplicate (1 is default)'),
+                                        keys.Key('cam', types.String() * (1,), help='camera(s) to take exposure from'),
+                                        keys.Key('name', types.String(), help='sps_sequence name'),
+                                        keys.Key('comments', types.String(), help='sps_sequence comments'),
+                                        keys.Key('head', types.String() * (1,), help='cmdStr list to process before'),
+                                        keys.Key('tail', types.String() * (1,), help='cmdStr list to process after'),
+                                        keys.Key('switchOn', types.String() * (1, None),
+                                                 help='which dcb lamp to switch on.'),
+                                        keys.Key('switchOff', types.String() * (1, None),
+                                                 help='which dcb lamp to switch off.'),
+                                        keys.Key('attenuator', types.Int(), help='Attenuator value.'),
                                         keys.Key('position', types.Float() * (1, 3),
                                                  help='slit/motor position for throughfocus same args as np.linspace'),
                                         keys.Key('tilt', types.Float() * (1, 3), help='motor tilt (a, b, c)'),
-                                        keys.Key("nPositions", types.Int(),
-                                                 help="Number of position for dithered flats (default : 20)"),
-                                        keys.Key("pixels", types.Float(), help="dithering step in pixels"),
+                                        keys.Key('nPositions', types.Int(),
+                                                 help='Number of position for dithered flats (default : 20)'),
+                                        keys.Key('pixels', types.Float(), help='dithering step in pixels'),
+                                        keys.Key('warmingTime', types.Float(), help='customizable warming time'),
                                         )
 
     def doExpose(self, cmd):
@@ -129,9 +137,10 @@ class SpsCmd(object):
     def doArc(self, cmd):
         """sps arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
+        dcbOn, dcbOff = dcbKwargs(cmdKeys)
         exptime = cmdKeys['exptime'].values[0]
 
-        self.seq = spsSequence.Arc(exptime=exptime, **dcbKwargs(cmdKeys), **cmdKwargs(cmdKeys))
+        self.seq = spsSequence.Arc(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
 
         try:
             self.seq.start(self.actor, cmd=cmd)
@@ -143,9 +152,11 @@ class SpsCmd(object):
     def doFlat(self, cmd):
         """sps flat(s), also known as fiberTrace, with given exptime. """
         cmdKeys = cmd.cmd.keywords
+        dcbOn, dcbOff = dcbKwargs(cmdKeys)
+        dcbOn['on'] = 'halogen'
         exptime = cmdKeys['exptime'].values[0]
 
-        self.seq = spsSequence.Flat(exptime=exptime, **dcbKwargs(cmdKeys), **cmdKwargs(cmdKeys))
+        self.seq = spsSequence.Flat(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
 
         try:
             self.seq.start(self.actor, cmd=cmd)
@@ -157,12 +168,13 @@ class SpsCmd(object):
     def slitThroughFocus(self, cmd):
         """sps slit through focus with given exptime. """
         cmdKeys = cmd.cmd.keywords
+        dcbOn, dcbOff = dcbKwargs(cmdKeys)
         exptime = cmdKeys['exptime'].values[0]
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num))
 
         self.seq = spsSequence.SlitThroughFocus(exptime=exptime, positions=positions.round(6),
-                                                **dcbKwargs(cmdKeys), **cmdKwargs(cmdKeys))
+                                                dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:
@@ -173,13 +185,14 @@ class SpsCmd(object):
     def detThroughFocus(self, cmd):
         """sps detector motors through focus with given exptime. """
         cmdKeys = cmd.cmd.keywords
+        dcbOn, dcbOff = dcbKwargs(cmdKeys)
         exptime = cmdKeys['exptime'].values[0]
         start, stop, num = cmdKeys['position'].values
         tilt = np.array(cmdKeys['tilt'].values) if 'tilt' in cmdKeys else np.zeros(3)
         positions = np.array([np.linspace(start, stop - np.max(tilt), num=int(num)), ] * 3).transpose() + tilt
 
         self.seq = spsSequence.DetThroughFocus(exptime=exptime, positions=positions.round(2),
-                                               **dcbKwargs(cmdKeys), **cmdKwargs(cmdKeys))
+                                               dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:
@@ -190,13 +203,15 @@ class SpsCmd(object):
     def ditheredFlats(self, cmd):
         """dithered flat(fiberTrace) with given exptime. Used to construct masterFlat """
         cmdKeys = cmd.cmd.keywords
+        dcbOn, dcbOff = dcbKwargs(cmdKeys)
+        dcbOn['on'] = 'halogen'
         exptime = cmdKeys['exptime'].values[0]
         pixels = cmdKeys['pixels'].values[0]
         nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
         nPositions = (nPositions // 2) * 2
         positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1)
-        self.seq = spsSequence.DitheredFlats(exptime=exptime, positions=positions.round(5), **dcbKwargs(cmdKeys),
-                                             **cmdKwargs(cmdKeys))
+        self.seq = spsSequence.DitheredFlats(exptime=exptime, positions=positions.round(5),
+                                             dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
 
         try:
             self.seq.start(self.actor, cmd=cmd)
@@ -208,11 +223,12 @@ class SpsCmd(object):
     def ditheredArcs(self, cmd):
         """dithered Arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
+        dcbOn, dcbOff = dcbKwargs(cmdKeys)
         exptime = cmdKeys['exptime'].values[0]
         pixels = cmdKeys['pixels'].values[0]
 
-        self.seq = spsSequence.DitheredArcs(exptime=exptime, pixels=pixels, **dcbKwargs(cmdKeys),
-                                            **cmdKwargs(cmdKeys))
+        self.seq = spsSequence.DitheredArcs(exptime=exptime, pixels=pixels,
+                                            dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
 
         try:
             self.seq.start(self.actor, cmd=cmd)
@@ -224,12 +240,13 @@ class SpsCmd(object):
     def defocus(self, cmd):
         """dithered Arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
+        dcbOn, dcbOff = dcbKwargs(cmdKeys)
         exptime = cmdKeys['exptime'].values[0]
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num))
 
-        self.seq = spsSequence.Defocus(exptime=exptime, positions=positions.round(6), **dcbKwargs(cmdKeys),
-                                       **cmdKwargs(cmdKeys))
+        self.seq = spsSequence.Defocus(exp_time_0=exptime, positions=positions.round(6),
+                                       dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
 
         try:
             self.seq.start(self.actor, cmd=cmd)
