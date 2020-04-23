@@ -23,8 +23,8 @@ def dcbKwargs(cmdKeys):
     switchOn = ','.join(cmdKeys['switchOn'].values) if 'switchOn' in cmdKeys else None
     switchOff = ','.join(cmdKeys['switchOff'].values) if 'switchOff' in cmdKeys else None
     switchOff = 'halogen' if not switchOff and switchOff is not None else switchOff
-
-    warmingTime = cmdKeys['warmingTime'].values[0] if 'warmingTime' in cmdKeys else None
+    doWarmup = 'switchOn' in cmdKeys or 'iisOn' not in cmdKeys
+    warmingTime = cmdKeys['warmingTime'].values[0] if ('warmingTime' in cmdKeys and doWarmup) else None
     value = cmdKeys['attenuator'].values[0] if 'attenuator' in cmdKeys else None
     force = 'force' in cmdKeys
 
@@ -41,6 +41,20 @@ def dcbKwargs(cmdKeys):
     return dcbOn, dcbOff
 
 
+def iisKwargs(cmdKeys):
+    switchOn = ','.join(cmdKeys['iisOn'].values) if 'iisOn' in cmdKeys else None
+    switchOff = ','.join(cmdKeys['iisOff'].values) if 'iisOff' in cmdKeys else None
+    doWarmup = 'iisOn' in cmdKeys or 'switchOn' not in cmdKeys
+    warmingTime = cmdKeys['warmingTime'].values[0] if ('warmingTime' in cmdKeys and doWarmup) else None
+    timeLim = 90 if switchOn is not None else None
+    timeLim = (warmingTime + 30) if warmingTime is not None else timeLim
+
+    iisOn = dict(on=switchOn, warmingTime=warmingTime, timeLim=timeLim)
+    iisOff = dict(off=switchOff)
+
+    return iisOn, iisOff
+
+
 class SpsCmd(object):
 
     def __init__(self, actor):
@@ -55,12 +69,12 @@ class SpsCmd(object):
         #
         optArgs = '[<duplicate>] [<cam>] [<name>] [<comments>] [<head>] [<tail>]'
         dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [<attenuator>] [force]'
-
+        iisArgs = f'[<iisOn>] [<iisOff>]'
         self.vocab = [
             ('expose', f'<exptime> {optArgs}', self.doExpose),
             ('bias', f'{optArgs}', self.doBias),
             ('dark', f'<exptime> {optArgs}', self.doDark),
-            ('expose', f'arc <exptime> {dcbArgs} {optArgs}', self.doArc),
+            ('expose', f'arc <exptime> {dcbArgs} {iisArgs} {optArgs}', self.doArc),
             ('expose', f'flat <exptime> [switchOff] {dcbArgs} {optArgs}', self.doFlat),
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
@@ -83,6 +97,10 @@ class SpsCmd(object):
                                                  help='which dcb lamp to switch on.'),
                                         keys.Key('switchOff', types.String() * (1, None),
                                                  help='which dcb lamp to switch off.'),
+                                        keys.Key('iisOn', types.String() * (1, None),
+                                                 help='which iis lamp to switch on.'),
+                                        keys.Key('iisOff', types.String() * (1, None),
+                                                 help='which iis lamp to switch off.'),
                                         keys.Key('attenuator', types.Int(), help='Attenuator value.'),
                                         keys.Key('position', types.Float() * (1, 3),
                                                  help='slit/motor position for throughfocus same args as np.linspace'),
@@ -138,9 +156,11 @@ class SpsCmd(object):
         """sps arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
+        iisOn, iisOff = iisKwargs(cmdKeys)
         exptime = cmdKeys['exptime'].values[0]
 
-        self.seq = spsSequence.Arc(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
+        self.seq = spsSequence.Arc(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, iisOn=iisOn, iisOff=iisOff,
+                                   **cmdKwargs(cmdKeys))
 
         try:
             self.seq.start(self.actor, cmd=cmd)
