@@ -29,15 +29,22 @@ class Dark(Sequence):
 class Arc(Sequence):
     """ Arcs sequence """
 
-    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, **kwargs):
+    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, iisOn, iisOff, **kwargs):
         Sequence.__init__(self, 'arcs', **kwargs)
 
         if any(dcbOn.values()):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
+        if any(iisOn.values()):
+            self.head.add(actor='sps', cmdStr='iis', cams=cams, **iisOn)
+
+        if any(iisOff.values()):
+            self.tail.insert(actor='sps', cmdStr='iis', cams=cams, **iisOff)
+
         if any(dcbOff.values()):
             self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
 
+        cams = '{cams}' if any(iisOn.values()) else cams
         self.expose(exptype='arc', exptime=exptime, cams=cams, duplicate=duplicate)
 
 
