@@ -4,6 +4,7 @@ import ics.iicActor.sps as spsSequence
 import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from ics.iicActor.utils import singleShot
 from pfscore.spectroIds import getSite
 
 reload(spsSequence)
@@ -71,7 +72,7 @@ class SpsCmd(object):
         dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [<attenuator>] [force]'
         iisArgs = f'[<iisOn>] [<iisOff>]'
         self.vocab = [
-            ('expose', f'<exptime> {optArgs}', self.doExpose),
+            ('expose', f'[object] <exptime> {optArgs}', self.doExpose),
             ('bias', f'{optArgs}', self.doBias),
             ('dark', f'<exptime> {optArgs}', self.doDark),
             ('expose', f'arc <exptime> {dcbArgs} {iisArgs} {optArgs}', self.doArc),
@@ -81,6 +82,7 @@ class SpsCmd(object):
             ('dither', f'flat <exptime> <pixels> [<nPositions>] [switchOff] {dcbArgs} {optArgs}', self.ditheredFlats),
             ('dither', f'arc <exptime> <pixels> {dcbArgs} {optArgs}', self.ditheredArcs),
             ('defocus', f'arc <exptime> <position> {dcbArgs} {optArgs}', self.defocus),
+            ('sps', 'abort', self.abort)
 
         ]
 
@@ -116,41 +118,23 @@ class SpsCmd(object):
         cmdKeys = cmd.cmd.keywords
         exptime = cmdKeys['exptime'].values
 
-        self.seq = spsSequence.Object(exptime=exptime, **cmdKwargs(cmdKeys))
-
-        try:
-            self.seq.start(self.actor, cmd=cmd)
-        finally:
-            self.seq = None
-
-        cmd.finish()
+        seq = spsSequence.Object(exptime=exptime, **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
 
     def doBias(self, cmd):
         """sps bias(es). """
         cmdKeys = cmd.cmd.keywords
 
-        self.seq = spsSequence.Bias(**cmdKwargs(cmdKeys))
-
-        try:
-            self.seq.start(self.actor, cmd=cmd)
-        finally:
-            self.seq = None
-
-        cmd.finish()
+        seq = spsSequence.Bias(**cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
 
     def doDark(self, cmd):
         """sps dark(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         exptime = cmdKeys['exptime'].values
 
-        self.seq = spsSequence.Dark(exptime=exptime, **cmdKwargs(cmdKeys))
-
-        try:
-            self.seq.start(self.actor, cmd=cmd)
-        finally:
-            self.seq = None
-
-        cmd.finish()
+        seq = spsSequence.Dark(exptime=exptime, **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
 
     def doArc(self, cmd):
         """sps arc(s) with given exptime. """
@@ -159,15 +143,9 @@ class SpsCmd(object):
         iisOn, iisOff = iisKwargs(cmdKeys)
         exptime = cmdKeys['exptime'].values
 
-        self.seq = spsSequence.Arc(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, iisOn=iisOn, iisOff=iisOff,
-                                   **cmdKwargs(cmdKeys))
-
-        try:
-            self.seq.start(self.actor, cmd=cmd)
-        finally:
-            self.seq = None
-
-        cmd.finish()
+        seq = spsSequence.Arc(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, iisOn=iisOn, iisOff=iisOff,
+                              **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
 
     def doFlat(self, cmd):
         """sps flat(s), also known as fiberTrace, with given exptime. """
@@ -176,14 +154,8 @@ class SpsCmd(object):
         dcbOn['on'] = 'halogen'
         exptime = cmdKeys['exptime'].values
 
-        self.seq = spsSequence.Flat(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
-
-        try:
-            self.seq.start(self.actor, cmd=cmd)
-        finally:
-            self.seq = None
-
-        cmd.finish()
+        seq = spsSequence.Flat(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
 
     def slitThroughFocus(self, cmd):
         """sps slit through focus with given exptime. """
@@ -193,14 +165,9 @@ class SpsCmd(object):
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num))
 
-        self.seq = spsSequence.SlitThroughFocus(exptime=exptime, positions=positions.round(6),
-                                                dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
-        try:
-            self.seq.start(self.actor, cmd=cmd)
-        finally:
-            self.seq = None
-
-        cmd.finish()
+        seq = spsSequence.SlitThroughFocus(exptime=exptime, positions=positions.round(6), dcbOn=dcbOn, dcbOff=dcbOff,
+                                           **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
 
     def detThroughFocus(self, cmd):
         """sps detector motors through focus with given exptime. """
@@ -211,14 +178,9 @@ class SpsCmd(object):
         tilt = np.array(cmdKeys['tilt'].values) if 'tilt' in cmdKeys else np.zeros(3)
         positions = np.array([np.linspace(start, stop - np.max(tilt), num=int(num)), ] * 3).transpose() + tilt
 
-        self.seq = spsSequence.DetThroughFocus(exptime=exptime, positions=positions.round(2),
-                                               dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
-        try:
-            self.seq.start(self.actor, cmd=cmd)
-        finally:
-            self.seq = None
-
-        cmd.finish()
+        seq = spsSequence.DetThroughFocus(exptime=exptime, positions=positions.round(2), dcbOn=dcbOn, dcbOff=dcbOff,
+                                          **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
 
     def ditheredFlats(self, cmd):
         """dithered flat(fiberTrace) with given exptime. Used to construct masterFlat """
@@ -230,15 +192,10 @@ class SpsCmd(object):
         nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
         nPositions = (nPositions // 2) * 2
         positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1)
-        self.seq = spsSequence.DitheredFlats(exptime=exptime, positions=positions.round(5),
-                                             dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
 
-        try:
-            self.seq.start(self.actor, cmd=cmd)
-        finally:
-            self.seq = None
-
-        cmd.finish()
+        seq = spsSequence.DitheredFlats(exptime=exptime, positions=positions.round(5), dcbOn=dcbOn, dcbOff=dcbOff,
+                                        **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
 
     def ditheredArcs(self, cmd):
         """dithered Arc(s) with given exptime. """
@@ -247,15 +204,8 @@ class SpsCmd(object):
         exptime = cmdKeys['exptime'].values
         pixels = cmdKeys['pixels'].values[0]
 
-        self.seq = spsSequence.DitheredArcs(exptime=exptime, pixels=pixels,
-                                            dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
-
-        try:
-            self.seq.start(self.actor, cmd=cmd)
-        finally:
-            self.seq = None
-
-        cmd.finish()
+        seq = spsSequence.DitheredArcs(exptime=exptime, pixels=pixels, dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
 
     def defocus(self, cmd):
         """dithered Arc(s) with given exptime. """
@@ -265,12 +215,30 @@ class SpsCmd(object):
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num))
 
-        self.seq = spsSequence.Defocus(exp_time_0=exptime, positions=positions.round(6),
-                                       dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
+        seq = spsSequence.Defocus(exp_time_0=exptime, positions=positions.round(6), dcbOn=dcbOn, dcbOff=dcbOff,
+                                  **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
 
+    @singleShot
+    def process(self, cmd, seq):
+        """Process sequence in another thread """
+        if self.seq is not None:
+            cmd.fail('text="sequence already ongoing"')
+            return
+
+        self.seq = seq
         try:
             self.seq.start(self.actor, cmd=cmd)
         finally:
             self.seq = None
 
+        cmd.finish()
+
+    def abort(self, cmd):
+        """Abort current sequence."""
+        if self.seq is None:
+            cmd.fail('text="no sequence to abort"')
+            return
+
+        self.seq.abort(cmd)
         cmd.finish()

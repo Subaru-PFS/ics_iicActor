@@ -1,5 +1,8 @@
 import re
+import time
 
+from functools import partial
+from actorcore.QThread import QThread
 
 def stripQuotes(txt):
     """ Strip quotes from string """
@@ -27,3 +30,24 @@ def parseArgs(**kwargs):
         args.append(k if v is True else f'{k}={v}')
 
     return args
+
+
+def putMsg(func):
+    def wrapper(self, cmd, *args, **kwargs):
+        thr = QThread(self.actor, str(time.time()))
+        thr.start()
+        thr.putMsg(partial(func, self, cmd, *args, **kwargs))
+        thr.exitASAP = True
+
+    return wrapper
+
+
+def singleShot(func):
+    @putMsg
+    def wrapper(self, cmd, *args, **kwargs):
+        try:
+            return func(self, cmd, *args, **kwargs)
+        except Exception as e:
+            cmd.fail('text=%s' % self.actor.strTraceback(e))
+
+    return wrapper

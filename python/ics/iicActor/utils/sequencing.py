@@ -1,4 +1,5 @@
 import time
+from collections.abc import Iterable
 
 from ics.iicActor.utils import stripQuotes, stripField, parseArgs
 from pfs.utils.opdb import opDB
@@ -179,9 +180,10 @@ class Sequence(list):
         visit_set_id = 0 if visit_set_id is None else visit_set_id
         return int(visit_set_id)
 
-    def expose(self, exptype, exptime=None, cams=None, duplicate=1):
+    def expose(self, exptype, exptime=0.0, cams=None, duplicate=1):
         """ Append duplicate * sps expose to sequence """
-        exptime = [0] if exptime is None else exptime
+        exptime = [exptime] if not isinstance(exptime, Iterable) else exptime
+
         for expTime in exptime:
             for i in range(duplicate):
                 self.append(SpsExpose(exptype, expTime, visit='{visit}', cams=cams))

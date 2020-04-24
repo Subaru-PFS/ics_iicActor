@@ -157,7 +157,7 @@ class Defocus(Sequence):
             self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
 
         for position in positions:
-            exptime, attenuator = defocused_exposure_times_single_position(exp_time_0=exp_time_0,
+            exptime, attenuator = defocused_exposure_times_single_position(exp_time_0=exp_time_0[0],
                                                                            att_value_0=att_value_0,
                                                                            defocused_value=position)
             if att_value_0 is not None:
