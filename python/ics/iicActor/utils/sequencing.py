@@ -77,9 +77,10 @@ class SpsExpose(SubCmd):
     """ Placeholder to handle sps expose command specificities"""
 
     def __init__(self, exptype, exptime, **kwargs):
-        fexptime = [f'exptime={exptime}'] if exptime > 0 else []
-        cmdStr = ' '.join(['expose', exptype] + fexptime + parseArgs(**kwargs))
-        SubCmd.__init__(self, actor='sps', cmdStr=cmdStr, timeLim=120 + exptime)
+        timeLim = 120 + exptime
+        exptime = exptime if exptime else None
+        cmdStr = ' '.join(['expose', exptype] + parseArgs(exptime=exptime, **kwargs))
+        SubCmd.__init__(self, actor='sps', cmdStr=cmdStr, timeLim=timeLim)
 
     def build(self, cmd):
         """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visit """
@@ -178,10 +179,12 @@ class Sequence(list):
         visit_set_id = 0 if visit_set_id is None else visit_set_id
         return int(visit_set_id)
 
-    def expose(self, exptype, exptime=0, cams=None, duplicate=1):
+    def expose(self, exptype, exptime=None, cams=None, duplicate=1):
         """ Append duplicate * sps expose to sequence """
-        for i in range(duplicate):
-            self.append(SpsExpose(exptype, exptime, visit='{visit}', cams=cams))
+        exptime = [0] if exptime is None else exptime
+        for expTime in exptime:
+            for i in range(duplicate):
+                self.append(SpsExpose(exptype, expTime, visit='{visit}', cams=cams))
 
     def add(self, actor, cmdStr, duplicate=1, timeLim=60, idleTime=5.0, **kwargs):
         """ Append duplicate * subcommand to sequence """

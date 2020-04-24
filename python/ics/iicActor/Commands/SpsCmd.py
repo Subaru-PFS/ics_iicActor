@@ -86,7 +86,7 @@ class SpsCmd(object):
 
         # Define typed command arguments for the above commands.
         self.keys = keys.KeysDictionary('iic_iic', (1, 1),
-                                        keys.Key('exptime', types.Float(), help='Seconds for exposure'),
+                                        keys.Key('exptime', types.Float() * (1,), help='exptime list (seconds)'),
                                         keys.Key('duplicate', types.Int(), help='exposure duplicate (1 is default)'),
                                         keys.Key('cam', types.String() * (1,), help='camera(s) to take exposure from'),
                                         keys.Key('name', types.String(), help='sps_sequence name'),
@@ -114,7 +114,7 @@ class SpsCmd(object):
     def doExpose(self, cmd):
         """sps exposure with given exptime. """
         cmdKeys = cmd.cmd.keywords
-        exptime = cmdKeys['exptime'].values[0]
+        exptime = cmdKeys['exptime'].values
 
         self.seq = spsSequence.Object(exptime=exptime, **cmdKwargs(cmdKeys))
 
@@ -141,7 +141,7 @@ class SpsCmd(object):
     def doDark(self, cmd):
         """sps dark(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
-        exptime = cmdKeys['exptime'].values[0]
+        exptime = cmdKeys['exptime'].values
 
         self.seq = spsSequence.Dark(exptime=exptime, **cmdKwargs(cmdKeys))
 
@@ -157,7 +157,7 @@ class SpsCmd(object):
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
         iisOn, iisOff = iisKwargs(cmdKeys)
-        exptime = cmdKeys['exptime'].values[0]
+        exptime = cmdKeys['exptime'].values
 
         self.seq = spsSequence.Arc(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, iisOn=iisOn, iisOff=iisOff,
                                    **cmdKwargs(cmdKeys))
@@ -174,7 +174,7 @@ class SpsCmd(object):
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
         dcbOn['on'] = 'halogen'
-        exptime = cmdKeys['exptime'].values[0]
+        exptime = cmdKeys['exptime'].values
 
         self.seq = spsSequence.Flat(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
 
@@ -189,7 +189,7 @@ class SpsCmd(object):
         """sps slit through focus with given exptime. """
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
-        exptime = cmdKeys['exptime'].values[0]
+        exptime = cmdKeys['exptime'].values
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num))
 
@@ -206,7 +206,7 @@ class SpsCmd(object):
         """sps detector motors through focus with given exptime. """
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
-        exptime = cmdKeys['exptime'].values[0]
+        exptime = cmdKeys['exptime'].values
         start, stop, num = cmdKeys['position'].values
         tilt = np.array(cmdKeys['tilt'].values) if 'tilt' in cmdKeys else np.zeros(3)
         positions = np.array([np.linspace(start, stop - np.max(tilt), num=int(num)), ] * 3).transpose() + tilt
@@ -225,7 +225,7 @@ class SpsCmd(object):
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
         dcbOn['on'] = 'halogen'
-        exptime = cmdKeys['exptime'].values[0]
+        exptime = cmdKeys['exptime'].values
         pixels = cmdKeys['pixels'].values[0]
         nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
         nPositions = (nPositions // 2) * 2
@@ -244,7 +244,7 @@ class SpsCmd(object):
         """dithered Arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
-        exptime = cmdKeys['exptime'].values[0]
+        exptime = cmdKeys['exptime'].values
         pixels = cmdKeys['pixels'].values[0]
 
         self.seq = spsSequence.DitheredArcs(exptime=exptime, pixels=pixels,
@@ -261,7 +261,7 @@ class SpsCmd(object):
         """dithered Arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
-        exptime = cmdKeys['exptime'].values[0]
+        exptime = cmdKeys['exptime'].values
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num))
 
