@@ -337,6 +337,9 @@ class CmdList(Sequence):
     def autoadd(self, fullCmd):
         """ Append duplicate * subcommand to sequence """
         actor, cmdStr = fullCmd.split(' ', 1)
+        if actor == 'iic':
+            raise ValueError('cannot call iic recursively !')
+
         cls = self.guessType(actor, cmdStr)
         timeLim = self.guessTimeLim(cmdStr)
         self.append(cls(actor, cmdStr, timeLim=timeLim))

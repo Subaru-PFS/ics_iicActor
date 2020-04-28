@@ -167,3 +167,10 @@ class Defocus(Sequence):
             self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate)
 
         self.add(actor='sps', cmdStr='slit', focus=0, abs=True, cams=cams)
+
+
+class Custom(Sequence):
+    """ Custom sequence """
+
+    def __init__(self, duplicate, cams, **kwargs):
+        Sequence.__init__(self, 'custom', **kwargs)

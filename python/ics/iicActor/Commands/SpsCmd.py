@@ -82,6 +82,7 @@ class SpsCmd(object):
             ('dither', f'flat <exptime> <pixels> [<nPositions>] [switchOff] {dcbArgs} {optArgs}', self.ditheredFlats),
             ('dither', f'arc <exptime> <pixels> {dcbArgs} {optArgs}', self.ditheredArcs),
             ('defocus', f'arc <exptime> <position> {dcbArgs} {optArgs}', self.defocus),
+            ('custom', '[<name>] [<comments>] [<head>] [<tail>]', self.custom),
             ('sps', 'abort', self.abort)
 
         ]
@@ -218,6 +219,14 @@ class SpsCmd(object):
         seq = spsSequence.Defocus(exp_time_0=exptime, positions=positions.round(6), dcbOn=dcbOn, dcbOff=dcbOff,
                                   **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
+
+    def custom(self, cmd):
+        """dithered Arc(s) with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+
+        seq = spsSequence.Custom(**cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
+
 
     @singleShot
     def process(self, cmd, seq):
