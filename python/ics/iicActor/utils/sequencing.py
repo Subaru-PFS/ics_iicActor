@@ -234,6 +234,7 @@ class Sequence(list):
 
     def register(self, cmd):
         """ Register sequence and underlying subcommand"""
+        self.rawCmd = cmd.rawCmd
         self.cmdStr = f"iic {stripQuotes(stripField(stripField(cmd.rawCmd, 'name='), 'comments='))}"
         self.inform(cmd=cmd)
 
@@ -320,7 +321,7 @@ class Sequence(list):
         """ Store sequence in database """
         if self.visits:
             opDB.insert('sps_sequence', visit_set_id=self.visit_set_id, sequence_type=self.seqtype, name=self.name,
-                        comments=self.comments, cmd_str=self.cmdStr, status=self.status)
+                        comments=self.comments, cmd_str=self.rawCmd, status=self.status)
 
             for visit in self.visits:
                 opDB.insert('visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
