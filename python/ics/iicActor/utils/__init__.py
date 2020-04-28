@@ -21,17 +21,6 @@ def stripField(rawCmd, field):
     return rawCmd.replace(m.group(), '').strip()
 
 
-def parseArgs(**kwargs):
-    """ Strip given text field from rawCmd """
-    args = []
-    for k, v in kwargs.items():
-        if v is None or v is False:
-            continue
-        args.append(k if v is True else f'{k}={v}')
-
-    return args
-
-
 def putMsg(func):
     def wrapper(self, cmd, *args, **kwargs):
         thr = QThread(self.actor, str(time.time()))

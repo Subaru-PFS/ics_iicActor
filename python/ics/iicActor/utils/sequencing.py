@@ -1,15 +1,17 @@
 import time
 from collections.abc import Iterable
+from functools import partial
 
-from ics.iicActor.utils import stripQuotes, stripField, parseArgs
+from ics.iicActor.utils import stripQuotes, stripField
 from pfs.utils.opdb import opDB
 
 
 class SubCmd(object):
     """ Placeholder to handle subcommand processing, status and error"""
 
-    def __init__(self, actor, cmdStr, timeLim=60, idleTime=5.0):
+    def __init__(self, actor, cmdStr, timeLim=60, idleTime=5.0, **kwargs):
         object.__init__(self)
+        cmdStr = ' '.join([cmdStr] + self.parse(**kwargs))
         self.actor = actor
         self.cmdStr = cmdStr
         self.timeLim = timeLim
@@ -30,6 +32,16 @@ class SubCmd(object):
     @property
     def visited(self):
         return not self.didFail and self.visit != -1
+
+    def parse(self, **kwargs):
+        """ Strip given text field from rawCmd """
+        args = []
+        for k, v in kwargs.items():
+            if v is None or v is False:
+                continue
+            args.append(k if v is True else f'{k}={v}')
+
+        return args
 
     def setId(self, sequence, cmdId):
         """ Assign sequence and id to subcommand """
@@ -77,11 +89,14 @@ class SubCmd(object):
 class SpsExpose(SubCmd):
     """ Placeholder to handle sps expose command specificities"""
 
-    def __init__(self, exptype, exptime, **kwargs):
+    def __init__(self, actor, cmdStr, timeLim=120, **kwargs):
+        SubCmd.__init__(self, actor, cmdStr, timeLim=timeLim, visit='{visit}', **kwargs)
+
+    @classmethod
+    def specify(cls, exptype, exptime, **kwargs):
         timeLim = 120 + exptime
         exptime = exptime if exptime else None
-        cmdStr = ' '.join(['expose', exptype] + parseArgs(exptime=exptime, **kwargs))
-        SubCmd.__init__(self, actor='sps', cmdStr=cmdStr, timeLim=timeLim)
+        return cls('sps', f'expose {exptype}', timeLim=timeLim, exptime=exptime, **kwargs)
 
     def build(self, cmd):
         """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visit """
@@ -109,6 +124,7 @@ class SpsExpose(SubCmd):
         self.sequence.actor.visitor.releaseVisit()
 
     def abort(self, cmd):
+        """ Abort current exposure """
         ret = self.sequence.actor.cmdr.call(actor='sps',
                                             cmdStr='exposure abort',
                                             forUserCmd=cmd,
@@ -127,15 +143,33 @@ class SpsExpose(SubCmd):
             raise RuntimeError("Failed to finish exposure")
 
 
+class DcbCmd(SubCmd):
+    """ Placeholder to handle dcb command specificities"""
+
+    def __init__(self, *args, **kwargs):
+        SubCmd.__init__(self, *args, **kwargs)
+
+    def abort(self, cmd):
+        """ Abort warmup """
+        ret = self.sequence.actor.cmdr.call(actor='dcb',
+                                            cmdStr='sources abort',
+                                            forUserCmd=cmd,
+                                            timeLim=10)
+        if ret.didFail:
+            cmd.warn(ret.replyList[-1].keywords.canonical(delimiter=';'))
+            raise RuntimeError("Failed to abort exposure")
+
+
 class Sequence(list):
     """ Placeholder to handle sequence of subcommand """
 
     def __init__(self, seqtype, name='', comments='', head=None, tail=None):
+        super().__init__()
         self.seqtype = seqtype
         self.name = name
         self.comments = comments
-        self.head = Head(head)
-        self.tail = Tail(tail)
+        self.head = CmdList(head)
+        self.tail = CmdList(tail)
         self.aborted = False
         self.errorTrace = ''
         self.visit_set_id = self.lastVisitSetId() + 1
@@ -186,19 +220,13 @@ class Sequence(list):
 
         for expTime in exptime:
             for i in range(duplicate):
-                self.append(SpsExpose(exptype, expTime, visit='{visit}', cams=cams))
+                self.append(SpsExpose.specify(exptype, expTime, cams=cams))
 
-    def add(self, actor, cmdStr, duplicate=1, timeLim=60, idleTime=5.0, **kwargs):
+    def add(self, actor, cmdStr, timeLim=60, idleTime=5.0, index=None, **kwargs):
         """ Append duplicate * subcommand to sequence """
-        cmdStr = ' '.join([cmdStr] + parseArgs(**kwargs))
-        for i in range(duplicate):
-            self.append(SubCmd(actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime))
-
-    def insert(self, actor, cmdStr, duplicate=1, timeLim=60, idleTime=5.0, index=0, **kwargs):
-        """ Insert duplicate * subcommand to sequence """
-        cmdStr = ' '.join([cmdStr] + parseArgs(**kwargs))
-        for i in range(duplicate):
-            list.insert(self, index, SubCmd(actor=actor, cmdStr=cmdStr, timeLim=timeLim, idleTime=idleTime))
+        func = self.append if index is None else partial(self.insert, index)
+        cls = DcbCmd if actor == 'dcb' else SubCmd
+        func(cls(actor, cmdStr, timeLim=timeLim, idleTime=idleTime, **kwargs))
 
     def inform(self, cmd):
         """ Generate sps_sequence status """
@@ -298,19 +326,40 @@ class Sequence(list):
                 opDB.insert('visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
 
 
-class Head(Sequence):
-    def __init__(self, cmdList=None):
+class CmdList(Sequence):
+    def __init__(self, cmdList):
         cmdList = [] if cmdList is None else cmdList
 
         for fullCmd in cmdList:
-            actor, cmdStr = fullCmd.split(' ', 1)
-            self.add(actor=actor, cmdStr=cmdStr)
+            self.autoadd(fullCmd)
 
+    def autoadd(self, fullCmd):
+        """ Append duplicate * subcommand to sequence """
+        actor, cmdStr = fullCmd.split(' ', 1)
+        cls = self.guessType(actor, cmdStr)
+        timeLim = self.guessTimeLim(cmdStr)
+        self.append(cls(actor, cmdStr, timeLim=timeLim))
 
-class Tail(Sequence):
-    def __init__(self, cmdList=None):
-        cmdList = [] if cmdList is None else cmdList
+    def guessType(self, actor, cmdStr):
+        """ Guess SubCmd type """
+        if actor == 'dcb':
+            cls = DcbCmd
+        elif actor == 'sps' and 'expose' in cmdStr:
+            cls = SpsExpose
+        else:
+            cls = SubCmd
 
-        for fullCmd in cmdList:
-            actor, cmdStr = fullCmd.split(' ', 1)
-            self.add(actor=actor, cmdStr=cmdStr)
+        return cls
+
+    def guessTimeLim(self, cmdStr, timeLim=0):
+        """ Guess timeLim """
+        keys = ['warmingTime', 'exptime']
+        args = cmdStr.split(' ')
+        for arg in args:
+            for key in keys:
+                try:
+                    __, timeLim = arg.split(f'{key}=')
+                except ValueError:
+                    pass
+
+        return int(timeLim) + 60

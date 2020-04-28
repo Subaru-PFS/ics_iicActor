@@ -38,11 +38,11 @@ class Arc(Sequence):
         if any(iisOn.values()):
             self.head.add(actor='sps', cmdStr='iis', cams=cams, **iisOn)
 
-        if any(iisOff.values()):
-            self.tail.insert(actor='sps', cmdStr='iis', cams=cams, **iisOff)
-
         if any(dcbOff.values()):
-            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
+            self.tail.add(index=0, actor='dcb', cmdStr='arc', **dcbOff)
+
+        if any(iisOff.values()):
+            self.tail.add(index=0, actor='sps', cmdStr='iis', cams=cams, **iisOff)
 
         cams = '{cams}' if any(iisOn.values()) else cams
         self.expose(exptype='arc', exptime=exptime, cams=cams, duplicate=duplicate)
@@ -58,7 +58,7 @@ class Flat(Sequence):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
         if any(dcbOff.values()):
-            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
+            self.tail.add(index=0, actor='dcb', cmdStr='arc', **dcbOff)
         self.expose(exptype='flat', exptime=exptime, cams=cams, duplicate=duplicate)
 
 
@@ -72,7 +72,7 @@ class SlitThroughFocus(Sequence):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
         if any(dcbOff.values()):
-            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
+            self.tail.add(index=0, actor='dcb', cmdStr='arc', **dcbOff)
 
         for position in positions:
             self.add(actor='sps', cmdStr='slit', focus=position, abs=True, cams=cams)
@@ -91,7 +91,7 @@ class DetThroughFocus(Sequence):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
         if any(dcbOff.values()):
-            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
+            self.tail.add(index=0, actor='dcb', cmdStr='arc', **dcbOff)
 
         for motorA, motorB, motorC in positions:
             self.add(actor='sps', cmdStr='ccdMotors move',
@@ -109,7 +109,7 @@ class DitheredFlats(Sequence):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
         if any(dcbOff.values()):
-            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
+            self.tail.add(index=0, actor='dcb', cmdStr='arc', **dcbOff)
 
         self.add(actor='sps', cmdStr='slit dither', x=0, pixels=True, abs=True, cams=cams)
         self.expose(exptype='flat', exptime=exptime, cams='{cams}', duplicate=duplicate)
@@ -132,7 +132,7 @@ class DitheredArcs(Sequence):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
         if any(dcbOff.values()):
-            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
+            self.tail.add(index=0, actor='dcb', cmdStr='arc', **dcbOff)
 
         for x in range(int(1 / pixels)):
             for y in range(int(1 / pixels)):
@@ -154,7 +154,7 @@ class Defocus(Sequence):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
         if any(dcbOff.values()):
-            self.tail.insert(actor='dcb', cmdStr='arc', **dcbOff)
+            self.tail.add(index=0, actor='dcb', cmdStr='arc', **dcbOff)
 
         for position in positions:
             exptime, attenuator = defocused_exposure_times_single_position(exp_time_0=exp_time_0[0],
