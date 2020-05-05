@@ -125,7 +125,7 @@ class DitheredFlats(Sequence):
 class DitheredArcs(Sequence):
     """ Dithered Arcs sequence """
 
-    def __init__(self, exptime, pixels, duplicate, cams, dcbOn, dcbOff, **kwargs):
+    def __init__(self, exptime, pixels, doMinus, duplicate, cams, dcbOn, dcbOff, **kwargs):
         Sequence.__init__(self, 'ditheredArcs', **kwargs)
 
         if any(dcbOn.values()):
@@ -134,8 +134,10 @@ class DitheredArcs(Sequence):
         if any(dcbOff.values()):
             self.tail.add(index=0, actor='dcb', cmdStr='arc', **dcbOff)
 
-        for x in range(int(1 / pixels)):
-            for y in range(int(1 / pixels)):
+        end = int(1 / pixels)
+        start = -end + 1 if doMinus else 0
+        for x in range(start, end):
+            for y in range(start, end):
                 self.add(actor='sps', cmdStr='slit dither',
                          x=x * pixels, y=y * pixels, pixels=True, abs=True, cams=cams)
                 self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate)

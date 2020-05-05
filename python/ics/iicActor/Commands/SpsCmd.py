@@ -80,7 +80,7 @@ class SpsCmd(object):
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
             ('dither', f'flat <exptime> <pixels> [<nPositions>] [switchOff] {dcbArgs} {optArgs}', self.ditheredFlats),
-            ('dither', f'arc <exptime> <pixels> {dcbArgs} {optArgs}', self.ditheredArcs),
+            ('dither', f'arc <exptime> <pixels> [doMinus] {dcbArgs} {optArgs}', self.ditheredArcs),
             ('defocus', f'arc <exptime> <position> {dcbArgs} {optArgs}', self.defocus),
             ('custom', '[<name>] [<comments>] [<head>] [<tail>]', self.custom),
             ('sps', 'abort', self.abort)
@@ -204,8 +204,10 @@ class SpsCmd(object):
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
         exptime = cmdKeys['exptime'].values
         pixels = cmdKeys['pixels'].values[0]
+        doMinus = 'doMinus' in cmdKeys
 
-        seq = spsSequence.DitheredArcs(exptime=exptime, pixels=pixels, dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
+        seq = spsSequence.DitheredArcs(exptime=exptime, pixels=pixels, doMinus=doMinus, dcbOn=dcbOn, dcbOff=dcbOff,
+                                       **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
     def defocus(self, cmd):
@@ -226,7 +228,6 @@ class SpsCmd(object):
 
         seq = spsSequence.Custom(**cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
-
 
     @singleShot
     def process(self, cmd, seq):
