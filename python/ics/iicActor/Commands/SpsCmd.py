@@ -5,7 +5,7 @@ import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.iicActor.utils import singleShot
-from pfscore.spectroIds import getSite
+
 
 reload(spsSequence)
 
@@ -28,9 +28,6 @@ def dcbKwargs(cmdKeys):
     warmingTime = cmdKeys['warmingTime'].values[0] if ('warmingTime' in cmdKeys and doWarmup) else None
     value = cmdKeys['attenuator'].values[0] if 'attenuator' in cmdKeys else None
     force = 'force' in cmdKeys
-
-    if value is not None and getSite() != 'L':
-        raise ValueError('You can only set attenuator at LAM')
 
     timeLim = 60 if value is not None else None
     timeLim = 180 if switchOn is not None else timeLim
@@ -141,6 +138,10 @@ class SpsCmd(object):
         """sps arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
+
+        if dcbOn['attenuator'] is not None and self.actor.site != 'L':
+            raise ValueError('You can only set attenuator at LAM')
+
         iisOn, iisOff = iisKwargs(cmdKeys)
         exptime = cmdKeys['exptime'].values
 
@@ -152,6 +153,10 @@ class SpsCmd(object):
         """sps flat(s), also known as fiberTrace, with given exptime. """
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
+
+        if dcbOn['attenuator'] is not None and self.actor.site != 'L':
+            raise ValueError('You can only set attenuator at LAM')
+
         dcbOn['on'] = 'halogen'
         exptime = cmdKeys['exptime'].values
 
@@ -162,6 +167,10 @@ class SpsCmd(object):
         """sps slit through focus with given exptime. """
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
+
+        if dcbOn['attenuator'] is not None and self.actor.site != 'L':
+            raise ValueError('You can only set attenuator at LAM')
+
         exptime = cmdKeys['exptime'].values
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num))
@@ -174,6 +183,10 @@ class SpsCmd(object):
         """sps detector motors through focus with given exptime. """
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
+
+        if dcbOn['attenuator'] is not None and self.actor.site != 'L':
+            raise ValueError('You can only set attenuator at LAM')
+
         exptime = cmdKeys['exptime'].values
         start, stop, num = cmdKeys['position'].values
         tilt = np.array(cmdKeys['tilt'].values) if 'tilt' in cmdKeys else np.zeros(3)
@@ -187,6 +200,10 @@ class SpsCmd(object):
         """dithered flat(fiberTrace) with given exptime. Used to construct masterFlat """
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
+
+        if dcbOn['attenuator'] is not None and self.actor.site != 'L':
+            raise ValueError('You can only set attenuator at LAM')
+
         dcbOn['on'] = 'halogen'
         exptime = cmdKeys['exptime'].values
         pixels = cmdKeys['pixels'].values[0]
@@ -202,6 +219,10 @@ class SpsCmd(object):
         """dithered Arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
+
+        if dcbOn['attenuator'] is not None and self.actor.site != 'L':
+            raise ValueError('You can only set attenuator at LAM')
+
         exptime = cmdKeys['exptime'].values
         pixels = cmdKeys['pixels'].values[0]
         doMinus = 'doMinus' in cmdKeys
@@ -214,6 +235,10 @@ class SpsCmd(object):
         """dithered Arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
+
+        if dcbOn['attenuator'] is not None and self.actor.site != 'L':
+            raise ValueError('You can only set attenuator at LAM')
+
         exptime = cmdKeys['exptime'].values
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num))

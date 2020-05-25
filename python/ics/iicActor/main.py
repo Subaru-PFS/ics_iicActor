@@ -2,6 +2,7 @@
 
 import actorcore.ICC
 from ics.iicActor import visit
+from pfs.utils.spectroIds import getSite
 
 
 class IicActor(actorcore.ICC.ICC):
@@ -32,6 +33,9 @@ class IicActor(actorcore.ICC.ICC):
             self.logger.info(f'adding models: {sorted(_needModels)}')
             self.addModels(_needModels)
             self.logger.info(f'added models: {sorted(self.models.keys())}')
+
+            self.site = getSite()
+            self.logger.info(f'site :{self.site}')
 
 
 def main():
