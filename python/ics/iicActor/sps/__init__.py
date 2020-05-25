@@ -78,7 +78,7 @@ class SlitThroughFocus(Sequence):
             self.add(actor='sps', cmdStr='slit', focus=position, abs=True, cams=cams)
             self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate)
 
-        self.add(actor='sps', cmdStr='slit', focus=0, abs=True, cams=cams)
+        self.tail.add(actor='sps', cmdStr='slit', focus=0, abs=True, cams=cams)
 
 
 class DetThroughFocus(Sequence):
@@ -121,6 +121,7 @@ class DitheredFlats(Sequence):
         self.add(actor='sps', cmdStr='slit dither', x=0, pixels=True, abs=True, cams=cams)
         self.expose(exptype='flat', exptime=exptime, cams='{cams}', duplicate=duplicate)
 
+        self.tail.add(actor='sps', cmdStr='slit dither', x=0, y=0, pixels=True, abs=True, cams=cams)
 
 class DitheredArcs(Sequence):
     """ Dithered Arcs sequence """
@@ -142,7 +143,7 @@ class DitheredArcs(Sequence):
                          x=x * pixels, y=y * pixels, pixels=True, abs=True, cams=cams)
                 self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate)
 
-        self.add(actor='sps', cmdStr='slit dither', x=0, y=0, pixels=True, abs=True, cams=cams)
+        self.tail.add(actor='sps', cmdStr='slit dither', x=0, y=0, pixels=True, abs=True, cams=cams)
 
 
 class Defocus(Sequence):
@@ -168,7 +169,7 @@ class Defocus(Sequence):
             self.add(actor='sps', cmdStr='slit', focus=position, abs=True, cams=cams)
             self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate)
 
-        self.add(actor='sps', cmdStr='slit', focus=0, abs=True, cams=cams)
+        self.tail.add(actor='sps', cmdStr='slit', focus=0, abs=True, cams=cams)
 
 
 class Custom(Sequence):
