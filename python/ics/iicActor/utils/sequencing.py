@@ -366,4 +366,4 @@ class CmdList(Sequence):
                 except ValueError:
                     pass
 
-        return int(timeLim) + 60
+        return int(float(timeLim)) + 60
