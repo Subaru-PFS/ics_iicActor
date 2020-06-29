@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from functools import partial
 
 from ics.iicActor.utils import stripQuotes, stripField
+from opscore.utility.qstr import qstr
 from pfs.utils.opdb import opDB
 
 
@@ -277,9 +278,10 @@ class Sequence(list):
             self.subCmds[id].inform(cmd)
 
         if cmdVar is None:
-            return
+            cmdErrors = [f'text={qstr(self.subCmds[cmdId].lastReply)}']
+        else:
+            cmdErrors = [r.keywords.canonical(delimiter=';') for r in cmdVar.replyList]
 
-        cmdErrors = [r.keywords.canonical(delimiter=';') for r in cmdVar.replyList]
         self.errorTrace = ';'.join(cmdErrors)
 
         for cmdError in cmdErrors:
