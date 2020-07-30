@@ -57,7 +57,7 @@ Gen2_START_NEXT_FIELD
   # fine cobra moves after field acquisition: we do not gain any time by
   # turning off the rotator now.  But if the rotator slew finishes
   # first by an interesting amount, it does pay to stop the rotator
-  # and make all but the last cobra move now.
+  # and make all but the final cobra move now.
   rotatorIsSlow = IIC getConvergenceStrategy(expectedSlewTimes)
   if rotatorisSlow
      parallel {
