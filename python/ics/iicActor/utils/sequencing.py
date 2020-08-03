@@ -215,13 +215,13 @@ class Sequence(list):
         visit_set_id = 0 if visit_set_id is None else visit_set_id
         return int(visit_set_id)
 
-    def expose(self, exptype, exptime=0.0, cams=None, duplicate=1):
+    def expose(self, exptype, exptime=0.0, cams=None, duplicate=1, doLamps=False):
         """ Append duplicate * sps expose to sequence """
         exptime = [exptime] if not isinstance(exptime, Iterable) else exptime
 
         for expTime in exptime:
             for i in range(duplicate):
-                self.append(SpsExpose.specify(exptype, expTime, cams=cams))
+                self.append(SpsExpose.specify(exptype, expTime, cams=cams, doLamps=doLamps))
 
     def add(self, actor, cmdStr, timeLim=60, idleTime=5.0, index=None, **kwargs):
         """ Append duplicate * subcommand to sequence """

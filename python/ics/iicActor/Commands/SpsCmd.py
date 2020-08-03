@@ -6,7 +6,6 @@ import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.iicActor.utils import singleShot
 
-
 reload(spsSequence)
 
 
@@ -39,6 +38,13 @@ def dcbKwargs(cmdKeys):
     return dcbOn, dcbOff
 
 
+def timedDcbKwargs(cmdKeys):
+    lampNames = 'halogen','hgar','argon','neon','krypton'
+    dcbPrepare = {name:cmdKeys[name].values[0] for name in lampNames if name in cmdKeys}
+
+    return dcbPrepare
+
+
 def iisKwargs(cmdKeys):
     switchOn = ','.join(cmdKeys['iisOn'].values) if 'iisOn' in cmdKeys else None
     switchOff = ','.join(cmdKeys['iisOff'].values) if 'iisOff' in cmdKeys else None
@@ -67,6 +73,7 @@ class SpsCmd(object):
         #
         optArgs = '[<duplicate>] [<cam>] [<name>] [<comments>] [<head>] [<tail>]'
         dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [<attenuator>] [force]'
+        timedDcbArcArgs = '[<hgar>] [<argon>] [<neon>] [<krypton>]'
         iisArgs = f'[<iisOn>] [<iisOff>]'
         self.vocab = [
             ('expose', f'[object] <exptime> {optArgs}', self.doExpose),
@@ -74,6 +81,8 @@ class SpsCmd(object):
             ('dark', f'<exptime> {optArgs}', self.doDark),
             ('expose', f'arc <exptime> {dcbArgs} {iisArgs} {optArgs}', self.doArc),
             ('expose', f'flat <exptime> [switchOff] {dcbArgs} {optArgs}', self.doFlat),
+            ('expose', f'arc {timedDcbArcArgs} {optArgs}', self.doTimedArc),
+            ('expose', f'flat <halogen> {optArgs}', self.doTimedFlat),
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
             ('dither', f'flat <exptime> <pixels> [<nPositions>] [switchOff] {dcbArgs} {optArgs}', self.ditheredFlats),
@@ -109,6 +118,11 @@ class SpsCmd(object):
                                                  help='Number of position for dithered flats (default : 20)'),
                                         keys.Key('pixels', types.Float(), help='dithering step in pixels'),
                                         keys.Key('warmingTime', types.Float(), help='customizable warming time'),
+                                        keys.Key('halogen', types.Float(), help='quartz halogen lamp on time'),
+                                        keys.Key('argon', types.Float(), help='Ar lamp on time'),
+                                        keys.Key('hgar', types.Float(), help='HgAr lamp on time'),
+                                        keys.Key('neon', types.Float(), help='Ne lamp on time'),
+                                        keys.Key('krypton', types.Float(), help='Kr lamp on time'),
                                         )
 
     def doExpose(self, cmd):
@@ -161,6 +175,23 @@ class SpsCmd(object):
         exptime = cmdKeys['exptime'].values
 
         seq = spsSequence.Flat(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
+
+    def doTimedArc(self, cmd):
+        """sps arc(s) controlled by lamp times """
+        cmdKeys = cmd.cmd.keywords
+        cmdArgs = cmdKwargs(cmdKeys)
+        cmdArgs.update(timedDcbKwargs(cmdKeys))
+        seq = spsSequence.TimedArc(**cmdArgs)
+        self.process(cmd, seq=seq)
+
+    def doTimedFlat(self, cmd):
+        """sps flat(s), also known as fiberTrace, controlled by lamp time. """
+        cmdKeys = cmd.cmd.keywords
+        exptime = cmdKeys['halogen'].values[0]
+
+        seq = spsSequence.TimedFlat(exptime=exptime,
+                                    **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
     def slitThroughFocus(self, cmd):
