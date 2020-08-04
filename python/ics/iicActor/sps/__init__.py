@@ -62,6 +62,37 @@ class Flat(Sequence):
         self.expose(exptype='flat', exptime=exptime, cams=cams, duplicate=duplicate)
 
 
+class TimedArc(Sequence):
+    """ Arcs sequence """
+
+    def __init__(self, duplicate, cams, **kwargs):
+        Sequence.__init__(self, 'arcs', 
+                          head=kwargs.get('head', None), 
+                          tail=kwargs.get('tail', None))
+
+        exptime = 0.0
+        arcs = []
+        for lamp in 'hgar','argon','neon','krypton':
+            if lamp in kwargs.keys():
+                exptime = max(exptime, float(kwargs[lamp]))
+                arcs.append(f"{lamp}={float(kwargs[lamp]):0.2f}")
+        dcbCmdStr = f'sources prepare {" ".join(arcs)}'
+        for i in range(duplicate):
+            self.head.add(actor='dcb', cmdStr=dcbCmdStr)
+            self.expose(exptype='arc', exptime=exptime, cams=cams, doLamps=True)
+
+
+class TimedFlat(Sequence):
+    """ Flat / fiberTrace sequence """
+
+    def __init__(self, exptime, duplicate, cams, **kwargs):
+        Sequence.__init__(self, 'flats', **kwargs)
+
+        for i in range(duplicate):
+            self.head.add(actor='dcb', cmdStr=f'sources prepare halogen={exptime}')
+            self.expose(exptype='flat', exptime=exptime, cams=cams, doLamps=True)
+
+
 class SlitThroughFocus(Sequence):
     """ Slit through focus sequence """
 
