@@ -89,8 +89,8 @@ class SpsCmd(object):
             ('dither', f'arc <exptime> <pixels> [doMinus] {dcbArgs} {optArgs}', self.ditheredArcs),
             ('defocus', f'arc <exptime> <position> {dcbArgs} {optArgs}', self.defocus),
             ('custom', '[<name>] [<comments>] [<head>] [<tail>]', self.custom),
+            ('test', f'hexapodStability [<positions>] [<duplicate>]', self.hexapodStability),
             ('sps', 'abort', self.abort)
-
         ]
 
         # Define typed command arguments for the above commands.
@@ -123,6 +123,8 @@ class SpsCmd(object):
                                         keys.Key('hgar', types.Float(), help='HgAr lamp on time'),
                                         keys.Key('neon', types.Float(), help='Ne lamp on time'),
                                         keys.Key('krypton', types.Float(), help='Kr lamp on time'),
+                                        keys.Key('positions', types.Float() * (1,),
+                                                 help='slit positions to move to'),
                                         )
 
     def doExpose(self, cmd):
@@ -189,9 +191,10 @@ class SpsCmd(object):
         """sps flat(s), also known as fiberTrace, controlled by lamp time. """
         cmdKeys = cmd.cmd.keywords
         exptime = cmdKeys['halogen'].values[0]
+        cmdArgs = cmdKwargs(cmdKeys)
+        cmdArgs.update(timedDcbKwargs(cmdKeys))
 
-        seq = spsSequence.TimedFlat(exptime=exptime,
-                                    **cmdKwargs(cmdKeys))
+        seq = spsSequence.TimedFlat(exptime=exptime, **cmdArgs)
         self.process(cmd, seq=seq)
 
     def slitThroughFocus(self, cmd):
@@ -276,6 +279,18 @@ class SpsCmd(object):
 
         seq = spsSequence.Defocus(exp_time_0=exptime, positions=positions.round(6), dcbOn=dcbOn, dcbOff=dcbOff,
                                   **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
+
+    def hexapodStability(self, cmd):
+        """acquire hexapod stability grid. By default 12x12 and 3 duplicates at each position. """
+        cmdKeys = cmd.cmd.keywords
+
+        positions = cmdKeys['positions'].values if 'positions' in cmdKeys else None
+        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 3
+        lamps = None
+
+        seq = spsSequence.HexapodStability(positions=positions, duplicate=duplicate, lamps=lamps)
+
         self.process(cmd, seq=seq)
 
     def custom(self, cmd):
