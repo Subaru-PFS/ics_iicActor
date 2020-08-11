@@ -139,6 +139,48 @@ class DetThroughFocus(Sequence):
                      a=motorA, b=motorB, c=motorC, microns=True, abs=True, cams=cams)
             self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate)
 
+class HexapodStability(SpsSequence):
+    """ hexapod stability sequence """
+
+    def __init__(self, positions=None, duplicate=1, cams=None, lamps=None):
+        """Acquire a hexapod repeatability grid.
+
+        Args
+        ----
+        positions : vector of `float`
+          the positions for the slit dither and shift grid.
+          Default=[0.05, 0.04, 0.03, 0.02, 0.01, 0, -0.01, -0.02, -0.03, -0.04, -0.05]
+        duplicate : `int`
+          the number of exposures to take at each position.
+
+        Notes
+        -----
+        The cams/sm needs to be worked out:
+          - with DCB, we can only illuminate one SM, and only the red right now.
+          - with pfiLamps, all SMs will be illuminated, but probably still only red.
+
+        """
+        SpsSequence.__init__(self, 'hexapodStability')
+
+        if positions is None:
+            positions = np.arange(-0.05,0.055,0.01)[::-1]
+        if lamps is None:
+            lamps = dict(argon=60)
+
+        sm = 1
+        cams = None # [f'r{sm}']
+
+        self.add('sps', 'slit focus=0.0 abs')
+        self.add('sps', 'slit dither x=0.0 y=0.0 abs')
+        self.appendTimedArc(lamps, cams, duplicate=duplicate)
+        for pos in positions:
+            # Move y once separately
+            self.add('sps', f'slit dither y={pos:1.3f} abs')
+            for pos in positions:
+                self.add('sps', f'slit dither x={pos:1.3f} abs')
+                self.appendTimedArc(lamps, cams, duplicate=duplicate)
+        self.add('sps', f'slit dither x=0.0 y=0.0 abs')
+        self.appendTimedArc(lamps, cams, duplicate=duplicate)
 
 class DitheredFlats(Sequence):
     """ Dithered Flats sequence """
