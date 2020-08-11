@@ -1,3 +1,5 @@
+import numpy as np
+
 from ics.iicActor.utils.sequencing import Sequence
 from pfs.utils.ncaplar import defocused_exposure_times_single_position
 
