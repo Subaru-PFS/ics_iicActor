@@ -61,37 +61,47 @@ class Flat(Sequence):
             self.tail.add(index=0, actor='dcb', cmdStr='arc', **dcbOff)
         self.expose(exptype='flat', exptime=exptime, cams=cams, duplicate=duplicate)
 
+class SpsSequence(Sequence):
+    def _appendTimedLampExposure(self, exptype, kwargs, cams=None, duplicate=1):
+        exptime = 0.0
+        lamps = []
+        for lamp in 'halogen','hgar','argon','neon','krypton':
+            if lamp in kwargs.keys():
+                exptime = max(exptime, float(kwargs[lamp]))
+                lamps.append(f"{lamp}={float(kwargs[lamp]):0.2f}")
+        dcbCmdStr = f'sources prepare {" ".join(lamps)}'
+        for i in range(duplicate):
+            self.add(actor='dcb', cmdStr=dcbCmdStr)
+            self.expose(exptype=exptype, exptime=exptime, cams=cams, doLamps=True)
 
-class TimedArc(Sequence):
+    def appendTimedArc(self, lamps, cams=None, duplicate=1):
+        """Append a complete arc exposure sequence, including lamp control. """
+
+        self._appendTimedLampExposure('arc', lamps, cams=cams, duplicate=duplicate)
+
+    def appendTimedFlat(self, lamps, cams=None, duplicate=1):
+        """Append a complete flat exposure sequence, including lamp control. """
+
+        self._appendTimedLampExposure('flat', lamps, cams=cams, duplicate=duplicate)
+
+class TimedArc(SpsSequence):
     """ Arcs sequence """
 
     def __init__(self, duplicate, cams, **kwargs):
-        Sequence.__init__(self, 'arcs', 
-                          head=kwargs.get('head', None), 
-                          tail=kwargs.get('tail', None))
+        SpsSequence.__init__(self, 'arcs',
+                             head=kwargs.get('head', None),
+                             tail=kwargs.get('tail', None))
 
-        exptime = 0.0
-        arcs = []
-        for lamp in 'hgar','argon','neon','krypton':
-            if lamp in kwargs.keys():
-                exptime = max(exptime, float(kwargs[lamp]))
-                arcs.append(f"{lamp}={float(kwargs[lamp]):0.2f}")
-        dcbCmdStr = f'sources prepare {" ".join(arcs)}'
-        for i in range(duplicate):
-            self.head.add(actor='dcb', cmdStr=dcbCmdStr)
-            self.expose(exptype='arc', exptime=exptime, cams=cams, doLamps=True)
+        self.appendTimedArc(kwargs, cams=cams, duplicate=duplicate)
 
-
-class TimedFlat(Sequence):
+class TimedFlat(SpsSequence):
     """ Flat / fiberTrace sequence """
 
     def __init__(self, exptime, duplicate, cams, **kwargs):
-        Sequence.__init__(self, 'flats', **kwargs)
-
-        for i in range(duplicate):
-            self.head.add(actor='dcb', cmdStr=f'sources prepare halogen={exptime}')
-            self.expose(exptype='flat', exptime=exptime, cams=cams, doLamps=True)
-
+        SpsSequence.__init__(self, 'flats',
+                             head=kwargs.get('head', None),
+                             tail=kwargs.get('tail', None))
+        self.appendTimedFlat(kwargs, cams=cams, duplicate=duplicate)
 
 class SlitThroughFocus(Sequence):
     """ Slit through focus sequence """
