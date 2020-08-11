@@ -191,9 +191,10 @@ class SpsCmd(object):
         """sps flat(s), also known as fiberTrace, controlled by lamp time. """
         cmdKeys = cmd.cmd.keywords
         exptime = cmdKeys['halogen'].values[0]
+        cmdArgs = cmdKwargs(cmdKeys)
+        cmdArgs.update(timedDcbKwargs(cmdKeys))
 
-        seq = spsSequence.TimedFlat(exptime=exptime,
-                                    **cmdKwargs(cmdKeys))
+        seq = spsSequence.TimedFlat(exptime=exptime, **cmdArgs)
         self.process(cmd, seq=seq)
 
     def slitThroughFocus(self, cmd):
