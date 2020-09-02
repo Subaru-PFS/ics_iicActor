@@ -27,18 +27,18 @@ class Dark(Sequence):
         self.expose(exptype='dark', exptime=exptime, cams=cams, duplicate=duplicate)
 
 
-class MasterBias(Sequence):
-    """ MasterBias sequence """
+class MasterBiases(Sequence):
+    """ MasterBiases sequence """
 
     def __init__(self, duplicate, cams, **kwargs):
-        Sequence.__init__(self, 'masterBias', **kwargs)
+        Sequence.__init__(self, 'masterBiases', **kwargs)
         self.expose(exptype='bias', cams=cams, duplicate=duplicate)
 
-class MasterDark(Sequence):
-    """ MasterDark sequence """
+class MasterDarks(Sequence):
+    """ MasterDarks sequence """
 
     def __init__(self, exptime, duplicate, cams, **kwargs):
-        Sequence.__init__(self, 'masterDark', **kwargs)
+        Sequence.__init__(self, 'masterDarks', **kwargs)
         self.expose(exptype='dark', exptime=exptime, cams=cams, duplicate=duplicate)
 
 class Arc(Sequence):

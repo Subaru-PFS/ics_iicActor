@@ -79,15 +79,15 @@ class SpsCmd(object):
             ('expose', f'[object] <exptime> {optArgs}', self.doExpose),
             ('bias', f'{optArgs}', self.doBias),
             ('dark', f'<exptime> {optArgs}', self.doDark),
-            ('masterBias', f'{optArgs}', self.masterBias),
-            ('masterDark', f'[<exptime>] {optArgs}', self.masterDark),
+            ('masterBiases', f'{optArgs}', self.masterBiases),
+            ('masterDarks', f'[<exptime>] {optArgs}', self.masterDarks),
+            ('ditheredFlats', f'<exptime> [<pixels>] [<nPositions>] [switchOff] {dcbArgs} {optArgs}', self.ditheredFlats),
             ('expose', f'arc <exptime> {dcbArgs} {iisArgs} {optArgs}', self.doArc),
             ('expose', f'flat <exptime> [switchOff] {dcbArgs} {optArgs}', self.doFlat),
             ('expose', f'arc {timedDcbArcArgs} {optArgs}', self.doTimedArc),
             ('expose', f'flat <halogen> {optArgs}', self.doTimedFlat),
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
-            ('dither', f'flat <exptime> [<pixels>] [<nPositions>] [switchOff] {dcbArgs} {optArgs}', self.ditheredFlats),
             ('dither', f'arc <exptime> <pixels> [doMinus] {dcbArgs} {optArgs}', self.ditheredArcs),
             ('defocus', f'arc <exptime> <position> {dcbArgs} {optArgs}', self.defocus),
             ('custom', '[<name>] [<comments>] [<head>] [<tail>]', self.custom),
@@ -152,17 +152,17 @@ class SpsCmd(object):
         seq = spsSequence.Dark(exptime=exptime, **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
-    def masterBias(self, cmd):
+    def masterBiases(self, cmd):
         """sps bias(es). """
         cmdKeys = cmd.cmd.keywords
         kwargs = cmdKwargs(cmdKeys)
         kwargs['duplicate'] = max(kwargs['duplicate'], 15)
         kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
 
-        seq = spsSequence.MasterBias(**kwargs)
+        seq = spsSequence.MasterBiases(**kwargs)
         self.process(cmd, seq=seq)
 
-    def masterDark(self, cmd):
+    def masterDarks(self, cmd):
         """sps dark(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
         kwargs = cmdKwargs(cmdKeys)
@@ -170,7 +170,7 @@ class SpsCmd(object):
         kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
         exptime = cmdKeys['exptime'].values if 'exptime' in cmdKeys else [300]
 
-        seq = spsSequence.MasterDark(exptime=exptime, **cmdKwargs(cmdKeys))
+        seq = spsSequence.MasterDarks(exptime=exptime, **kwargs)
         self.process(cmd, seq=seq)
 
     def doArc(self, cmd):
