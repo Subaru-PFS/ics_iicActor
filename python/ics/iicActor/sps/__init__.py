@@ -19,7 +19,6 @@ class Bias(Sequence):
         Sequence.__init__(self, 'biases', **kwargs)
         self.expose(exptype='bias', cams=cams, duplicate=duplicate)
 
-
 class Dark(Sequence):
     """ Darks sequence """
 
@@ -27,6 +26,20 @@ class Dark(Sequence):
         Sequence.__init__(self, 'darks', **kwargs)
         self.expose(exptype='dark', exptime=exptime, cams=cams, duplicate=duplicate)
 
+
+class MasterBias(Sequence):
+    """ MasterBias sequence """
+
+    def __init__(self, duplicate, cams, **kwargs):
+        Sequence.__init__(self, 'masterBias', **kwargs)
+        self.expose(exptype='bias', cams=cams, duplicate=duplicate)
+
+class MasterDark(Sequence):
+    """ MasterDark sequence """
+
+    def __init__(self, exptime, duplicate, cams, **kwargs):
+        Sequence.__init__(self, 'masterDark', **kwargs)
+        self.expose(exptype='dark', exptime=exptime, cams=cams, duplicate=duplicate)
 
 class Arc(Sequence):
     """ Arcs sequence """

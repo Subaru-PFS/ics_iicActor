@@ -79,13 +79,15 @@ class SpsCmd(object):
             ('expose', f'[object] <exptime> {optArgs}', self.doExpose),
             ('bias', f'{optArgs}', self.doBias),
             ('dark', f'<exptime> {optArgs}', self.doDark),
+            ('masterBias', f'{optArgs}', self.masterBias),
+            ('masterDark', f'[<exptime>] {optArgs}', self.masterDark),
             ('expose', f'arc <exptime> {dcbArgs} {iisArgs} {optArgs}', self.doArc),
             ('expose', f'flat <exptime> [switchOff] {dcbArgs} {optArgs}', self.doFlat),
             ('expose', f'arc {timedDcbArcArgs} {optArgs}', self.doTimedArc),
             ('expose', f'flat <halogen> {optArgs}', self.doTimedFlat),
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
-            ('dither', f'flat <exptime> <pixels> [<nPositions>] [switchOff] {dcbArgs} {optArgs}', self.ditheredFlats),
+            ('dither', f'flat <exptime> [<pixels>] [<nPositions>] [switchOff] {dcbArgs} {optArgs}', self.ditheredFlats),
             ('dither', f'arc <exptime> <pixels> [doMinus] {dcbArgs} {optArgs}', self.ditheredArcs),
             ('defocus', f'arc <exptime> <position> {dcbArgs} {optArgs}', self.defocus),
             ('custom', '[<name>] [<comments>] [<head>] [<tail>]', self.custom),
@@ -148,6 +150,27 @@ class SpsCmd(object):
         exptime = cmdKeys['exptime'].values
 
         seq = spsSequence.Dark(exptime=exptime, **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
+
+    def masterBias(self, cmd):
+        """sps bias(es). """
+        cmdKeys = cmd.cmd.keywords
+        kwargs = cmdKwargs(cmdKeys)
+        kwargs['duplicate'] = max(kwargs['duplicate'], 15)
+        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
+
+        seq = spsSequence.MasterBias(**kwargs)
+        self.process(cmd, seq=seq)
+
+    def masterDark(self, cmd):
+        """sps dark(s) with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+        kwargs = cmdKwargs(cmdKeys)
+        kwargs['duplicate'] = max(kwargs['duplicate'], 15)
+        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
+        exptime = cmdKeys['exptime'].values if 'exptime' in cmdKeys else [300]
+
+        seq = spsSequence.MasterDark(exptime=exptime, **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
     def doArc(self, cmd):
@@ -234,19 +257,21 @@ class SpsCmd(object):
         """dithered flat(fiberTrace) with given exptime. Used to construct masterFlat """
         cmdKeys = cmd.cmd.keywords
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
+        kwargs = cmdKwargs(cmdKeys)
 
         if dcbOn['attenuator'] is not None and self.actor.site != 'L':
             raise ValueError('You can only set attenuator at LAM')
 
         dcbOn['on'] = 'halogen'
         exptime = cmdKeys['exptime'].values
-        pixels = cmdKeys['pixels'].values[0]
+        pixels = cmdKeys['pixels'].values[0] if 'pixels' in cmdKeys else 0.3
         nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
         nPositions = (nPositions // 2) * 2
         positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1)
+        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
 
         seq = spsSequence.DitheredFlats(exptime=exptime, positions=positions.round(5), dcbOn=dcbOn, dcbOff=dcbOff,
-                                        **cmdKwargs(cmdKeys))
+                                        **kwargs)
         self.process(cmd, seq=seq)
 
     def ditheredArcs(self, cmd):
