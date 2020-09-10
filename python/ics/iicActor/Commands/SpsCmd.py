@@ -1,13 +1,14 @@
 from importlib import reload
 
 import ics.iicActor.sps as spsSequence
+import ics.iicActor.sps.timed as timedSpsSequence
 import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.iicActor.utils import singleShot
 
 reload(spsSequence)
-
+reload(timedSpsSequence)
 
 def cmdKwargs(cmdKeys):
     duplicate = cmdKeys['duplicate'].values[0] if "duplicate" in cmdKeys else 1
@@ -82,19 +83,20 @@ class SpsCmd(object):
             ('masterBiases', f'{optArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {optArgs}', self.masterDarks),
             ('ditheredFlats', f'<exptime> [<pixels>] [<nPositions>] [switchOff] {dcbArgs} {optArgs}', self.ditheredFlats),
-            ('ditheredFlats', f'<halogen> [<pixels>] [<nPositions>] {optArgs}',self.doTimedDitheredFlats),
             ('expose', f'arc <exptime> {dcbArgs} {iisArgs} {optArgs}', self.doArc),
             ('expose', f'flat <exptime> [switchOff] {dcbArgs} {optArgs}', self.doFlat),
-            ('expose', f'arc {timedDcbArcArgs} {optArgs}', self.doTimedArc),
-            ('expose', f'flat <halogen> {optArgs}', self.doTimedFlat),
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
             ('dither', f'arc <exptime> <pixels> [doMinus] {dcbArgs} {optArgs}', self.ditheredArcs),
-            ('dither', f'arc {timedDcbArcArgs} <pixels> [doMinus] {optArgs}', self.doTimedDitheredArcs),
             ('defocus', f'arc <exptime> <position> {dcbArgs} {optArgs}', self.defocus),
             ('custom', '[<name>] [<comments>] [<head>] [<tail>]', self.custom),
+            ('sps', 'abort', self.abort),
+
+            ('expose', f'arc {timedDcbArcArgs} {optArgs}', self.doTimedArc),
+            ('expose', f'flat <halogen> {optArgs}', self.doTimedFlat),
             ('test', f'hexapodStability [<positions>] [<duplicate>]', self.hexapodStability),
-            ('sps', 'abort', self.abort)
+            ('ditheredFlats', f'<halogen> [<pixels>] [<nPositions>] {optArgs}', self.doTimedDitheredFlats),
+            ('dither', f'arc {timedDcbArcArgs} <pixels> [doMinus] {optArgs}', self.doTimedDitheredArcs),
         ]
 
         # Define typed command arguments for the above commands.
@@ -204,22 +206,6 @@ class SpsCmd(object):
         seq = spsSequence.Flat(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
-    def doTimedArc(self, cmd):
-        """sps arc(s) controlled by lamp times """
-        cmdKeys = cmd.cmd.keywords
-        timedLamps = timedDcbKwargs(cmdKeys)
-
-        seq = spsSequence.TimedArc(timedLamps=timedLamps, **cmdKwargs(cmdKeys))
-        self.process(cmd, seq=seq)
-
-    def doTimedFlat(self, cmd):
-        """sps flat(s), also known as fiberTrace, controlled by lamp time. """
-        cmdKeys = cmd.cmd.keywords
-        timedLamps = timedDcbKwargs(cmdKeys)
-
-        seq = spsSequence.TimedFlat(timedLamps=timedLamps, **cmdKwargs(cmdKeys))
-        self.process(cmd, seq=seq)
-
     def slitThroughFocus(self, cmd):
         """sps slit through focus with given exptime. """
         cmdKeys = cmd.cmd.keywords
@@ -274,7 +260,6 @@ class SpsCmd(object):
                                         **kwargs)
         self.process(cmd, seq=seq)
 
-
     def ditheredArcs(self, cmd):
         """dithered Arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
@@ -289,32 +274,6 @@ class SpsCmd(object):
 
         seq = spsSequence.DitheredArcs(exptime=exptime, pixels=pixels, doMinus=doMinus, dcbOn=dcbOn, dcbOff=dcbOff,
                                        **cmdKwargs(cmdKeys))
-        self.process(cmd, seq=seq)
-
-    def doTimedDitheredFlats(self, cmd):
-        """ditheredFlat sequence, also known as masterFlat, controlled by lamp time. """
-        cmdKeys = cmd.cmd.keywords
-        kwargs = cmdKwargs(cmdKeys)
-        timedLamps = timedDcbKwargs(cmdKeys)
-
-        pixels = cmdKeys['pixels'].values[0] if 'pixels' in cmdKeys else 0.3
-        nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
-        nPositions = (nPositions // 2) * 2
-        positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1)
-        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
-
-        seq = spsSequence.TimedDitheredFlats(positions=positions.round(5), timedLamps=timedLamps, **kwargs)
-        self.process(cmd, seq=seq)
-
-    def doTimedDitheredArcs(self, cmd):
-        """dithered Arc(s), controlled by lamp time.  """
-        cmdKeys = cmd.cmd.keywords
-        timedLamps = timedDcbKwargs(cmdKeys)
-
-        pixels = cmdKeys['pixels'].values[0]
-        doMinus = 'doMinus' in cmdKeys
-
-        seq = spsSequence.TimedDitheredArcs(pixels=pixels, doMinus=doMinus, timedLamps=timedLamps, **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
     def defocus(self, cmd):
@@ -333,6 +292,29 @@ class SpsCmd(object):
                                   **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
+    def custom(self, cmd):
+        """dithered Arc(s) with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+
+        seq = spsSequence.Custom(**cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
+
+    def doTimedArc(self, cmd):
+        """sps arc(s) controlled by lamp times """
+        cmdKeys = cmd.cmd.keywords
+        timedLamps = timedDcbKwargs(cmdKeys)
+
+        seq = timedSpsSequence.Arc(timedLamps=timedLamps, **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
+
+    def doTimedFlat(self, cmd):
+        """sps flat(s), also known as fiberTrace, controlled by lamp time. """
+        cmdKeys = cmd.cmd.keywords
+        timedLamps = timedDcbKwargs(cmdKeys)
+
+        seq = timedSpsSequence.Flat(timedLamps=timedLamps, **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
+
     def hexapodStability(self, cmd):
         """acquire hexapod stability grid. By default 12x12 and 3 duplicates at each position. """
         cmdKeys = cmd.cmd.keywords
@@ -341,15 +323,34 @@ class SpsCmd(object):
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 3
         lamps = None
 
-        seq = spsSequence.HexapodStability(positions=positions, duplicate=duplicate, lamps=lamps)
+        seq = timedSpsSequence.HexapodStability(positions=positions, duplicate=duplicate, lamps=lamps)
 
         self.process(cmd, seq=seq)
 
-    def custom(self, cmd):
-        """dithered Arc(s) with given exptime. """
+    def doTimedDitheredFlats(self, cmd):
+        """ditheredFlat sequence, also known as masterFlat, controlled by lamp time. """
         cmdKeys = cmd.cmd.keywords
+        kwargs = cmdKwargs(cmdKeys)
+        timedLamps = timedDcbKwargs(cmdKeys)
 
-        seq = spsSequence.Custom(**cmdKwargs(cmdKeys))
+        pixels = cmdKeys['pixels'].values[0] if 'pixels' in cmdKeys else 0.3
+        nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
+        nPositions = (nPositions // 2) * 2
+        positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1)
+        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
+
+        seq = timedSpsSequence.DitheredFlats(positions=positions.round(5), timedLamps=timedLamps, **kwargs)
+        self.process(cmd, seq=seq)
+
+    def doTimedDitheredArcs(self, cmd):
+        """dithered Arc(s), controlled by lamp time.  """
+        cmdKeys = cmd.cmd.keywords
+        timedLamps = timedDcbKwargs(cmdKeys)
+
+        pixels = cmdKeys['pixels'].values[0]
+        doMinus = 'doMinus' in cmdKeys
+
+        seq = timedSpsSequence.DitheredArcs(pixels=pixels, doMinus=doMinus, timedLamps=timedLamps, **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
     @singleShot
