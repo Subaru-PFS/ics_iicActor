@@ -46,7 +46,7 @@ class Flat(SpsSequence):
 class HexapodStability(SpsSequence):
     """ hexapod stability sequence """
 
-    def __init__(self, positions=None, duplicate=1, cams=None, lamps=None):
+    def __init__(self, position, duplicate, cams, timedLamps, **kwargs):
         """Acquire a hexapod repeatability grid.
 
         Args
@@ -64,27 +64,23 @@ class HexapodStability(SpsSequence):
           - with pfiLamps, all SMs will be illuminated, but probably still only red.
 
         """
-        SpsSequence.__init__(self, 'hexapodStability')
+        SpsSequence.__init__(self, 'hexapodStability', **kwargs)
+        if not timedLamps:
+            timedLamps = dict(argon=45)
 
-        if positions is None:
-            positions = np.arange(-0.05, 0.055, 0.01)[::-1]
-        if lamps is None:
-            lamps = dict(argon=60)
+        positions = position[::-1]
 
-        sm = 1
-        cams = None  # [f'r{sm}']
-
-        self.add('sps', 'slit focus=0.0 abs')
-        self.add('sps', 'slit dither x=0.0 y=0.0 abs')
-        self.appendTimedArc(lamps, cams, duplicate=duplicate)
+        self.add('sps', 'slit', focus=0.0, abs=True)
+        self.add('sps', 'slit dither', x=0.0, y=0.0, abs=True, cams=cams)
+        self.appendTimedArc(timedLamps, cams='{cams}', duplicate=duplicate)
         for pos in positions:
             # Move y once separately
-            self.add('sps', f'slit dither y={pos:1.3f} abs')
+            self.add('sps', 'slit dither',  y=round(pos, 5), abs=True, cams=cams)
             for pos in positions:
-                self.add('sps', f'slit dither x={pos:1.3f} abs')
-                self.appendTimedArc(lamps, cams, duplicate=duplicate)
-        self.add('sps', f'slit dither x=0.0 y=0.0 abs')
-        self.appendTimedArc(lamps, cams, duplicate=duplicate)
+                self.add('sps', f'slit dither',  x=round(pos, 5), abs=True, cams=cams)
+                self.appendTimedArc(timedLamps, cams='{cams}', duplicate=duplicate)
+        self.add('sps', 'slit dither', x=0.0, y=0.0, abs=True, cams=cams)
+        self.appendTimedArc(timedLamps, cams='{cams}', duplicate=duplicate)
 
 
 class DitheredFlats(SpsSequence):

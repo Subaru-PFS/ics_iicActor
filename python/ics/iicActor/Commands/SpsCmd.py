@@ -94,7 +94,7 @@ class SpsCmd(object):
 
             ('expose', f'arc {timedDcbArcArgs} {optArgs}', self.doTimedArc),
             ('expose', f'flat <halogen> {optArgs}', self.doTimedFlat),
-            ('test', f'hexapodStability [<positions>] [<duplicate>]', self.hexapodStability),
+            ('test', f'hexapodStability [<position>] {timedDcbArcArgs} {optArgs}', self.hexapodStability),
             ('ditheredFlats', f'<halogen> [<pixels>] [<nPositions>] {optArgs}', self.doTimedDitheredFlats),
             ('dither', f'arc {timedDcbArcArgs} <pixels> [doMinus] {optArgs}', self.doTimedDitheredArcs),
         ]
@@ -129,8 +129,6 @@ class SpsCmd(object):
                                         keys.Key('hgar', types.Float(), help='HgAr lamp on time'),
                                         keys.Key('neon', types.Float(), help='Ne lamp on time'),
                                         keys.Key('krypton', types.Float(), help='Kr lamp on time'),
-                                        keys.Key('positions', types.Float() * (1,),
-                                                 help='slit positions to move to'),
                                         )
 
     def doExpose(self, cmd):
@@ -318,13 +316,13 @@ class SpsCmd(object):
     def hexapodStability(self, cmd):
         """acquire hexapod stability grid. By default 12x12 and 3 duplicates at each position. """
         cmdKeys = cmd.cmd.keywords
+        timedLamps = timedDcbKwargs(cmdKeys)
+        kwargs = cmdKwargs(cmdKeys)
+        kwargs['duplicate'] = max(kwargs['duplicate'], 3)
 
-        positions = cmdKeys['positions'].values if 'positions' in cmdKeys else None
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 3
-        lamps = None
+        position = cmdKeys['position'].values if 'position' in cmdKeys else [-0.05, 0.055, 0.01]
 
-        seq = timedSpsSequence.HexapodStability(positions=positions, duplicate=duplicate, lamps=lamps)
-
+        seq = timedSpsSequence.HexapodStability(position=np.arange(*position), timedLamps=timedLamps, **kwargs)
         self.process(cmd, seq=seq)
 
     def doTimedDitheredFlats(self, cmd):
