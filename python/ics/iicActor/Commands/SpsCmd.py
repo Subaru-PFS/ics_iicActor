@@ -205,19 +205,17 @@ class SpsCmd(object):
     def doTimedArc(self, cmd):
         """sps arc(s) controlled by lamp times """
         cmdKeys = cmd.cmd.keywords
-        cmdArgs = cmdKwargs(cmdKeys)
-        cmdArgs.update(timedDcbKwargs(cmdKeys))
-        seq = spsSequence.TimedArc(**cmdArgs)
+        timedLamps = timedDcbKwargs(cmdKeys)
+
+        seq = spsSequence.TimedArc(timedLamps=timedLamps, **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
     def doTimedFlat(self, cmd):
         """sps flat(s), also known as fiberTrace, controlled by lamp time. """
         cmdKeys = cmd.cmd.keywords
-        exptime = cmdKeys['halogen'].values[0]
-        cmdArgs = cmdKwargs(cmdKeys)
-        cmdArgs.update(timedDcbKwargs(cmdKeys))
+        timedLamps = timedDcbKwargs(cmdKeys)
 
-        seq = spsSequence.TimedFlat(exptime=exptime, **cmdArgs)
+        seq = spsSequence.TimedFlat(timedLamps=timedLamps, **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
     def slitThroughFocus(self, cmd):

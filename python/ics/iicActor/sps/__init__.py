@@ -102,21 +102,16 @@ class SpsSequence(Sequence):
 class TimedArc(SpsSequence):
     """ Arcs sequence """
 
-    def __init__(self, duplicate, cams, **kwargs):
-        SpsSequence.__init__(self, 'arcs',
-                             head=kwargs.get('head', None),
-                             tail=kwargs.get('tail', None))
-
-        self.appendTimedArc(kwargs, cams=cams, duplicate=duplicate)
+    def __init__(self, duplicate, cams, timedLamps, **kwargs):
+        SpsSequence.__init__(self, 'arcs', **kwargs)
+        self.appendTimedArc(timedLamps, cams=cams, duplicate=duplicate)
 
 class TimedFlat(SpsSequence):
     """ Flat / fiberTrace sequence """
 
-    def __init__(self, exptime, duplicate, cams, **kwargs):
-        SpsSequence.__init__(self, 'flats',
-                             head=kwargs.get('head', None),
-                             tail=kwargs.get('tail', None))
-        self.appendTimedFlat(kwargs, cams=cams, duplicate=duplicate)
+    def __init__(self, duplicate, cams, timedLamps, **kwargs):
+        SpsSequence.__init__(self, 'flats', **kwargs)
+        self.appendTimedFlat(timedLamps, cams=cams, duplicate=duplicate)
 
 class SlitThroughFocus(Sequence):
     """ Slit through focus sequence """
