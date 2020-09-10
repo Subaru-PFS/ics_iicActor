@@ -90,6 +90,7 @@ class SpsCmd(object):
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
             ('dither', f'arc <exptime> <pixels> [doMinus] {dcbArgs} {optArgs}', self.ditheredArcs),
+            ('dither', f'arc {timedDcbArcArgs} <pixels> [doMinus] {optArgs}', self.doTimedDitheredArcs),
             ('defocus', f'arc <exptime> <position> {dcbArgs} {optArgs}', self.defocus),
             ('custom', '[<name>] [<comments>] [<head>] [<tail>]', self.custom),
             ('test', f'hexapodStability [<positions>] [<duplicate>]', self.hexapodStability),
@@ -291,7 +292,7 @@ class SpsCmd(object):
         self.process(cmd, seq=seq)
 
     def doTimedDitheredFlats(self, cmd):
-        """sps flat(s), also known as fiberTrace, controlled by lamp time. """
+        """ditheredFlat sequence, also known as masterFlat, controlled by lamp time. """
         cmdKeys = cmd.cmd.keywords
         kwargs = cmdKwargs(cmdKeys)
         timedLamps = timedDcbKwargs(cmdKeys)
@@ -302,7 +303,18 @@ class SpsCmd(object):
         positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1)
         kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
 
-        seq = spsSequence.TimedDitheredFlats(timedLamps=timedLamps, positions=positions.round(5), **kwargs)
+        seq = spsSequence.TimedDitheredFlats(positions=positions.round(5), timedLamps=timedLamps, **kwargs)
+        self.process(cmd, seq=seq)
+
+    def doTimedDitheredArcs(self, cmd):
+        """dithered Arc(s), controlled by lamp time.  """
+        cmdKeys = cmd.cmd.keywords
+        timedLamps = timedDcbKwargs(cmdKeys)
+
+        pixels = cmdKeys['pixels'].values[0]
+        doMinus = 'doMinus' in cmdKeys
+
+        seq = spsSequence.TimedDitheredArcs(pixels=pixels, doMinus=doMinus, timedLamps=timedLamps, **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
     def defocus(self, cmd):

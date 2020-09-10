@@ -258,6 +258,22 @@ class DitheredArcs(Sequence):
 
         self.tail.add(actor='sps', cmdStr='slit dither', x=0, y=0, pixels=True, abs=True, cams=cams)
 
+class TimedDitheredArcs(SpsSequence):
+    """ Timed Dithered Arcs sequence """
+
+    def __init__(self, pixels, doMinus, duplicate, cams, timedLamps, **kwargs):
+        Sequence.__init__(self, 'ditheredArcs', **kwargs)
+
+        end = int(1 / pixels)
+        start = -end + 1 if doMinus else 0
+        for x in range(start, end):
+            for y in range(start, end):
+                self.add(actor='sps', cmdStr='slit dither',
+                         x=x * pixels, y=y * pixels, pixels=True, abs=True, cams=cams)
+                self.appendTimedArc(timedLamps, cams='{cams}', duplicate=duplicate)
+
+        self.tail.add(actor='sps', cmdStr='slit dither', x=0, y=0, pixels=True, abs=True, cams=cams)
+
 
 class Defocus(Sequence):
     """ Defocus sequence """
