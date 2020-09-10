@@ -82,6 +82,7 @@ class SpsCmd(object):
             ('masterBiases', f'{optArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {optArgs}', self.masterDarks),
             ('ditheredFlats', f'<exptime> [<pixels>] [<nPositions>] [switchOff] {dcbArgs} {optArgs}', self.ditheredFlats),
+            ('ditheredFlats', f'<halogen> [<pixels>] [<nPositions>] {optArgs}',self.doTimedDitheredFlats),
             ('expose', f'arc <exptime> {dcbArgs} {iisArgs} {optArgs}', self.doArc),
             ('expose', f'flat <exptime> [switchOff] {dcbArgs} {optArgs}', self.doFlat),
             ('expose', f'arc {timedDcbArcArgs} {optArgs}', self.doTimedArc),
@@ -272,6 +273,7 @@ class SpsCmd(object):
                                         **kwargs)
         self.process(cmd, seq=seq)
 
+
     def ditheredArcs(self, cmd):
         """dithered Arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
@@ -286,6 +288,21 @@ class SpsCmd(object):
 
         seq = spsSequence.DitheredArcs(exptime=exptime, pixels=pixels, doMinus=doMinus, dcbOn=dcbOn, dcbOff=dcbOff,
                                        **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
+
+    def doTimedDitheredFlats(self, cmd):
+        """sps flat(s), also known as fiberTrace, controlled by lamp time. """
+        cmdKeys = cmd.cmd.keywords
+        kwargs = cmdKwargs(cmdKeys)
+        timedLamps = timedDcbKwargs(cmdKeys)
+
+        pixels = cmdKeys['pixels'].values[0] if 'pixels' in cmdKeys else 0.3
+        nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
+        nPositions = (nPositions // 2) * 2
+        positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1)
+        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
+
+        seq = spsSequence.TimedDitheredFlats(timedLamps=timedLamps, positions=positions.round(5), **kwargs)
         self.process(cmd, seq=seq)
 
     def defocus(self, cmd):

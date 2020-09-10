@@ -216,6 +216,26 @@ class DitheredFlats(Sequence):
 
         self.tail.add(actor='sps', cmdStr='slit dither', x=0, y=0, pixels=True, abs=True, cams=cams)
 
+
+class TimedDitheredFlats(SpsSequence):
+    """ TimedDitheredFlats / masterFlat sequence """
+
+    def __init__(self, positions, duplicate, cams, timedLamps, **kwargs):
+        SpsSequence.__init__(self, 'ditheredFlats', **kwargs)
+
+        self.add(actor='sps', cmdStr='slit dither', x=0, pixels=True, abs=True, cams=cams)
+        self.appendTimedFlat(timedLamps, cams='{cams}', duplicate=duplicate)
+
+        for position in positions:
+            self.add(actor='sps', cmdStr='slit dither', x=position, pixels=True, abs=True, cams=cams)
+            self.appendTimedFlat(timedLamps, cams='{cams}', duplicate=duplicate)
+
+        self.add(actor='sps', cmdStr='slit dither', x=0, pixels=True, abs=True, cams=cams)
+        self.appendTimedFlat(timedLamps, cams='{cams}', duplicate=duplicate)
+
+        self.tail.add(actor='sps', cmdStr='slit dither', x=0, y=0, pixels=True, abs=True, cams=cams)
+
+
 class DitheredArcs(Sequence):
     """ Dithered Arcs sequence """
 
