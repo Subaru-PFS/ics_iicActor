@@ -94,9 +94,11 @@ class SpsCmd(object):
 
             ('expose', f'arc {timedDcbArcArgs} {optArgs}', self.doTimedArc),
             ('expose', f'flat <halogen> {optArgs}', self.doTimedFlat),
-            ('test', f'hexapodStability [<position>] {timedDcbArcArgs} {optArgs}', self.hexapodStability),
+            ('test', f'hexapodStability {timedDcbArcArgs} [<position>] {optArgs}', self.hexapodStability),
             ('ditheredFlats', f'<halogen> [<pixels>] [<nPositions>] {optArgs}', self.doTimedDitheredFlats),
             ('dither', f'arc {timedDcbArcArgs} <pixels> [doMinus] {optArgs}', self.doTimedDitheredArcs),
+            ('detector', f'throughfocus {timedDcbArcArgs} <position> [<tilt>] {optArgs}', self.doTimedDetThroughFocus),
+
         ]
 
         # Define typed command arguments for the above commands.
@@ -349,6 +351,20 @@ class SpsCmd(object):
         doMinus = 'doMinus' in cmdKeys
 
         seq = timedSpsSequence.DitheredArcs(pixels=pixels, doMinus=doMinus, timedLamps=timedLamps, **cmdKwargs(cmdKeys))
+        self.process(cmd, seq=seq)
+
+
+    def doTimedDetThroughFocus(self, cmd):
+        """sps detector motors through focus with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+        timedLamps = timedDcbKwargs(cmdKeys)
+
+
+        start, stop, num = cmdKeys['position'].values
+        tilt = np.array(cmdKeys['tilt'].values) if 'tilt' in cmdKeys else np.zeros(3)
+        positions = np.array([np.linspace(start, stop - np.max(tilt), num=int(num)), ] * 3).transpose() + tilt
+
+        seq = timedSpsSequence.DetThroughFocus(positions=positions.round(2), timedLamps=timedLamps, **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
     @singleShot

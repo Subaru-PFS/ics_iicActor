@@ -1,5 +1,3 @@
-import numpy as np
-
 from ics.iicActor.utils.sequencing import Sequence
 
 
@@ -75,9 +73,9 @@ class HexapodStability(SpsSequence):
         self.appendTimedArc(timedLamps, cams='{cams}', duplicate=duplicate)
         for pos in positions:
             # Move y once separately
-            self.add('sps', 'slit dither',  y=round(pos, 5), abs=True, cams=cams)
+            self.add('sps', 'slit dither', y=round(pos, 5), abs=True, cams=cams)
             for pos in positions:
-                self.add('sps', f'slit dither',  x=round(pos, 5), abs=True, cams=cams)
+                self.add('sps', f'slit dither', x=round(pos, 5), abs=True, cams=cams)
                 self.appendTimedArc(timedLamps, cams='{cams}', duplicate=duplicate)
         self.add('sps', 'slit dither', x=0.0, y=0.0, abs=True, cams=cams)
         self.appendTimedArc(timedLamps, cams='{cams}', duplicate=duplicate)
@@ -117,3 +115,15 @@ class DitheredArcs(SpsSequence):
                 self.appendTimedArc(timedLamps, cams='{cams}', duplicate=duplicate)
 
         self.tail.add(actor='sps', cmdStr='slit dither', x=0, y=0, pixels=True, abs=True, cams=cams)
+
+
+class DetThroughFocus(SpsSequence):
+    """ Detector through focus sequence """
+
+    def __init__(self, positions, duplicate, cams, timedLamps, **kwargs):
+        Sequence.__init__(self, 'detThroughFocus', **kwargs)
+
+        for motorA, motorB, motorC in positions:
+            self.add(actor='sps', cmdStr='ccdMotors move',
+                     a=motorA, b=motorB, c=motorC, microns=True, abs=True, cams=cams)
+            self.appendTimedArc(timedLamps, cams='{cams}', duplicate=duplicate)
