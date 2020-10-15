@@ -5,48 +5,33 @@ from pfs.utils.ncaplar import defocused_exposure_times_single_position
 class Object(Sequence):
     """ Simple exposure sequence """
 
-    def __init__(self, exptime, duplicate, cams, **kwargs):
-        Sequence.__init__(self, 'object', **kwargs)
+    def __init__(self, exptime, duplicate, cams, seqtype='object', **kwargs):
+        Sequence.__init__(self, seqtype, **kwargs)
         self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=duplicate)
+
 
 
 class Bias(Sequence):
     """ Biases sequence """
 
-    def __init__(self, duplicate, cams, **kwargs):
-        Sequence.__init__(self, 'biases', **kwargs)
+    def __init__(self, duplicate, cams, seqtype='biases', **kwargs):
+        Sequence.__init__(self, seqtype, **kwargs)
         self.expose(exptype='bias', cams=cams, duplicate=duplicate)
 
 
 class Dark(Sequence):
     """ Darks sequence """
 
-    def __init__(self, exptime, duplicate, cams, **kwargs):
-        Sequence.__init__(self, 'darks', **kwargs)
-        self.expose(exptype='dark', exptime=exptime, cams=cams, duplicate=duplicate)
-
-
-class MasterBiases(Sequence):
-    """ MasterBiases sequence """
-
-    def __init__(self, duplicate, cams, **kwargs):
-        Sequence.__init__(self, 'masterBiases', **kwargs)
-        self.expose(exptype='bias', cams=cams, duplicate=duplicate)
-
-
-class MasterDarks(Sequence):
-    """ MasterDarks sequence """
-
-    def __init__(self, exptime, duplicate, cams, **kwargs):
-        Sequence.__init__(self, 'masterDarks', **kwargs)
+    def __init__(self, exptime, duplicate, cams, seqtype='darks', **kwargs):
+        Sequence.__init__(self, seqtype, **kwargs)
         self.expose(exptype='dark', exptime=exptime, cams=cams, duplicate=duplicate)
 
 
 class Arc(Sequence):
     """ Arcs sequence """
 
-    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, iisOn, iisOff, **kwargs):
-        Sequence.__init__(self, 'arcs', **kwargs)
+    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, iisOn, iisOff, seqtype='arcs',**kwargs):
+        Sequence.__init__(self, seqtype, **kwargs)
 
         if any(dcbOn.values()):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
@@ -67,8 +52,8 @@ class Arc(Sequence):
 class Flat(Sequence):
     """ Flat / fiberTrace sequence """
 
-    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, **kwargs):
-        Sequence.__init__(self, 'flats', **kwargs)
+    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, seqtype='flats',**kwargs):
+        Sequence.__init__(self, seqtype, **kwargs)
 
         if any(dcbOn.values()):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
