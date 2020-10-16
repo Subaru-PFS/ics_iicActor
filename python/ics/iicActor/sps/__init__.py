@@ -5,7 +5,7 @@ from pfs.utils.ncaplar import defocused_exposure_times_single_position
 class Object(Sequence):
     """ Simple exposure sequence """
 
-    def __init__(self, exptime, duplicate, cams, seqtype='object', **kwargs):
+    def __init__(self, exptime, duplicate, cams, seqtype='scienceObject', **kwargs):
         Sequence.__init__(self, seqtype, **kwargs)
         self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=duplicate)
 
