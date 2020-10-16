@@ -28,16 +28,16 @@ class SpsSequence(Sequence):
 class Arc(SpsSequence):
     """ Arcs sequence """
 
-    def __init__(self, duplicate, cams, timedLamps, **kwargs):
-        SpsSequence.__init__(self, 'arcs', **kwargs)
+    def __init__(self, duplicate, cams, timedLamps, seqtype='arcs', **kwargs):
+        SpsSequence.__init__(self, seqtype, **kwargs)
         self.appendTimedArc(timedLamps, cams=cams, duplicate=duplicate)
 
 
 class Flat(SpsSequence):
     """ Flat / fiberTrace sequence """
 
-    def __init__(self, duplicate, cams, timedLamps, **kwargs):
-        SpsSequence.__init__(self, 'flats', **kwargs)
+    def __init__(self, duplicate, cams, timedLamps, seqtype='flats', **kwargs):
+        SpsSequence.__init__(self, seqtype, **kwargs)
         self.appendTimedFlat(timedLamps, cams=cams, duplicate=duplicate)
 
 

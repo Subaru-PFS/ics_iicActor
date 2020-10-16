@@ -10,6 +10,7 @@ from ics.iicActor.utils import singleShot
 reload(spsSequence)
 reload(timedSpsSequence)
 
+
 def cmdKwargs(cmdKeys):
     duplicate = cmdKeys['duplicate'].values[0] if "duplicate" in cmdKeys else 1
     cams = ','.join(cmdKeys['cam'].values) if 'cam' in cmdKeys else None
@@ -40,8 +41,8 @@ def dcbKwargs(cmdKeys):
 
 
 def timedDcbKwargs(cmdKeys):
-    lampNames = 'halogen','hgar','argon','neon','krypton'
-    dcbPrepare = {name:cmdKeys[name].values[0] for name in lampNames if name in cmdKeys}
+    lampNames = 'halogen', 'hgar', 'argon', 'neon', 'krypton'
+    dcbPrepare = {name: cmdKeys[name].values[0] for name in lampNames if name in cmdKeys}
 
     return dcbPrepare
 
@@ -58,6 +59,16 @@ def iisKwargs(cmdKeys):
     iisOff = dict(off=switchOff)
 
     return iisOn, iisOff
+
+
+def safeKwargs(cmd, head=None, tail=None, **kwargs):
+    if not (head is None and tail is None):
+        cmd.warn('text="not parsing head or tail here, sorry...')
+
+    kwargs['head'] = None
+    kwargs['tail'] = None
+
+    return kwargs
 
 
 class SpsCmd(object):
@@ -77,14 +88,17 @@ class SpsCmd(object):
         timedDcbArcArgs = '[<hgar>] [<argon>] [<neon>] [<krypton>]'
         iisArgs = f'[<iisOn>] [<iisOff>]'
         self.vocab = [
-            ('expose', f'[object] <exptime> {optArgs}', self.doExpose),
-            ('bias', f'{optArgs}', self.doBias),
-            ('dark', f'<exptime> {optArgs}', self.doDark),
             ('masterBiases', f'{optArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {optArgs}', self.masterDarks),
-            ('ditheredFlats', f'<exptime> [<pixels>] [<nPositions>] [switchOff] {dcbArgs} {optArgs}', self.ditheredFlats),
+            ('ditheredFlats', f'<exptime> [<pixels>] [<nPositions>] [switchOff] {dcbArgs} {optArgs}',self.ditheredFlats),
+            ('scienceArc', f'<exptime> {dcbArgs} {optArgs}', self.doArc),
+            ('scienceTrace', f'<exptime> [switchOff] {dcbArgs} {optArgs}', self.doFlat),
+            ('scienceObject', f'<exptime> {optArgs}', self.scienceObject),
+            ('bias', f'{optArgs}', self.doBias),
+            ('dark', f'<exptime> {optArgs}', self.doDark),
             ('expose', f'arc <exptime> {dcbArgs} {iisArgs} {optArgs}', self.doArc),
             ('expose', f'flat <exptime> [switchOff] {dcbArgs} {optArgs}', self.doFlat),
+
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
             ('dither', f'arc <exptime> <pixels> [doMinus] {dcbArgs} {optArgs}', self.ditheredArcs),
@@ -92,13 +106,14 @@ class SpsCmd(object):
             ('custom', '[<name>] [<comments>] [<head>] [<tail>]', self.custom),
             ('sps', 'abort', self.abort),
 
+            ('ditheredFlats', f'<halogen> [<pixels>] [<nPositions>] {optArgs}', self.doTimedDitheredFlats),
+            ('scienceArc', f'{timedDcbArcArgs} {optArgs}', self.doTimedArc),
+            ('scienceTrace', f'<halogen> {optArgs}', self.doTimedFlat),
             ('expose', f'arc {timedDcbArcArgs} {optArgs}', self.doTimedArc),
             ('expose', f'flat <halogen> {optArgs}', self.doTimedFlat),
             ('test', f'hexapodStability {timedDcbArcArgs} [<position>] {optArgs}', self.hexapodStability),
-            ('ditheredFlats', f'<halogen> [<pixels>] [<nPositions>] {optArgs}', self.doTimedDitheredFlats),
             ('dither', f'arc {timedDcbArcArgs} <pixels> [doMinus] {optArgs}', self.doTimedDitheredArcs),
             ('detector', f'throughfocus {timedDcbArcArgs} <position> [<tilt>] {optArgs}', self.doTimedDetThroughFocus),
-
         ]
 
         # Define typed command arguments for the above commands.
@@ -133,12 +148,126 @@ class SpsCmd(object):
                                         keys.Key('krypton', types.Float(), help='Kr lamp on time'),
                                         )
 
-    def doExpose(self, cmd):
+    def sanityCheck(self, cmd, cams=None, **kwargs):
+        cams = f'cams={cams}' if cams is not None else ''
+        ret = self.actor.cmdr.call(actor='sps', cmdStr=f'checkFocus {cams}', forUserCmd=cmd, timeLim=10)
+
+        if ret.didFail:
+            for reply in ret.replyList:
+                cmd.warn(reply.keywords.canonical(delimiter=';'))
+            return False
+
+        return True
+
+    def masterBiases(self, cmd):
+        """sps bias(es). """
+        cmdKeys = cmd.cmd.keywords
+        kwargs = safeKwargs(cmd, **cmdKwargs(cmdKeys))
+        kwargs['duplicate'] = max(kwargs['duplicate'], 15)
+        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
+
+        seq = spsSequence.Bias(seqtype='masterBiases', **kwargs)
+        self.process(cmd, seq=seq)
+
+    def masterDarks(self, cmd):
+        """sps dark(s) with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+        kwargs = safeKwargs(cmd, **cmdKwargs(cmdKeys))
+        kwargs['duplicate'] = max(kwargs['duplicate'], 15)
+        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
+        exptime = cmdKeys['exptime'].values if 'exptime' in cmdKeys else [300]
+
+        seq = spsSequence.Dark(seqtype='masterDarks', exptime=exptime, **kwargs)
+        self.process(cmd, seq=seq)
+
+    def ditheredFlats(self, cmd):
+        """dithered flat(fiberTrace) with given exptime. Used to construct masterFlat """
+        cmdKeys = cmd.cmd.keywords
+        dcbOn, dcbOff = dcbKwargs(cmdKeys)
+        kwargs = safeKwargs(cmd, **cmdKwargs(cmdKeys))
+
+        if not self.sanityCheck(cmd, **kwargs):
+            cmd.fail('text="sanityCheck has failed')
+            return
+
+        if dcbOn['attenuator'] is not None and self.actor.site != 'L':
+            raise ValueError('You can only set attenuator at LAM')
+
+        dcbOn['on'] = 'halogen'
+        exptime = cmdKeys['exptime'].values
+        pixels = cmdKeys['pixels'].values[0] if 'pixels' in cmdKeys else 0.3
+        nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
+        nPositions = (nPositions // 2) * 2
+        positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1)
+        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
+
+        seq = spsSequence.DitheredFlats(exptime=exptime, positions=positions.round(5), dcbOn=dcbOn, dcbOff=dcbOff,
+                                        **kwargs)
+        self.process(cmd, seq=seq)
+
+    def scienceObject(self, cmd):
         """sps exposure with given exptime. """
         cmdKeys = cmd.cmd.keywords
+        kwargs = safeKwargs(cmd, **cmdKwargs(cmdKeys))
+
+        if not self.sanityCheck(cmd, **kwargs):
+            cmd.fail('text="sanityCheck has failed')
+            return
+
         exptime = cmdKeys['exptime'].values
 
-        seq = spsSequence.Object(exptime=exptime, **cmdKwargs(cmdKeys))
+        seq = spsSequence.Object(exptime=exptime, **kwargs)
+        self.process(cmd, seq=seq)
+
+    def doArc(self, cmd):
+        """sps arc(s) with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+        dcbOn, dcbOff = dcbKwargs(cmdKeys)
+        doScienceArc = 'arc' not in cmdKeys
+
+        if doScienceArc:
+            kwargs = safeKwargs(cmd, **cmdKwargs(cmdKeys))
+            seqtype = 'scienceArc'
+            if not self.sanityCheck(cmd, **kwargs):
+                cmd.fail('text="sanityCheck has failed')
+                return
+        else:
+            seqtype = 'arcs'
+            kwargs = cmdKwargs(cmdKeys)
+
+        if dcbOn['attenuator'] is not None and self.actor.site != 'L':
+            raise ValueError('You can only set attenuator at LAM')
+
+        iisOn, iisOff = iisKwargs(cmdKeys)
+        exptime = cmdKeys['exptime'].values
+
+        seq = spsSequence.Arc(seqtype=seqtype, exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, iisOn=iisOn,
+                              iisOff=iisOff, **kwargs)
+        self.process(cmd, seq=seq)
+
+    def doFlat(self, cmd):
+        """sps flat(s), also known as fiberTrace, with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+        dcbOn, dcbOff = dcbKwargs(cmdKeys)
+        doScienceTrace = 'flat' not in cmdKeys
+
+        if doScienceTrace:
+            kwargs = safeKwargs(cmd, **cmdKwargs(cmdKeys))
+            seqtype = 'scienceTrace'
+            if not self.sanityCheck(cmd, **kwargs):
+                cmd.fail('text="sanityCheck has failed')
+                return
+        else:
+            seqtype = 'flats'
+            kwargs = cmdKwargs(cmdKeys)
+
+        if dcbOn['attenuator'] is not None and self.actor.site != 'L':
+            raise ValueError('You can only set attenuator at LAM')
+
+        dcbOn['on'] = 'halogen'
+        exptime = cmdKeys['exptime'].values
+
+        seq = spsSequence.Flat(seqtype=seqtype, exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, **kwargs)
         self.process(cmd, seq=seq)
 
     def doBias(self, cmd):
@@ -154,56 +283,6 @@ class SpsCmd(object):
         exptime = cmdKeys['exptime'].values
 
         seq = spsSequence.Dark(exptime=exptime, **cmdKwargs(cmdKeys))
-        self.process(cmd, seq=seq)
-
-    def masterBiases(self, cmd):
-        """sps bias(es). """
-        cmdKeys = cmd.cmd.keywords
-        kwargs = cmdKwargs(cmdKeys)
-        kwargs['duplicate'] = max(kwargs['duplicate'], 15)
-        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
-
-        seq = spsSequence.MasterBiases(**kwargs)
-        self.process(cmd, seq=seq)
-
-    def masterDarks(self, cmd):
-        """sps dark(s) with given exptime. """
-        cmdKeys = cmd.cmd.keywords
-        kwargs = cmdKwargs(cmdKeys)
-        kwargs['duplicate'] = max(kwargs['duplicate'], 15)
-        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
-        exptime = cmdKeys['exptime'].values if 'exptime' in cmdKeys else [300]
-
-        seq = spsSequence.MasterDarks(exptime=exptime, **kwargs)
-        self.process(cmd, seq=seq)
-
-    def doArc(self, cmd):
-        """sps arc(s) with given exptime. """
-        cmdKeys = cmd.cmd.keywords
-        dcbOn, dcbOff = dcbKwargs(cmdKeys)
-
-        if dcbOn['attenuator'] is not None and self.actor.site != 'L':
-            raise ValueError('You can only set attenuator at LAM')
-
-        iisOn, iisOff = iisKwargs(cmdKeys)
-        exptime = cmdKeys['exptime'].values
-
-        seq = spsSequence.Arc(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, iisOn=iisOn, iisOff=iisOff,
-                              **cmdKwargs(cmdKeys))
-        self.process(cmd, seq=seq)
-
-    def doFlat(self, cmd):
-        """sps flat(s), also known as fiberTrace, with given exptime. """
-        cmdKeys = cmd.cmd.keywords
-        dcbOn, dcbOff = dcbKwargs(cmdKeys)
-
-        if dcbOn['attenuator'] is not None and self.actor.site != 'L':
-            raise ValueError('You can only set attenuator at LAM')
-
-        dcbOn['on'] = 'halogen'
-        exptime = cmdKeys['exptime'].values
-
-        seq = spsSequence.Flat(exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
     def slitThroughFocus(self, cmd):
@@ -237,27 +316,6 @@ class SpsCmd(object):
 
         seq = spsSequence.DetThroughFocus(exptime=exptime, positions=positions.round(2), dcbOn=dcbOn, dcbOff=dcbOff,
                                           **cmdKwargs(cmdKeys))
-        self.process(cmd, seq=seq)
-
-    def ditheredFlats(self, cmd):
-        """dithered flat(fiberTrace) with given exptime. Used to construct masterFlat """
-        cmdKeys = cmd.cmd.keywords
-        dcbOn, dcbOff = dcbKwargs(cmdKeys)
-        kwargs = cmdKwargs(cmdKeys)
-
-        if dcbOn['attenuator'] is not None and self.actor.site != 'L':
-            raise ValueError('You can only set attenuator at LAM')
-
-        dcbOn['on'] = 'halogen'
-        exptime = cmdKeys['exptime'].values
-        pixels = cmdKeys['pixels'].values[0] if 'pixels' in cmdKeys else 0.3
-        nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
-        nPositions = (nPositions // 2) * 2
-        positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1)
-        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
-
-        seq = spsSequence.DitheredFlats(exptime=exptime, positions=positions.round(5), dcbOn=dcbOn, dcbOff=dcbOff,
-                                        **kwargs)
         self.process(cmd, seq=seq)
 
     def ditheredArcs(self, cmd):
@@ -299,20 +357,61 @@ class SpsCmd(object):
         seq = spsSequence.Custom(**cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
+    def doTimedDitheredFlats(self, cmd):
+        """ditheredFlat sequence, also known as masterFlat, controlled by lamp time. """
+        cmdKeys = cmd.cmd.keywords
+        timedLamps = timedDcbKwargs(cmdKeys)
+        kwargs = safeKwargs(cmd, **cmdKwargs(cmdKeys))
+
+        if not self.sanityCheck(cmd, **kwargs):
+            cmd.fail('text="sanityCheck has failed')
+            return
+
+        pixels = cmdKeys['pixels'].values[0] if 'pixels' in cmdKeys else 0.3
+        nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
+        nPositions = (nPositions // 2) * 2
+        positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1)
+        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
+
+        seq = timedSpsSequence.DitheredFlats(positions=positions.round(5), timedLamps=timedLamps, **kwargs)
+        self.process(cmd, seq=seq)
+
     def doTimedArc(self, cmd):
         """sps arc(s) controlled by lamp times """
         cmdKeys = cmd.cmd.keywords
         timedLamps = timedDcbKwargs(cmdKeys)
+        doScienceArc = 'arc' not in cmdKeys
 
-        seq = timedSpsSequence.Arc(timedLamps=timedLamps, **cmdKwargs(cmdKeys))
+        if doScienceArc:
+            kwargs = safeKwargs(cmd, **cmdKwargs(cmdKeys))
+            seqtype = 'scienceArc'
+            if not self.sanityCheck(cmd, **kwargs):
+                cmd.fail('text="sanityCheck has failed')
+                return
+        else:
+            seqtype = 'arcs'
+            kwargs = cmdKwargs(cmdKeys)
+
+        seq = timedSpsSequence.Arc(seqtype=seqtype, timedLamps=timedLamps, **kwargs)
         self.process(cmd, seq=seq)
 
     def doTimedFlat(self, cmd):
         """sps flat(s), also known as fiberTrace, controlled by lamp time. """
         cmdKeys = cmd.cmd.keywords
         timedLamps = timedDcbKwargs(cmdKeys)
+        doScienceTrace = 'flat' not in cmdKeys
 
-        seq = timedSpsSequence.Flat(timedLamps=timedLamps, **cmdKwargs(cmdKeys))
+        if doScienceTrace:
+            kwargs = safeKwargs(cmd, **cmdKwargs(cmdKeys))
+            seqtype = 'scienceTrace'
+            if not self.sanityCheck(cmd, **kwargs):
+                cmd.fail('text="sanityCheck has failed')
+                return
+        else:
+            seqtype = 'flats'
+            kwargs = cmdKwargs(cmdKeys)
+
+        seq = timedSpsSequence.Flat(seqtype=seqtype, timedLamps=timedLamps, **kwargs)
         self.process(cmd, seq=seq)
 
     def hexapodStability(self, cmd):
@@ -327,21 +426,6 @@ class SpsCmd(object):
         seq = timedSpsSequence.HexapodStability(position=np.arange(*position), timedLamps=timedLamps, **kwargs)
         self.process(cmd, seq=seq)
 
-    def doTimedDitheredFlats(self, cmd):
-        """ditheredFlat sequence, also known as masterFlat, controlled by lamp time. """
-        cmdKeys = cmd.cmd.keywords
-        kwargs = cmdKwargs(cmdKeys)
-        timedLamps = timedDcbKwargs(cmdKeys)
-
-        pixels = cmdKeys['pixels'].values[0] if 'pixels' in cmdKeys else 0.3
-        nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
-        nPositions = (nPositions // 2) * 2
-        positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1)
-        kwargs['name'] = 'calibrationData' if not kwargs['name'] else kwargs['name']
-
-        seq = timedSpsSequence.DitheredFlats(positions=positions.round(5), timedLamps=timedLamps, **kwargs)
-        self.process(cmd, seq=seq)
-
     def doTimedDitheredArcs(self, cmd):
         """dithered Arc(s), controlled by lamp time.  """
         cmdKeys = cmd.cmd.keywords
@@ -353,18 +437,17 @@ class SpsCmd(object):
         seq = timedSpsSequence.DitheredArcs(pixels=pixels, doMinus=doMinus, timedLamps=timedLamps, **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
-
     def doTimedDetThroughFocus(self, cmd):
         """sps detector motors through focus with given exptime. """
         cmdKeys = cmd.cmd.keywords
         timedLamps = timedDcbKwargs(cmdKeys)
 
-
         start, stop, num = cmdKeys['position'].values
         tilt = np.array(cmdKeys['tilt'].values) if 'tilt' in cmdKeys else np.zeros(3)
         positions = np.array([np.linspace(start, stop - np.max(tilt), num=int(num)), ] * 3).transpose() + tilt
 
-        seq = timedSpsSequence.DetThroughFocus(positions=positions.round(2), timedLamps=timedLamps, **cmdKwargs(cmdKeys))
+        seq = timedSpsSequence.DetThroughFocus(positions=positions.round(2), timedLamps=timedLamps,
+                                               **cmdKwargs(cmdKeys))
         self.process(cmd, seq=seq)
 
     @singleShot
