@@ -2,9 +2,10 @@ import time
 from collections.abc import Iterable
 from functools import partial
 
+import pandas as pd
 from ics.iicActor.utils import stripQuotes, stripField
+from opdb import utils, opdb
 from opscore.utility.qstr import qstr
-from pfs.utils.opdb import opDB
 
 
 class SubCmd(object):
@@ -211,7 +212,8 @@ class Sequence(list):
 
     def lastVisitSetId(self):
         """ get last visit_set_id from opDB """
-        visit_set_id, = opDB.fetchone('select max(visit_set_id) from sps_sequence')
+        df = utils.fetch_query(opdb.OpDB.url, 'select max(visit_set_id) from sps_sequence')
+        visit_set_id, = df.loc[0].values
         visit_set_id = 0 if visit_set_id is None else visit_set_id
         return int(visit_set_id)
 
@@ -322,11 +324,13 @@ class Sequence(list):
     def store(self):
         """ Store sequence in database """
         if self.visits:
-            opDB.insert('sps_sequence', visit_set_id=self.visit_set_id, sequence_type=self.seqtype, name=self.name,
-                        comments=self.comments, cmd_str=self.rawCmd, status=self.status)
+            utils.insert(opdb.OpDB.url, 'sps_sequence',
+                         pd.DataFrame(dict(visit_set_id=self.visit_set_id, sequence_type=self.seqtype, name=self.name,
+                                           comments=self.comments, cmd_str=self.rawCmd, status=self.status), index=[0]))
 
             for visit in self.visits:
-                opDB.insert('visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
+                utils.insert(opdb.OpDB.url, 'visit_set',
+                             pd.DataFrame(dict(pfs_visit_id=visit, visit_set_id=self.visit_set_id), index=[0]))
 
 
 class CmdList(Sequence):
