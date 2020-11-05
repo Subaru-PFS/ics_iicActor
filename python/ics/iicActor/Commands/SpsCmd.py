@@ -90,14 +90,15 @@ class SpsCmd(object):
         self.vocab = [
             ('masterBiases', f'{optArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {optArgs}', self.masterDarks),
-            ('ditheredFlats', f'<exptime> [<pixels>] [<nPositions>] [switchOff] {dcbArgs} {optArgs}',self.ditheredFlats),
+            ('ditheredFlats', f'<exptime> [<pixels>] [<nPositions>] [switchOff] {dcbArgs} {optArgs}',
+             self.ditheredFlats),
             ('scienceArc', f'<exptime> {dcbArgs} {optArgs}', self.doArc),
             ('scienceTrace', f'<exptime> [switchOff] {dcbArgs} {optArgs}', self.doFlat),
             ('scienceObject', f'<exptime> {optArgs}', self.scienceObject),
             ('bias', f'{optArgs}', self.doBias),
             ('dark', f'<exptime> {optArgs}', self.doDark),
             ('expose', f'arc <exptime> {dcbArgs} {iisArgs} {optArgs}', self.doArc),
-            ('expose', f'flat <exptime> [switchOff] {dcbArgs} {optArgs}', self.doFlat),
+            ('expose', f'flat <exptime> [noLampCtl] [switchOff] {dcbArgs} {optArgs}', self.doFlat),
 
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {optArgs}', self.slitThroughFocus),
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {optArgs}', self.detThroughFocus),
@@ -254,17 +255,20 @@ class SpsCmd(object):
         if doScienceTrace:
             kwargs = safeKwargs(cmd, **cmdKwargs(cmdKeys))
             seqtype = 'scienceTrace'
+            dcbOn['on'] = 'halogen'
             if not self.sanityCheck(cmd, **kwargs):
                 cmd.fail('text="sanityCheck has failed')
                 return
         else:
             seqtype = 'flats'
+            if not 'noLampCtl' in cmdKeys:
+                dcbOn['on'] = 'halogen'
+
             kwargs = cmdKwargs(cmdKeys)
 
         if dcbOn['attenuator'] is not None and self.actor.site != 'L':
             raise ValueError('You can only set attenuator at LAM')
 
-        dcbOn['on'] = 'halogen'
         exptime = cmdKeys['exptime'].values
 
         seq = spsSequence.Flat(seqtype=seqtype, exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, **kwargs)
