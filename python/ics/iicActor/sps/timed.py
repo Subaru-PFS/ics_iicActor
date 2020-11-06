@@ -1,4 +1,5 @@
 from ics.iicActor.utils.sequencing import Sequence
+from pfs.utils.ncaplar import defocused_exposure_times_single_position
 
 
 class SpsSequence(Sequence):
@@ -127,3 +128,23 @@ class DetThroughFocus(SpsSequence):
             self.add(actor='sps', cmdStr='ccdMotors move',
                      a=motorA, b=motorB, c=motorC, microns=True, abs=True, cams=cams)
             self.appendTimedArc(timedLamps, cams='{cams}', duplicate=duplicate)
+
+
+def defocused_exposure_times_no_atten(exp_time_0, defocused_value):
+    exptime, __ = defocused_exposure_times_single_position(exp_time_0=exp_time_0, att_value_0=None,
+                                                           defocused_value=defocused_value)
+    return exptime
+
+
+class Defocus(SpsSequence):
+    """ Defocus sequence """
+
+    def __init__(self, positions, duplicate, cams, timedLamps, **kwargs):
+        Sequence.__init__(self, 'defocusedArcs', **kwargs)
+        timedLamps0 = [(k, v) for k, v in timedLamps.items()]
+
+        for position in positions:
+            calcExptime = [defocused_exposure_times_no_atten(exptime, position) for lamp, exptime in timedLamps0]
+            calcTimedLamps = dict([(lamp, exptime) for (lamp, __), exptime in zip(timedLamps0, calcExptime)])
+            self.add(actor='sps', cmdStr='slit', focus=position, abs=True, cams=cams)
+            self.appendTimedArc(calcTimedLamps, cams='{cams}', duplicate=duplicate)
