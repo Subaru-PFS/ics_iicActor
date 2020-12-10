@@ -1,11 +1,11 @@
 from importlib import reload
 
-import ics.iicActor.sps as spsSequence
+import ics.iicActor.sps.sequence as spsSequence
 import ics.iicActor.sps.timed as timedSpsSequence
 import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
-from ics.iicActor.utils import singleShot
+from ics.iicActor.utils.lib import singleShot
 
 reload(spsSequence)
 reload(timedSpsSequence)

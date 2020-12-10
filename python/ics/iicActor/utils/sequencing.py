@@ -2,8 +2,7 @@ import time
 from collections.abc import Iterable
 from functools import partial
 
-import pandas as pd
-from ics.iicActor.utils import stripQuotes, stripField
+from ics.iicActor.utils.lib import stripQuotes, stripField
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
 
@@ -324,7 +323,8 @@ class Sequence(list):
     def store(self):
         """ Store sequence in database """
         if self.visits:
-            utils.insert_row(opdb.OpDB.url, 'sps_sequence', visit_set_id=self.visit_set_id, sequence_type=self.seqtype, name=self.name,
+            utils.insert_row(opdb.OpDB.url, 'sps_sequence', visit_set_id=self.visit_set_id, sequence_type=self.seqtype,
+                             name=self.name,
                              comments=self.comments, cmd_str=self.rawCmd, status=self.status)
 
             for visit in self.visits:
