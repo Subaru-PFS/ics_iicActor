@@ -6,6 +6,7 @@ import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.iicActor.utils.lib import singleShot
+from pfs.utils.spsConfig import SpecModule, SpsConfig
 
 reload(spsSequence)
 reload(timedSpsSequence)
@@ -71,6 +72,24 @@ def safeKwargs(cmd, head=None, tail=None, **kwargs):
     return kwargs
 
 
+
+
+
+def identKeys(cmdKeys):
+    keys = dict()
+    if 'cam' in cmdKeys and ('sm' in cmdKeys or 'arm' in cmdKeys):
+        raise RuntimeError('you cannot provide both cam and (sm or arm)')
+
+    for key in ['cam', 'arm', 'sm']:
+        keys[key] = cmdKeys[key].values if key in cmdKeys else None
+
+    return keys
+
+
+
+
+
+
 class SpsCmd(object):
 
     def __init__(self, actor):
@@ -84,10 +103,13 @@ class SpsCmd(object):
         # passed a single argument, the parsed and typed command.
         #
         optArgs = '[<duplicate>] [<cam>] [<name>] [<comments>] [<head>] [<tail>]'
+        identArgs = '[<cam>] [<arm>] [<sm>]'
         dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [<attenuator>] [force]'
+
         timedDcbArcArgs = '[<hgar>] [<argon>] [<neon>] [<krypton>]'
         iisArgs = f'[<iisOn>] [<iisOff>]'
         self.vocab = [
+            ('test', f'{identArgs}', self.test),
             ('masterBiases', f'{optArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {optArgs}', self.masterDarks),
             ('ditheredFlats', f'<exptime> [<pixels>] [<nPositions>] [switchOff] {dcbArgs} {optArgs}',
@@ -123,6 +145,8 @@ class SpsCmd(object):
                                         keys.Key('exptime', types.Float() * (1,), help='exptime list (seconds)'),
                                         keys.Key('duplicate', types.Int(), help='exposure duplicate (1 is default)'),
                                         keys.Key('cam', types.String() * (1,), help='camera(s) to take exposure from'),
+                                        keys.Key('arm', types.String() * (1,), help='arm to take exposure from'),
+                                        keys.Key('sm', types.Int() * (1,), help='spectrograph module(s) to take exposure from'),
                                         keys.Key('name', types.String(), help='sps_sequence name'),
                                         keys.Key('comments', types.String(), help='sps_sequence comments'),
                                         keys.Key('head', types.String() * (1,), help='cmdStr list to process before'),
@@ -160,6 +184,19 @@ class SpsCmd(object):
             return False
 
         return True
+
+    def test(self, cmd):
+        cmdKeys = cmd.cmd.keywords
+        keys = identKeys(cmdKeys)
+        print(keys)
+        spsConfig = SpsConfig.fromModel(self.actor.models['sps'])
+        specs = spsConfig.identify(**keys)
+        try:
+            [light] = list(set([spec.lightSource for spec in specs]))
+        except:
+            raise RuntimeError('there can only be one light source for a given sequence')
+
+        cmd.finish()
 
     def masterBiases(self, cmd):
         """sps bias(es). """
