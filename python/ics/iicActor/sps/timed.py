@@ -26,7 +26,7 @@ class SpsSequence(Sequence):
         self._appendTimedLampExposure('flat', lamps, cams=cams, duplicate=duplicate)
 
 
-class Arc(SpsSequence):
+class Arcs(SpsSequence):
     """ Arcs sequence """
 
     def __init__(self, duplicate, cams, timedLamps, seqtype='arcs', **kwargs):
@@ -34,7 +34,7 @@ class Arc(SpsSequence):
         self.appendTimedArc(timedLamps, cams=cams, duplicate=duplicate)
 
 
-class Flat(SpsSequence):
+class Flats(SpsSequence):
     """ Flat / fiberTrace sequence """
 
     def __init__(self, duplicate, cams, timedLamps, seqtype='flats', **kwargs):
@@ -136,7 +136,7 @@ def defocused_exposure_times_no_atten(exp_time_0, defocused_value):
     return exptime
 
 
-class Defocus(SpsSequence):
+class DefocusedArcs(SpsSequence):
     """ Defocus sequence """
 
     def __init__(self, positions, duplicate, cams, timedLamps, **kwargs):
