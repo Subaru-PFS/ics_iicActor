@@ -10,45 +10,39 @@ class Object(Sequence):
         self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=duplicate)
 
 
-class Bias(Sequence):
+class Biases(Sequence):
     """ Biases sequence """
-
+    lightRequired = False
     def __init__(self, duplicate, cams, seqtype='biases', **kwargs):
         Sequence.__init__(self, seqtype, **kwargs)
         self.expose(exptype='bias', cams=cams, duplicate=duplicate)
 
 
-class Dark(Sequence):
+class Darks(Sequence):
     """ Darks sequence """
 
     def __init__(self, exptime, duplicate, cams, seqtype='darks', **kwargs):
+        lightRequired = False
         Sequence.__init__(self, seqtype, **kwargs)
         self.expose(exptype='dark', exptime=exptime, cams=cams, duplicate=duplicate)
 
 
-class Arc(Sequence):
+class Arcs(Sequence):
     """ Arcs sequence """
 
-    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, iisOn, iisOff, seqtype='arcs', **kwargs):
+    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, seqtype='arcs', **kwargs):
         Sequence.__init__(self, seqtype, **kwargs)
 
         if any(dcbOn.values()):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
-        if any(iisOn.values()):
-            self.head.add(actor='sps', cmdStr='iis', cams=cams, **iisOn)
-
         if any(dcbOff.values()):
             self.tail.add(index=0, actor='dcb', cmdStr='arc', **dcbOff)
 
-        if any(iisOff.values()):
-            self.tail.add(index=0, actor='sps', cmdStr='iis', cams=cams, **iisOff)
-
-        cams = '{cams}' if any(iisOn.values()) else cams
         self.expose(exptype='arc', exptime=exptime, cams=cams, duplicate=duplicate)
 
 
-class Flat(Sequence):
+class Flats(Sequence):
     """ Flat / fiberTrace sequence """
 
     def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, seqtype='flats', **kwargs):
@@ -147,7 +141,7 @@ class DitheredArcs(Sequence):
         self.tail.add(actor='sps', cmdStr='slit dither', x=0, y=0, pixels=True, abs=True, cams=cams)
 
 
-class Defocus(Sequence):
+class DefocusedArcs(Sequence):
     """ Defocus sequence """
 
     def __init__(self, exp_time_0, positions, duplicate, cams, dcbOn, dcbOff, **kwargs):

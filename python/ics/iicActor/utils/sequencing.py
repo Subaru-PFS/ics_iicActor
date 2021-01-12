@@ -1,5 +1,4 @@
 import time
-from collections.abc import Iterable
 from functools import partial
 
 from ics.iicActor.utils.lib import stripQuotes, stripField
@@ -12,7 +11,7 @@ class SubCmd(object):
 
     def __init__(self, actor, cmdStr, timeLim=60, idleTime=5.0, **kwargs):
         object.__init__(self)
-        cmdStr = ' '.join([cmdStr] + self.parse(**kwargs))
+        cmdStr = ' '.join([cmdStr] + SubCmd.parse(**kwargs))
         self.actor = actor
         self.cmdStr = cmdStr
         self.timeLim = timeLim
@@ -34,12 +33,15 @@ class SubCmd(object):
     def visited(self):
         return not self.didFail and self.visit != -1
 
-    def parse(self, **kwargs):
+    @staticmethod
+    def parse(**kwargs):
         """ Strip given text field from rawCmd """
         args = []
         for k, v in kwargs.items():
             if v is None or v is False:
                 continue
+            if isinstance(v, list):
+                v = ','.join([str(e) for e in v])
             args.append(k if v is True else f'{k}={v}')
 
         return args
@@ -163,6 +165,7 @@ class DcbCmd(SubCmd):
 
 class Sequence(list):
     """ Placeholder to handle sequence of subcommand """
+    lightRequired = True
 
     def __init__(self, seqtype, name='', comments='', head=None, tail=None):
         super().__init__()
@@ -216,13 +219,13 @@ class Sequence(list):
         visit_set_id = 0 if visit_set_id is None else visit_set_id
         return int(visit_set_id)
 
-    def expose(self, exptype, exptime=0.0, cams=None, duplicate=1, doLamps=False):
+    def expose(self, exptype, exptime=0.0, duplicate=1, doLamps=False, **identKeys):
         """ Append duplicate * sps expose to sequence """
-        exptime = [exptime] if not isinstance(exptime, Iterable) else exptime
+        exptime = [exptime] if not isinstance(exptime, list) else exptime
 
         for expTime in exptime:
             for i in range(duplicate):
-                self.append(SpsExpose.specify(exptype, expTime, cams=cams, doLamps=doLamps))
+                self.append(SpsExpose.specify(exptype, expTime, doLamps=doLamps, **identKeys))
 
     def add(self, actor, cmdStr, timeLim=60, idleTime=5.0, index=None, **kwargs):
         """ Append duplicate * subcommand to sequence """
@@ -234,8 +237,9 @@ class Sequence(list):
         """ Generate sps_sequence status """
         cmd.inform(f'sps_sequence={self.visit_set_id},{self.seqtype},"{self.cmdStr}","{self.name}","{self.comments}"')
 
-    def register(self, cmd):
+    def register(self, cmd, iicActor):
         """ Register sequence and underlying subcommand"""
+        self.actor = iicActor
         self.rawCmd = cmd.rawCmd
         self.cmdStr = f"iic {stripQuotes(stripField(stripField(cmd.rawCmd, 'name='), 'comments='))}"
         self.inform(cmd=cmd)
@@ -246,6 +250,7 @@ class Sequence(list):
 
     def process(self, cmd):
         """ Process full sequence, store in database"""
+
         try:
             for subCmd in (self.head + self.cmdList):
                 self.processSubCmd(cmd, subCmd=subCmd)
@@ -255,6 +260,7 @@ class Sequence(list):
                 self.processSubCmd(cmd, subCmd=subCmd, doRaise=False)
 
             self.store()
+            self.clear()
 
     def processSubCmd(self, cmd, subCmd, doRaise=True):
         """ Process each subcommand, handle error or abortion """
@@ -297,13 +303,6 @@ class Sequence(list):
 
         return self.aborted
 
-    def start(self, iicActor, cmd):
-        """ Register, process and clear sequence """
-        self.actor = iicActor
-        self.register(cmd=cmd)
-        self.process(cmd=cmd)
-        self.clear()
-
     def clear(self):
         """ Clear sequence"""
         del self.head
@@ -324,8 +323,7 @@ class Sequence(list):
         """ Store sequence in database """
         if self.visits:
             utils.insert_row(opdb.OpDB.url, 'sps_sequence', visit_set_id=self.visit_set_id, sequence_type=self.seqtype,
-                             name=self.name,
-                             comments=self.comments, cmd_str=self.rawCmd, status=self.status)
+                             name=self.name, comments=self.comments, cmd_str=self.rawCmd, status=self.status)
 
             for visit in self.visits:
                 utils.insert_row(opdb.OpDB.url, 'visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
