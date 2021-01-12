@@ -2,6 +2,7 @@
 
 import actorcore.ICC
 from ics.iicActor import visit
+from ics.iicActor.utils.resource import ResourceManager
 from pfs.utils.spectroIds import getSite
 
 
@@ -21,6 +22,7 @@ class IicActor(actorcore.ICC.ICC):
         # is responsible for distributing to sub actors.
         #
         self.visitor = visit.VisitManager(self)
+        self.resourceManager = ResourceManager(self)
 
         self.everConnected = False
 
