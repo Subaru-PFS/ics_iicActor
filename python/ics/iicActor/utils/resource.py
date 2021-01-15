@@ -2,34 +2,34 @@ from importlib import reload
 
 import ics.iicActor.sps.sequence as spsSequence
 import ics.iicActor.sps.timed as timedSpsSequence
-from ics.iicActor.utils.sequencing import SubCmd
 from actorcore.QThread import QThread
-from pfs.utils.spsConfig import SpsConfig
+from ics.iicActor import visit
+from opdb import utils, opdb
 from opscore.utility.qstr import qstr
+from pfs.utils.spsConfig import SpsConfig
 
 reload(spsSequence)
 reload(timedSpsSequence)
 
 
 class SpectroJob(QThread):
-    def __init__(self, iicActor, identKeys, seqObj):
-        self.seqObj = seqObj
+    """ Placeholder which link the data request with the required resources and mhs commands. """
+
+    def __init__(self, iicActor, identKeys, seqObj, visitSetId):
+        QThread.__init__(self, iicActor, 'toto')
+
+        self.visitor = visit.VisitManager(iicActor)
         self.specs = SpsConfig.fromModel(iicActor.models['sps']).identify(**identKeys)
+        self.seqObj = seqObj
+        self.visitSetId = visitSetId
 
         self.lightSource = self.getLightSource(self.specs) if seqObj.lightRequired else None
-        self.enus = list(set([spec.enu for spec in self.specs]))
+        self.requiredParts = list(set(sum([spec.requiredParts(seqObj.lightRequired) for spec in self.specs], [])))
         self.isProcessed = False
-
-        QThread.__init__(self, iicActor, 'toto')
 
     @property
     def camNames(self):
         return [spec.camName for spec in self.specs]
-
-    @property
-    def requiredParts(self):
-        parts = self.camNames + self.enus if self.lightSource is not None else self.camNames
-        return parts
 
     @property
     def requiredResources(self):
@@ -39,6 +39,7 @@ class SpectroJob(QThread):
         return f'SpectroJob(lightSource={self.lightSource} locked={",".join(self.requiredParts)})'
 
     def getLightSource(self, specs):
+        """ Get light source from our sets of specs(camera). """
         try:
             [light] = list(set([spec.lightSource for spec in specs]))
         except:
@@ -47,6 +48,7 @@ class SpectroJob(QThread):
         return light
 
     def isInFocus(self, cmd):
+        """ Check that the camera(s) are indeed in focus. """
         ret = self.actor.cmdr.call(actor='sps', cmdStr=f'checkFocus cams={",".join(self.camNames)}', forUserCmd=cmd,
                                    timeLim=10)
 
@@ -58,15 +60,17 @@ class SpectroJob(QThread):
         return True
 
     def instantiate(self, cmd, *args, **kwargs):
+        """ Instantiate seqObj with given args, kwargs. """
         self.seq = self.seqObj(cams=self.camNames, *args, **kwargs)
-        self.seq.register(cmd, iicActor=self.actor)
+        self.seq.assign(cmd, self)
 
     def fire(self, cmd):
+        """ Put Job on the Thread. """
         self.start()
-        self.process(cmd)
+        self.putMsg(self.process, cmd=cmd)
 
     def process(self, cmd):
-
+        """ Process the sequence in the Job's thread as it would behave in the main one. """
         try:
             self.seq.process(cmd)
 
@@ -80,13 +84,19 @@ class SpectroJob(QThread):
         cmd.finish()
 
     def free(self):
+        """ Make sure, you aren't leaving anything behind. """
+        self.seq.clear()
+        self.seq = None
         self.exit()
 
     def handleTimeout(self):
+        """ Called when the .get() times out. Intended to be overridden. """
         pass
 
 
 class ResourceManager(object):
+    """ Placeholder to reject/accept incoming jobs based on the availability of the software/hardware. """
+
     def __init__(self, actor):
         self.actor = actor
         self.jobs = dict()
@@ -100,20 +110,23 @@ class ResourceManager(object):
         return sum([job.requiredResources for job in self.onGoing], [])
 
     def genIdentKeys(self, cmdKeys):
+        """ Identify which spectrograph(cameras) is required to take data. """
         keys = dict()
         if 'cam' in cmdKeys and ('sm' in cmdKeys or 'arm' in cmdKeys):
             raise RuntimeError('you cannot provide both cam and (sm or arm)')
 
         for key in ['cam', 'arm', 'sm']:
-            #to be removed later on
+            # to be removed later on
             tkey = 'cams' if key == 'cam' else key
             keys[tkey] = cmdKeys[key].values if key in cmdKeys else None
 
         return keys
 
     def request(self, cmd, seqObj, doCheckFocus=False):
+        """ Request a new Job and lock it if all checks passes. """
         identKeys = self.genIdentKeys(cmd.cmd.keywords)
-        job = SpectroJob(self.actor, identKeys, seqObj)
+        visitSetId = self.arrangeVisitSetId()
+        job = SpectroJob(self.actor, identKeys, seqObj, visitSetId)
 
         if any([resource in self.locked for resource in job.requiredResources]):
             raise RuntimeError('cannot fire your sequence, required resources already locked...')
@@ -124,15 +137,14 @@ class ResourceManager(object):
         return self.lock(job)
 
     def lock(self, job):
-        if job.lightSource is None:
-            for spec in job.specs:
-                self.allocate(job, key=spec.camName)
-        else:
-            self.allocate(job, key=job.lightSource)
+        """ all specs points to the same job. """
+        for spec in job.specs:
+            self.allocate(job, key=spec.camName)
 
         return job
 
     def allocate(self, job, key):
+        """ Just associate a spec with a job, free a previous job if it's not longer referenced. """
         try:
             prevJob = self.jobs[key]
         except KeyError:
@@ -143,8 +155,21 @@ class ResourceManager(object):
         if prevJob is not None and prevJob not in self.jobs:
             prevJob.free()
 
+    def fetchLastVisitSetId(self):
+        """ get last visit_set_id from opDB """
+        df = utils.fetch_query(opdb.OpDB.url, 'select max(visit_set_id) from sps_sequence')
+        visit_set_id, = df.loc[0].values
+        visit_set_id = 0 if visit_set_id is None else visit_set_id
+        return int(visit_set_id)
 
+    def arrangeVisitSetId(self):
+        """ Multiple Jobs can happen in parallel, make sure you don't attribute same visit_set_id.  """
+        lastVisitSetId = self.fetchLastVisitSetId() + 1
+        aliveVisitSetId = [job.visitSetId for job in self.jobs.values()]
+        visitSetId = max(aliveVisitSetId) + 1 if lastVisitSetId in aliveVisitSetId else lastVisitSetId
+        return visitSetId
 
     def getStatus(self, cmd):
+        """ generate Job(s) status(es). """
         for job in list(set(self.jobs.values())):
             cmd.inform(f"text={qstr(job)}")

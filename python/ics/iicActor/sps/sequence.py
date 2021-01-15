@@ -20,9 +20,8 @@ class Biases(Sequence):
 
 class Darks(Sequence):
     """ Darks sequence """
-
+    lightRequired = False
     def __init__(self, exptime, duplicate, cams, seqtype='darks', **kwargs):
-        lightRequired = False
         Sequence.__init__(self, seqtype, **kwargs)
         self.expose(exptype='dark', exptime=exptime, cams=cams, duplicate=duplicate)
 
