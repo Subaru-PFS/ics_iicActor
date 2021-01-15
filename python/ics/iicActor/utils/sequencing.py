@@ -33,6 +33,10 @@ class SubCmd(object):
     def visited(self):
         return not self.didFail and self.visit != -1
 
+    @property
+    def iicActor(self):
+        return self.sequence.job.actor
+
     @staticmethod
     def parse(**kwargs):
         """ Strip given text field from rawCmd """
@@ -60,7 +64,7 @@ class SubCmd(object):
 
     def call(self, cmd):
         """ Call subcommand """
-        cmdVar = self.sequence.actor.cmdr.call(**(self.build(cmd=cmd)))
+        cmdVar = self.iicActor.cmdr.call(**(self.build(cmd=cmd)))
         return int(cmdVar.didFail), cmdVar.replyList[-1].keywords.canonical(delimiter=';'), cmdVar
 
     def callAndUpdate(self, cmd):
@@ -119,28 +123,28 @@ class SpsExpose(SubCmd):
 
     def getVisit(self):
         """ Get visit from ics.iicActor.visit.Visit """
-        ourVisit = self.sequence.actor.visitor.newVisit('sps')
+        ourVisit = self.sequence.job.visitor.newVisit('sps')
         return ourVisit.visitId
 
     def releaseVisit(self):
         """ Release visit """
-        self.sequence.actor.visitor.releaseVisit()
+        self.sequence.job.visitor.releaseVisit()
 
     def abort(self, cmd):
         """ Abort current exposure """
-        ret = self.sequence.actor.cmdr.call(actor='sps',
-                                            cmdStr='exposure abort',
-                                            forUserCmd=cmd,
-                                            timeLim=10)
+        ret = self.iicActor.cmdr.call(actor='sps',
+                                      cmdStr='exposure abort',
+                                      forUserCmd=cmd,
+                                      timeLim=10)
         if ret.didFail:
             cmd.warn(ret.replyList[-1].keywords.canonical(delimiter=';'))
             raise RuntimeError("Failed to abort exposure")
 
     def finish(self, cmd):
-        ret = self.sequence.actor.cmdr.call(actor='sps',
-                                            cmdStr='exposure finish',
-                                            forUserCmd=cmd,
-                                            timeLim=10)
+        ret = self.iicActor.cmdr.call(actor='sps',
+                                      cmdStr='exposure finish',
+                                      forUserCmd=cmd,
+                                      timeLim=10)
         if ret.didFail:
             cmd.warn(ret.replyList[-1].keywords.canonical(delimiter=';'))
             raise RuntimeError("Failed to finish exposure")
@@ -154,10 +158,10 @@ class DcbCmd(SubCmd):
 
     def abort(self, cmd):
         """ Abort warmup """
-        ret = self.sequence.actor.cmdr.call(actor='dcb',
-                                            cmdStr='sources abort',
-                                            forUserCmd=cmd,
-                                            timeLim=10)
+        ret = self.iicActor.cmdr.call(actor='dcb',
+                                      cmdStr='sources abort',
+                                      forUserCmd=cmd,
+                                      timeLim=10)
         if ret.didFail:
             cmd.warn(ret.replyList[-1].keywords.canonical(delimiter=';'))
             raise RuntimeError("Failed to abort exposure")
@@ -176,7 +180,6 @@ class Sequence(list):
         self.tail = CmdList(tail)
         self.aborted = False
         self.errorTrace = ''
-        self.visit_set_id = self.lastVisitSetId() + 1
 
     @property
     def cmdList(self):
@@ -206,18 +209,20 @@ class Sequence(list):
     @property
     def exposable(self):
         try:
-            cams = self.actor.models['sps'].keyVarDict['exposable'].getValue()
+            cams = self.job.actor.models['sps'].keyVarDict['exposable'].getValue()
         except:
             return None
 
         return ','.join(cams)
 
-    def lastVisitSetId(self):
+    @property
+    def visit_set_id(self):
+        return self.job.visitSetId
+
+    def assign(self, cmd, job):
         """ get last visit_set_id from opDB """
-        df = utils.fetch_query(opdb.OpDB.url, 'select max(visit_set_id) from sps_sequence')
-        visit_set_id, = df.loc[0].values
-        visit_set_id = 0 if visit_set_id is None else visit_set_id
-        return int(visit_set_id)
+        self.job = job
+        self.register(cmd)
 
     def expose(self, exptype, exptime=0.0, duplicate=1, doLamps=False, **identKeys):
         """ Append duplicate * sps expose to sequence """
@@ -237,9 +242,8 @@ class Sequence(list):
         """ Generate sps_sequence status """
         cmd.inform(f'sps_sequence={self.visit_set_id},{self.seqtype},"{self.cmdStr}","{self.name}","{self.comments}"')
 
-    def register(self, cmd, iicActor):
+    def register(self, cmd):
         """ Register sequence and underlying subcommand"""
-        self.actor = iicActor
         self.rawCmd = cmd.rawCmd
         self.cmdStr = f"iic {stripQuotes(stripField(stripField(cmd.rawCmd, 'name='), 'comments='))}"
         self.inform(cmd=cmd)
@@ -260,7 +264,6 @@ class Sequence(list):
                 self.processSubCmd(cmd, subCmd=subCmd, doRaise=False)
 
             self.store()
-            self.clear()
 
     def processSubCmd(self, cmd, subCmd, doRaise=True):
         """ Process each subcommand, handle error or abortion """
