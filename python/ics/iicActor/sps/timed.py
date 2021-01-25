@@ -3,6 +3,7 @@ from pfs.utils.ncaplar import defocused_exposure_times_single_position
 
 
 class SpsSequence(Sequence):
+    shutterRequired = False
     def _appendTimedLampExposure(self, exptype, kwargs, cams=None, duplicate=1):
         exptime = 0.0
         lamps = []

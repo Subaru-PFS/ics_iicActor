@@ -12,7 +12,8 @@ class Object(Sequence):
 
 class Biases(Sequence):
     """ Biases sequence """
-    lightRequired = False
+    lightBeam = False
+
     def __init__(self, duplicate, cams, seqtype='biases', **kwargs):
         Sequence.__init__(self, seqtype, **kwargs)
         self.expose(exptype='bias', cams=cams, duplicate=duplicate)
@@ -20,7 +21,8 @@ class Biases(Sequence):
 
 class Darks(Sequence):
     """ Darks sequence """
-    lightRequired = False
+    lightBeam = False
+
     def __init__(self, exptime, duplicate, cams, seqtype='darks', **kwargs):
         Sequence.__init__(self, seqtype, **kwargs)
         self.expose(exptype='dark', exptime=exptime, cams=cams, duplicate=duplicate)

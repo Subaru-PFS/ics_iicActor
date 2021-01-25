@@ -169,7 +169,8 @@ class DcbCmd(SubCmd):
 
 class Sequence(list):
     """ Placeholder to handle sequence of subcommand """
-    lightRequired = True
+    lightBeam = True
+    shutterRequired = True
 
     def __init__(self, seqtype, name='', comments='', head=None, tail=None):
         super().__init__()

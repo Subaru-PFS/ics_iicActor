@@ -17,26 +17,29 @@ class SpectroJob(QThread):
 
     def __init__(self, iicActor, identKeys, seqObj, visitSetId):
         QThread.__init__(self, iicActor, 'toto')
-
+        self.isProcessed = False
         self.visitor = visit.VisitManager(iicActor)
         self.specs = SpsConfig.fromModel(iicActor.models['sps']).identify(**identKeys)
         self.seqObj = seqObj
         self.visitSetId = visitSetId
 
-        self.lightSource = self.getLightSource(self.specs) if seqObj.lightRequired else None
-        self.requiredParts = list(set(sum([spec.requiredParts(seqObj.lightRequired) for spec in self.specs], [])))
-        self.isProcessed = False
+        self.lightSource = self.getLightSource(self.specs) if seqObj.lightBeam else None
+        self.resources = list(set(sum([spec.assessResources(seqObj) for spec in self.specs], [])))
 
     @property
     def camNames(self):
         return [spec.camName for spec in self.specs]
 
     @property
-    def requiredResources(self):
-        return list(filter(None, [self.lightSource] + self.requiredParts))
+    def required(self):
+        return [r for r in self.resources if r.required]
+
+    @property
+    def locked(self):
+        return [r for r in self.resources if not r.required]
 
     def __str__(self):
-        return f'SpectroJob(lightSource={self.lightSource} locked={",".join(self.requiredParts)})'
+        return f'SpectroJob(lightSource={self.lightSource} required={",".join(self.required)} locked={",".join(self.locked)} finished={self.isProcessed})'
 
     def getLightSource(self, specs):
         """ Get light source from our sets of specs(camera). """
@@ -106,8 +109,12 @@ class ResourceManager(object):
         return [job for job in self.jobs.values() if not job.isProcessed]
 
     @property
+    def busy(self):
+        return sum([job.required for job in self.onGoing], [])
+
+    @property
     def locked(self):
-        return sum([job.requiredResources for job in self.onGoing], [])
+        return sum([job.resources for job in self.onGoing], [])
 
     def genIdentKeys(self, cmdKeys):
         """ Identify which spectrograph(cameras) is required to take data. """
@@ -128,7 +135,10 @@ class ResourceManager(object):
         visitSetId = self.arrangeVisitSetId()
         job = SpectroJob(self.actor, identKeys, seqObj, visitSetId)
 
-        if any([resource in self.locked for resource in job.requiredResources]):
+        if any([resource in self.busy for resource in job.resources]):
+            raise RuntimeError('cannot fire your sequence, required resources already busy...')
+
+        if any([resource in self.locked for resource in job.required]):
             raise RuntimeError('cannot fire your sequence, required resources already locked...')
 
         if doCheckFocus and not job.isInFocus(cmd):
@@ -152,7 +162,7 @@ class ResourceManager(object):
 
         self.jobs[key] = job
 
-        if prevJob is not None and prevJob not in self.jobs:
+        if prevJob is not None and prevJob not in self.jobs.values():
             prevJob.free()
 
     def fetchLastVisitSetId(self):
