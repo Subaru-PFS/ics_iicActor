@@ -6,7 +6,7 @@ from actorcore.QThread import QThread
 from ics.iicActor import visit
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
-from pfs.utils.spsConfig import SpsConfig
+from pfs.utils.sps.config import SpsConfig
 
 reload(spsSequence)
 reload(timedSpsSequence)
@@ -17,32 +17,42 @@ class SpectroJob(QThread):
 
     def __init__(self, iicActor, identKeys, seqObj, visitSetId):
         QThread.__init__(self, iicActor, 'toto')
+        specs = SpsConfig.fromModel(self.actor.models['sps']).identify(**identKeys)
         self.isProcessed = False
         self.visitor = visit.VisitManager(iicActor)
-        self.specs = SpsConfig.fromModel(iicActor.models['sps']).identify(**identKeys)
         self.seqObj = seqObj
         self.visitSetId = visitSetId
 
-        self.lightSource = self.getLightSource(self.specs) if seqObj.lightBeam else None
-        self.resources = list(set(sum([spec.assessResources(seqObj) for spec in self.specs], [])))
+        self.lightSource = self.getLightSource(specs) if seqObj.lightBeam else None
+        self.specs = specs
+        self.dependencies = list(set(sum([spec.dependencies(seqObj) for spec in specs], [])))
 
     @property
-    def camNames(self):
-        return [spec.camName for spec in self.specs]
+    def basicResources(self):
+        return list(filter(None, [self.lightSource] + self.specs))
+
+    @property
+    def activeDependencies(self):
+        active = self.dependencies if self.lightSource is not None else []
+        return active
+
+    @property
+    def resources(self):
+        return list(map(str, self.basicResources + self.dependencies))
 
     @property
     def required(self):
-        return [r for r in self.resources if r.required]
+        return list(map(str, self.basicResources + self.activeDependencies))
 
     @property
-    def locked(self):
-        return [r for r in self.resources if not r.required]
+    def camNames(self):
+        return list(map(str, self.specs))
 
     def __str__(self):
-        return f'SpectroJob(lightSource={self.lightSource} required={",".join(self.required)} locked={",".join(self.locked)} finished={self.isProcessed})'
+        return f'SpectroJob(lightSource={self.lightSource} required={",".join(self.required)}  finished={self.isProcessed})'
 
     def getLightSource(self, specs):
-        """ Get light source from our sets of specs(camera). """
+        """ Get light source from our sets of specs. """
         try:
             [light] = list(set([spec.lightSource for spec in specs]))
         except:
@@ -136,7 +146,7 @@ class ResourceManager(object):
         job = SpectroJob(self.actor, identKeys, seqObj, visitSetId)
 
         if any([resource in self.busy for resource in job.resources]):
-            raise RuntimeError('cannot fire your sequence, required resources already busy...')
+            raise RuntimeError('cannot fire your sequence, dependent resources already busy...')
 
         if any([resource in self.locked for resource in job.required]):
             raise RuntimeError('cannot fire your sequence, required resources already locked...')
