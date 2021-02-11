@@ -9,6 +9,13 @@ class Object(Sequence):
         Sequence.__init__(self, seqtype, **kwargs)
         self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=duplicate)
 
+class ScienceFlat(Sequence):
+    """ Flat Field """
+
+    def __init__(self, exptime, duplicate, cams, seqtype='scienceFlat', **kwargs):
+        Sequence.__init__(self, seqtype, **kwargs)
+        self.expose(exptype='flat', exptime=exptime, cams=cams, duplicate=duplicate)
+
 
 class Biases(Sequence):
     """ Biases sequence """

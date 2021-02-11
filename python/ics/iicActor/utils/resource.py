@@ -175,6 +175,37 @@ class ResourceManager(object):
         if prevJob is not None and prevJob not in self.jobs.values():
             prevJob.free()
 
+    def identify(self, identifier):
+        ret = None
+        if identifier == 'sps':
+            for job in set(self.jobs.values()):
+                if all([spec.specModule.spsModule for spec in job.specs]):
+                    return job
+        elif identifier == 'dcb':
+            for job in set(self.jobs.values()):
+                if job.lightSource == 'dcb':
+                    return job
+
+        elif identifier == 'sunss':
+            for job in set(self.jobs.values()):
+                if job.lightSource == 'sunss':
+                    return job
+        else:
+            raise RuntimeError('unknown identifier')
+
+    def finish(self, cmd, identifier='sps'):
+        """ finish an on going job. """
+        job = self.identify(identifier=identifier)
+
+        if job is None:
+            raise RuntimeError('could not identify job')
+
+        if not job.isProcessed:
+            cmd.inform(f'text="finalizing {identifier} exposure..."')
+            job.seq.finish(cmd)
+        else:
+            cmd.inform(f'text="{identifier} exposure already finished..."')
+
     def fetchLastVisitSetId(self):
         """ get last visit_set_id from opDB """
         df = utils.fetch_query(opdb.OpDB.url, 'select max(visit_set_id) from sps_sequence')

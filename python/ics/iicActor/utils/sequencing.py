@@ -133,7 +133,7 @@ class SpsExpose(SubCmd):
     def abort(self, cmd):
         """ Abort current exposure """
         ret = self.iicActor.cmdr.call(actor='sps',
-                                      cmdStr='exposure abort',
+                                      cmdStr=f'exposure abort visit={self.visit}',
                                       forUserCmd=cmd,
                                       timeLim=10)
         if ret.didFail:
@@ -142,7 +142,7 @@ class SpsExpose(SubCmd):
 
     def finish(self, cmd):
         ret = self.iicActor.cmdr.call(actor='sps',
-                                      cmdStr='exposure finish',
+                                      cmdStr=f'exposure finish visit={self.visit}',
                                       forUserCmd=cmd,
                                       timeLim=10)
         if ret.didFail:
