@@ -77,15 +77,18 @@ class SpectroJob(QThread):
         self.seq = self.seqObj(cams=self.camNames, *args, **kwargs)
         self.seq.assign(cmd, self)
 
-    def fire(self, cmd):
+    def fire(self, cmd, doLoop=False):
         """ Put Job on the Thread. """
         self.start()
-        self.putMsg(self.process, cmd=cmd)
+        self.putMsg(self.process, cmd=cmd, doLoop=doLoop)
 
-    def process(self, cmd):
+    def process(self, cmd, doLoop):
         """ Process the sequence in the Job's thread as it would behave in the main one. """
         try:
-            self.seq.process(cmd)
+            if doLoop:
+                self.seq.loop(cmd)
+            else:
+                self.seq.process(cmd)
 
         except Exception as e:
             cmd.fail('text=%s' % self.actor.strTraceback(e))

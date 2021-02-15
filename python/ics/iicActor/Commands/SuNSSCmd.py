@@ -17,7 +17,8 @@ class SuNSSCmd(object):
         #
         identArgs = '[<cam>] [<arm>] [<sm>]'
         self.vocab = [
-            ('scienceFlat', f'<exptime> {identArgs} [<name>] [<comments>]', self.scienceFlat),
+            ('sps', f'@startExposures <exptime> {identArgs} [<name>] [<comments>]', self.startExposures),
+            ('scienceFlat', f'<exptime> {identArgs} [<name>] [<comments>] [<duplicate>]', self.scienceFlat),
             ('sps', 'finishExposure', self.finishExposure)
         ]
 
@@ -30,6 +31,7 @@ class SuNSSCmd(object):
                                                  help='spectrograph module(s) to take exposure from'),
                                         keys.Key('name', types.String(), help='sps_sequence name'),
                                         keys.Key('comments', types.String(), help='sps_sequence comments'),
+                                        keys.Key('duplicate', types.Int(), help='exposure duplicate (1 is default)'),
                                         )
 
     @property
@@ -47,6 +49,17 @@ class SuNSSCmd(object):
         job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
 
         job.fire(cmd)
+
+    def startExposures(self, cmd):
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        exptime = cmdKeys['exptime'].values
+
+        job = self.resourceManager.request(cmd, spsSequence.ObjectLoop, doCheckFocus=True)
+        job.instantiate(cmd, exptime=exptime, **seqKwargs)
+
+        job.fire(cmd, doLoop=True)
 
     def finishExposure(self, cmd):
         self.resourceManager.finish(cmd, identifier='sps')

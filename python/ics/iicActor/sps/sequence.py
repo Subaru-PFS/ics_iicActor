@@ -9,6 +9,13 @@ class Object(Sequence):
         Sequence.__init__(self, seqtype, **kwargs)
         self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=duplicate)
 
+class ObjectLoop(Object):
+    """ Simple exposure sequence """
+
+    def __init__(self, exptime, cams, **kwargs):
+        Object.__init__(self, exptime, 1, cams, **kwargs)
+
+
 class ScienceFlat(Sequence):
     """ Flat Field """
 
