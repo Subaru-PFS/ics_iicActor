@@ -47,7 +47,6 @@ class SubCmd(object):
 
         return args
 
-
     def copy(self):
         """ return a subcmd copy """
         obj = SubCmd(self.actor, self.cmdStr)
@@ -135,6 +134,16 @@ class SpsExpose(SubCmd):
         self.releaseVisit()
         return ret
 
+    def callAndUpdate(self, cmd):
+        """Hackity hack, report from sps exposure warning, but"""
+        cmdVar = SubCmd.callAndUpdate(self, cmd)
+
+        for reply in cmdVar.replyList:
+            if reply.header.code == 'W' and not cmdVar.didFail:
+                cmd.warn(reply.keywords.canonical(delimiter=';'))
+
+        return cmdVar
+
     def getVisit(self):
         """ Get visit from ics.iicActor.visit.Visit """
         ourVisit = self.sequence.job.visitor.newVisit('sps')
@@ -155,6 +164,10 @@ class SpsExpose(SubCmd):
             raise RuntimeError("Failed to abort exposure")
 
     def finish(self, cmd):
+        """ Finish current exposure """
+        if self.visit == -1:
+            return
+
         ret = self.iicActor.cmdr.call(actor='sps',
                                       cmdStr=f'exposure finish visit={self.visit}',
                                       forUserCmd=cmd,
@@ -289,13 +302,16 @@ class Sequence(list):
     def loop(self, cmd):
         """ loop the command until being told to stop, store in database"""
         [subCmd] = self.cmdList
-        self.processSubCmd(cmd, subCmd=subCmd)
 
-        while not (self.doAbort or self.doFinish):
-            self.archiveAndReset(cmd, subCmd)
+        try:
             self.processSubCmd(cmd, subCmd=subCmd)
 
-        self.store()
+            while not (self.doAbort or self.doFinish):
+                self.archiveAndReset(cmd, subCmd)
+                self.processSubCmd(cmd, subCmd=subCmd)
+
+        finally:
+            self.store()
 
     def archiveAndReset(self, cmd, subCmd):
         """ archive a copy of the current command then reset it."""
@@ -310,7 +326,8 @@ class Sequence(list):
 
         if subCmd.didFail and doRaise:
             self.handleError(cmd=cmd, cmdId=subCmd.id, cmdVar=cmdVar)
-            raise RuntimeError('Sub-command has failed.. sequence aborted..')
+            if not self.doFinish:
+                raise RuntimeError('Sub-command has failed.. sequence aborted..')
 
         if subCmd.isLast:
             return
