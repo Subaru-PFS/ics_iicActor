@@ -1,0 +1,66 @@
+import ics.iicActor.Commands.SpsCmd as SpsCmd
+import ics.iicActor.sps.sequence as spsSequence
+import opscore.protocols.keys as keys
+import opscore.protocols.types as types
+
+
+class SuNSSCmd(object):
+
+    def __init__(self, actor):
+        # This lets us access the rest of the actor.
+        self.actor = actor
+
+        # Declare the commands we implement. When the actor is started
+        # these are registered with the parser, which will call the
+        # associated methods when matched. The callbacks will be
+        # passed a single argument, the parsed and typed command.
+        #
+        identArgs = '[<cam>] [<arm>] [<sm>]'
+        self.vocab = [
+            ('sps', f'@startExposures <exptime> {identArgs} [<name>] [<comments>]', self.startExposures),
+            ('scienceFlat', f'<exptime> {identArgs} [<name>] [<comments>] [<duplicate>]', self.scienceFlat),
+            ('sps', 'finishExposure', self.finishExposure)
+        ]
+
+        # Define typed command arguments for the above commands.
+        self.keys = keys.KeysDictionary('iic_sunss', (1, 1),
+                                        keys.Key('exptime', types.Float() * (1,), help='exptime list (seconds)'),
+                                        keys.Key('cam', types.String() * (1,), help='camera(s) to take exposure from'),
+                                        keys.Key('arm', types.String() * (1,), help='arm to take exposure from'),
+                                        keys.Key('sm', types.Int() * (1,),
+                                                 help='spectrograph module(s) to take exposure from'),
+                                        keys.Key('name', types.String(), help='sps_sequence name'),
+                                        keys.Key('comments', types.String(), help='sps_sequence comments'),
+                                        keys.Key('duplicate', types.Int(), help='exposure duplicate (1 is default)'),
+                                        )
+
+    @property
+    def resourceManager(self):
+        return self.actor.resourceManager
+
+    def scienceFlat(self, cmd):
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        exptime = cmdKeys['exptime'].values
+        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
+
+        job = self.resourceManager.request(cmd, spsSequence.ScienceFlat, doCheckFocus=True)
+        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
+
+        job.fire(cmd)
+
+    def startExposures(self, cmd):
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        exptime = cmdKeys['exptime'].values
+
+        job = self.resourceManager.request(cmd, spsSequence.ObjectLoop, doCheckFocus=True)
+        job.instantiate(cmd, exptime=exptime, **seqKwargs)
+
+        job.fire(cmd, doLoop=True)
+
+    def finishExposure(self, cmd):
+        self.resourceManager.finish(cmd, identifier='sps')
+        cmd.finish()

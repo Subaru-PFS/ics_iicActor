@@ -16,10 +16,7 @@ class SubCmd(object):
         self.cmdStr = cmdStr
         self.timeLim = timeLim
         self.idleTime = idleTime
-        self.didFail = -1
-        self.id = 0
-        self.lastReply = ''
-        self.visit = -1
+        self.initialise()
 
     @property
     def fullCmd(self):
@@ -49,6 +46,22 @@ class SubCmd(object):
             args.append(k if v is True else f'{k}={v}')
 
         return args
+
+    def copy(self):
+        """ return a subcmd copy """
+        obj = SubCmd(self.actor, self.cmdStr)
+        obj.id = self.id
+        obj.visit = self.visit
+        obj.didFail = self.didFail
+        obj.lastReply = self.lastReply
+        return obj
+
+    def initialise(self):
+        """ Reset sub command status"""
+        self.didFail = -1
+        self.id = 0
+        self.lastReply = ''
+        self.visit = -1
 
     def setId(self, sequence, cmdId):
         """ Assign sequence and id to subcommand """
@@ -121,6 +134,16 @@ class SpsExpose(SubCmd):
         self.releaseVisit()
         return ret
 
+    def callAndUpdate(self, cmd):
+        """Hackity hack, report from sps exposure warning, but"""
+        cmdVar = SubCmd.callAndUpdate(self, cmd)
+
+        for reply in cmdVar.replyList:
+            if reply.header.code == 'W' and not cmdVar.didFail:
+                cmd.warn(reply.keywords.canonical(delimiter=';'))
+
+        return cmdVar
+
     def getVisit(self):
         """ Get visit from ics.iicActor.visit.Visit """
         ourVisit = self.sequence.job.visitor.newVisit('sps')
@@ -133,7 +156,7 @@ class SpsExpose(SubCmd):
     def abort(self, cmd):
         """ Abort current exposure """
         ret = self.iicActor.cmdr.call(actor='sps',
-                                      cmdStr='exposure abort',
+                                      cmdStr=f'exposure abort visit={self.visit}',
                                       forUserCmd=cmd,
                                       timeLim=10)
         if ret.didFail:
@@ -141,8 +164,12 @@ class SpsExpose(SubCmd):
             raise RuntimeError("Failed to abort exposure")
 
     def finish(self, cmd):
+        """ Finish current exposure """
+        if self.visit == -1:
+            return
+
         ret = self.iicActor.cmdr.call(actor='sps',
-                                      cmdStr='exposure finish',
+                                      cmdStr=f'exposure finish visit={self.visit}',
                                       forUserCmd=cmd,
                                       timeLim=10)
         if ret.didFail:
@@ -179,7 +206,8 @@ class Sequence(list):
         self.comments = comments
         self.head = CmdList(head)
         self.tail = CmdList(tail)
-        self.aborted = False
+        self.doAbort = False
+        self.doFinish = False
         self.errorTrace = ''
 
     @property
@@ -200,8 +228,10 @@ class Sequence(list):
 
     @property
     def status(self):
-        if self.aborted:
-            return 'aborted'
+        if self.doAbort:
+            return 'abortRequested'
+        elif self.doFinish:
+            return 'finishRequested'
         elif self.errorTrace:
             return self.errorTrace
         else:
@@ -260,11 +290,35 @@ class Sequence(list):
             for subCmd in (self.head + self.cmdList):
                 self.processSubCmd(cmd, subCmd=subCmd)
 
+                if self.doFinish:
+                    break
+
         finally:
             for subCmd in self.tail:
                 self.processSubCmd(cmd, subCmd=subCmd, doRaise=False)
 
             self.store()
+
+    def loop(self, cmd):
+        """ loop the command until being told to stop, store in database"""
+        [subCmd] = self.cmdList
+
+        try:
+            self.processSubCmd(cmd, subCmd=subCmd)
+
+            while not (self.doAbort or self.doFinish):
+                self.archiveAndReset(cmd, subCmd)
+                self.processSubCmd(cmd, subCmd=subCmd)
+
+        finally:
+            self.store()
+
+    def archiveAndReset(self, cmd, subCmd):
+        """ archive a copy of the current command then reset it."""
+        self.insert(subCmd.id, subCmd.copy())
+        subCmd.initialise()
+        subCmd.setId(self, len(self.cmdList) - 1)
+        subCmd.inform(cmd=cmd)
 
     def processSubCmd(self, cmd, subCmd, doRaise=True):
         """ Process each subcommand, handle error or abortion """
@@ -272,12 +326,14 @@ class Sequence(list):
 
         if subCmd.didFail and doRaise:
             self.handleError(cmd=cmd, cmdId=subCmd.id, cmdVar=cmdVar)
-            raise RuntimeError('Sub-command has failed.. sequence aborted..')
+            if not self.doFinish:
+                raise RuntimeError('Sub-command has failed.. sequence aborted..')
 
         if subCmd.isLast:
             return
 
         aborted = self.waitUntil(time.time() + subCmd.idleTime)
+
         if aborted and doRaise:
             self.handleError(cmd=cmd, cmdId=subCmd.id)
             raise RuntimeError('Abort sequence requested..')
@@ -301,11 +357,12 @@ class Sequence(list):
     def waitUntil(self, endTime, ti=0.01):
         """ Wait Until endTime"""
         while time.time() < endTime:
-            if self.aborted:
+            if self.doFinish or self.doAbort:
                 break
+
             time.sleep(ti)
 
-        return self.aborted
+        return self.doAbort
 
     def clear(self):
         """ Clear sequence"""
@@ -315,12 +372,12 @@ class Sequence(list):
 
     def abort(self, cmd):
         """ Abort current sequence """
-        self.aborted = True
+        self.doAbort = True
         self.current.abort(cmd=cmd)
 
     def finish(self, cmd):
         """ Finish current sequence """
-        self.aborted = True
+        self.doFinish = True
         self.current.finish(cmd=cmd)
 
     def store(self):

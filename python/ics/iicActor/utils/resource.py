@@ -77,15 +77,18 @@ class SpectroJob(QThread):
         self.seq = self.seqObj(cams=self.camNames, *args, **kwargs)
         self.seq.assign(cmd, self)
 
-    def fire(self, cmd):
+    def fire(self, cmd, doLoop=False):
         """ Put Job on the Thread. """
         self.start()
-        self.putMsg(self.process, cmd=cmd)
+        self.putMsg(self.process, cmd=cmd, doLoop=doLoop)
 
-    def process(self, cmd):
+    def process(self, cmd, doLoop):
         """ Process the sequence in the Job's thread as it would behave in the main one. """
         try:
-            self.seq.process(cmd)
+            if doLoop:
+                self.seq.loop(cmd)
+            else:
+                self.seq.process(cmd)
 
         except Exception as e:
             cmd.fail('text=%s' % self.actor.strTraceback(e))
@@ -174,6 +177,37 @@ class ResourceManager(object):
 
         if prevJob is not None and prevJob not in self.jobs.values():
             prevJob.free()
+
+    def identify(self, identifier):
+        ret = None
+        if identifier == 'sps':
+            for job in set(self.jobs.values()):
+                if all([spec.specModule.spsModule for spec in job.specs]):
+                    return job
+        elif identifier == 'dcb':
+            for job in set(self.jobs.values()):
+                if job.lightSource == 'dcb':
+                    return job
+
+        elif identifier == 'sunss':
+            for job in set(self.jobs.values()):
+                if job.lightSource == 'sunss':
+                    return job
+        else:
+            raise RuntimeError('unknown identifier')
+
+    def finish(self, cmd, identifier='sps'):
+        """ finish an on going job. """
+        job = self.identify(identifier=identifier)
+
+        if job is None:
+            raise RuntimeError('could not identify job')
+
+        if not job.isProcessed:
+            cmd.inform(f'text="finalizing {identifier} exposure..."')
+            job.seq.finish(cmd)
+        else:
+            cmd.inform(f'text="{identifier} exposure already finished..."')
 
     def fetchLastVisitSetId(self):
         """ get last visit_set_id from opDB """
