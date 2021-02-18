@@ -181,20 +181,18 @@ class ResourceManager(object):
             prevJob.free()
 
     def identify(self, identifier):
-        ret = None
         if identifier == 'sps':
             for job in set(self.jobs.values()):
+                if job.lightSource is None:
+                    continue
                 if all([spec.specModule.spsModule for spec in job.specs]):
                     return job
-        elif identifier == 'dcb':
+
+        elif identifier in ['dcb', 'dcb2', 'sunss']:
             for job in set(self.jobs.values()):
-                if job.lightSource == 'dcb':
+                if job.lightSource == identifier:
                     return job
 
-        elif identifier == 'sunss':
-            for job in set(self.jobs.values()):
-                if job.lightSource == 'sunss':
-                    return job
         else:
             raise RuntimeError('unknown identifier')
 
