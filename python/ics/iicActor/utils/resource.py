@@ -49,7 +49,9 @@ class SpectroJob(QThread):
         return list(map(str, self.specs))
 
     def __str__(self):
-        return f'SpectroJob(lightSource={self.lightSource} required={",".join(self.required)}  finished={self.isProcessed})'
+        return f'SpectroJob(lightSource={self.lightSource} resources={",".join(self.required)} ' \
+               f'visitSetId={self.visitSetId} visitRange={self.seq.visitStart},{self.seq.visitEnd} ' \
+               f'finished={self.isProcessed}'
 
     def getLightSource(self, specs):
         """ Get light source from our sets of specs. """
@@ -155,7 +157,7 @@ class ResourceManager(object):
             raise RuntimeError('cannot fire your sequence, required resources already locked...')
 
         if doCheckFocus and not job.isInFocus(cmd):
-            raise RuntimeError('text="Spectrograph is not in focus...')
+            raise RuntimeError('Spectrograph is not in focus...')
 
         return self.lock(job)
 
@@ -225,5 +227,7 @@ class ResourceManager(object):
 
     def getStatus(self, cmd):
         """ generate Job(s) status(es). """
-        for job in list(set(self.jobs.values())):
-            cmd.inform(f"text={qstr(job)}")
+        cmd.inform('text="on going jobs :"')
+        for i, job in enumerate((set(self.jobs.values()))):
+            cmd.inform(f"job{i}={qstr(job)}")
+            cmd.inform(job.seq.genKeys())

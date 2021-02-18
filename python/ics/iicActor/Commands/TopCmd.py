@@ -34,7 +34,6 @@ class TopCmd(object):
 
         self.actor.sendVersionKey(cmd)
         self.actor.resourceManager.getStatus(cmd)
-        
-        cmd.inform('text="Present!"')
+
         cmd.finish()
 

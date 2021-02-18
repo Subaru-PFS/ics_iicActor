@@ -223,6 +223,14 @@ class Sequence(list):
         return [subCmd.visit for subCmd in self.subCmds if subCmd.visited]
 
     @property
+    def visitStart(self):
+        return min(self.visits) if self.visits else None
+
+    @property
+    def visitEnd(self):
+        return max(self.visits) if self.visits else None
+
+    @property
     def current(self):
         return self.subCmds[[sub.didFail for sub in self.subCmds].index(-1)]
 
@@ -271,7 +279,10 @@ class Sequence(list):
 
     def inform(self, cmd):
         """ Generate sps_sequence status """
-        cmd.inform(f'sps_sequence={self.visit_set_id},{self.seqtype},"{self.cmdStr}","{self.name}","{self.comments}"')
+        cmd.inform(self.genKeys())
+
+    def genKeys(self):
+        return f'sps_sequence={self.visit_set_id},{self.seqtype},"{self.cmdStr}","{self.name}","{self.comments}"'
 
     def register(self, cmd):
         """ Register sequence and underlying subcommand"""
