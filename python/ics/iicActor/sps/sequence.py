@@ -11,13 +11,6 @@ class Object(Sequence):
         self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
 
-class ObjectLoop(Object):
-    """ Simple exposure sequence """
-
-    def __init__(self, exptime, cams, doTest=False, **kwargs):
-        Object.__init__(self, exptime, 1, cams, doTest=doTest, **kwargs)
-
-
 class Biases(Sequence):
     """ Biases sequence """
     seqtype = 'biases'
