@@ -137,10 +137,10 @@ class SpsExpose(SubCmd):
     def callAndUpdate(self, cmd):
         """Hackity hack, report from sps exposure warning, but"""
         cmdVar = SubCmd.callAndUpdate(self, cmd)
-
-        for reply in cmdVar.replyList:
-            if reply.header.code == 'W' and not cmdVar.didFail:
-                cmd.warn(reply.keywords.canonical(delimiter=';'))
+        if cmdVar is not None:
+            for reply in cmdVar.replyList:
+                if reply.header.code == 'W' and not cmdVar.didFail:
+                    cmd.warn(reply.keywords.canonical(delimiter=';'))
 
         return cmdVar
 
@@ -263,13 +263,13 @@ class Sequence(list):
         self.job = job
         self.register(cmd)
 
-    def expose(self, exptype, exptime=0.0, duplicate=1, doLamps=False, **identKeys):
+    def expose(self, exptype, exptime=0.0, duplicate=1, doLamps=False, doTest=False, **identKeys):
         """ Append duplicate * sps expose to sequence """
         exptime = [exptime] if not isinstance(exptime, list) else exptime
 
         for expTime in exptime:
             for i in range(duplicate):
-                self.append(SpsExpose.specify(exptype, expTime, doLamps=doLamps, **identKeys))
+                self.append(SpsExpose.specify(exptype, expTime, doLamps=doLamps, doTest=doTest, **identKeys))
 
     def add(self, actor, cmdStr, timeLim=60, idleTime=5.0, index=None, **kwargs):
         """ Append duplicate * subcommand to sequence """

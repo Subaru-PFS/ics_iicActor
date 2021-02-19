@@ -17,8 +17,8 @@ class SuNSSCmd(object):
         #
         identArgs = '[<cam>] [<arm>] [<sm>]'
         self.vocab = [
-            ('sps', f'@startExposures <exptime> {identArgs} [<name>] [<comments>]', self.startExposures),
-            ('scienceFlat', f'<exptime> {identArgs} [<name>] [<comments>] [<duplicate>]', self.scienceFlat),
+            ('sps', f'@startExposures <exptime> {identArgs} [<name>] [<comments>] [@doTest]', self.startExposures),
+            ('scienceFlat', f'<exptime> {identArgs} [<name>] [<comments>] [<duplicate>] [@doTest]', self.scienceFlat),
             ('sps', 'finishExposure', self.finishExposure)
         ]
 
