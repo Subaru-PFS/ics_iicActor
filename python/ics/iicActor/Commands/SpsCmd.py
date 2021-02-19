@@ -22,8 +22,9 @@ def genSeqKwargs(cmd, customMade=True):
 
     name = cmdKeys['name'].values[0] if 'name' in cmdKeys else ''
     comments = cmdKeys['comments'].values[0] if 'comments' in cmdKeys else ''
+    doTest = 'doTest' in cmdKeys
 
-    return dict(name=name, comments=comments, head=head, tail=tail)
+    return dict(name=name, comments=comments, head=head, tail=tail, doTest=doTest)
 
 
 def dcbKwargs(cmdKeys):
@@ -78,7 +79,7 @@ class SpsCmd(object):
         # associated methods when matched. The callbacks will be
         # passed a single argument, the parsed and typed command.
         #
-        seqArgs = '[<name>] [<comments>] [<head>] [<tail>]'
+        seqArgs = '[<name>] [<comments>] [<head>] [<tail>] [@doTest]'
         identArgs = '[<cam>] [<arm>] [<sm>]'
         commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
         dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [<attenuator>] [force]'
