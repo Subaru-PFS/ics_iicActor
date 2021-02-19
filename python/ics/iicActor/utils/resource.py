@@ -190,7 +190,9 @@ class ResourceManager(object):
 
         elif identifier in ['dcb', 'dcb2', 'sunss']:
             for job in set(self.jobs.values()):
-                if job.lightSource == identifier:
+                if job.isProcessed:
+                    continue
+                if all([spec.lightSource==identifier for spec in job.specs]):
                     return job
 
         else:

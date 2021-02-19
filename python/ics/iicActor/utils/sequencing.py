@@ -196,12 +196,12 @@ class DcbCmd(SubCmd):
 
 class Sequence(list):
     """ Placeholder to handle sequence of subcommand """
+    seqtype = 'sequence'
     lightBeam = True
     shutterRequired = True
 
-    def __init__(self, seqtype, name='', comments='', head=None, tail=None):
+    def __init__(self, name='', comments='', head=None, tail=None):
         super().__init__()
-        self.seqtype = seqtype
         self.name = name
         self.comments = comments
         self.head = CmdList(head)
@@ -263,13 +263,13 @@ class Sequence(list):
         self.job = job
         self.register(cmd)
 
-    def expose(self, exptype, exptime=0.0, duplicate=1, doLamps=False, doTest=False, **identKeys):
+    def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, **identKeys):
         """ Append duplicate * sps expose to sequence """
         exptime = [exptime] if not isinstance(exptime, list) else exptime
 
         for expTime in exptime:
             for i in range(duplicate):
-                self.append(SpsExpose.specify(exptype, expTime, doLamps=doLamps, doTest=doTest, **identKeys))
+                self.append(SpsExpose.specify(exptype, expTime, doTest=doTest, **identKeys))
 
     def add(self, actor, cmdStr, timeLim=60, idleTime=5.0, index=None, **kwargs):
         """ Append duplicate * subcommand to sequence """

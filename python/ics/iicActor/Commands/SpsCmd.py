@@ -27,8 +27,9 @@ def genSeqKwargs(cmd, customMade=True):
     return dict(name=name, comments=comments, head=head, tail=tail, doTest=doTest)
 
 
-def dcbKwargs(cmdKeys):
+def dcbKwargs(cmdKeys, forceHalogen=False):
     switchOn = ','.join(cmdKeys['switchOn'].values) if 'switchOn' in cmdKeys else None
+    switchOn = 'halogen' if forceHalogen and 'noLampCtl' not in cmdKeys else switchOn
     switchOff = ','.join(cmdKeys['switchOff'].values) if 'switchOff' in cmdKeys else None
     switchOff = 'halogen' if not switchOff and switchOff is not None else switchOff
     doWarmup = 'switchOn' in cmdKeys or 'iisOn' not in cmdKeys
@@ -53,18 +54,15 @@ def timedDcbKwargs(cmdKeys):
     return dcbPrepare
 
 
-def iisKwargs(cmdKeys):
-    switchOn = ','.join(cmdKeys['iisOn'].values) if 'iisOn' in cmdKeys else None
-    switchOff = ','.join(cmdKeys['iisOff'].values) if 'iisOff' in cmdKeys else None
-    doWarmup = 'iisOn' in cmdKeys or 'switchOn' not in cmdKeys
-    warmingTime = cmdKeys['warmingTime'].values[0] if ('warmingTime' in cmdKeys and doWarmup) else None
-    timeLim = 90 if switchOn is not None else None
-    timeLim = (warmingTime + 30) if warmingTime is not None else timeLim
+def fetchExpTime(cmdKeys):
+    try:
+        exptime = cmdKeys['exptime'].values
+        seqLib = spsSequence
+    except KeyError:
+        exptime = timedDcbKwargs(cmdKeys)
+        seqLib = timedSpsSequence
 
-    iisOn = dict(on=switchOn, warmingTime=warmingTime, timeLim=timeLim)
-    iisOff = dict(off=switchOff)
-
-    return iisOn, iisOff
+    return exptime, seqLib
 
 
 class SpsCmd(object):
@@ -85,7 +83,6 @@ class SpsCmd(object):
         dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [<attenuator>] [force]'
 
         timedDcbArcArgs = '[<hgar>] [<argon>] [<neon>] [<krypton>]'
-        iisArgs = f'[<iisOn>] [<iisOff>]'
         self.vocab = [
             ('masterBiases', f'{commonArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {commonArgs}', self.masterDarks),
@@ -106,16 +103,16 @@ class SpsCmd(object):
             ('custom', '[<name>] [<comments>] [<head>] [<tail>]', self.custom),
             ('sps', 'abort', self.abort),
 
-            ('ditheredFlats', f'<halogen> [<pixels>] [<nPositions>] {commonArgs}', self.doTimedDitheredFlats),
-            ('scienceArc', f'{timedDcbArcArgs} {commonArgs}', self.doTimedScienceArc),
-            ('scienceTrace', f'<halogen> {commonArgs}', self.doTimedScienceTrace),
-            ('expose', f'arc {timedDcbArcArgs} {commonArgs}', self.doTimedScienceArc),
-            ('expose', f'flat <halogen> {commonArgs}', self.doTimedScienceTrace),
+            ('ditheredFlats', f'<halogen> [<pixels>] [<nPositions>] {commonArgs}', self.ditheredFlats),
+            ('scienceArc', f'{timedDcbArcArgs} {commonArgs}', self.scienceArc),
+            ('scienceTrace', f'<halogen> {commonArgs}', self.scienceTrace),
+            ('expose', f'arc {timedDcbArcArgs} {commonArgs}', self.scienceArc),
+            ('expose', f'flat <halogen> {commonArgs}', self.scienceTrace),
             ('test', f'hexapodStability {timedDcbArcArgs} [<position>] {commonArgs}', self.hexapodStability),
-            ('dither', f'arc {timedDcbArcArgs} <pixels> [doMinus] {commonArgs}', self.doTimedDitheredArcs),
+            ('dither', f'arc {timedDcbArcArgs} <pixels> [doMinus] {commonArgs}', self.ditheredArcs),
             ('detector', f'throughfocus {timedDcbArcArgs} <position> [<tilt>] {commonArgs}',
-             self.doTimedDetThroughFocus),
-            ('defocus', f'arc {timedDcbArcArgs} <position> {commonArgs}', self.doTimedDefocusedArcs),
+             self.detThroughFocus),
+            ('defocus', f'arc {timedDcbArcArgs} <position> {commonArgs}', self.defocusedArcs),
         ]
 
         # Define typed command arguments for the above commands.
@@ -165,8 +162,8 @@ class SpsCmd(object):
         seqKwargs['name'] = 'calibProduct' if not seqKwargs['name'] else seqKwargs['name']
         duplicate = min(cmdKeys['duplicate'].values[0], 15) if 'duplicate' in cmdKeys else 15
 
-        job = self.resourceManager.request(cmd, spsSequence.Biases)
-        job.instantiate(cmd, seqtype='masterBiases', duplicate=duplicate, **seqKwargs)
+        job = self.resourceManager.request(cmd, spsSequence.MasterBiases)
+        job.instantiate(cmd, duplicate=duplicate, **seqKwargs)
 
         job.fire(cmd)
 
@@ -179,27 +176,28 @@ class SpsCmd(object):
         duplicate = min(cmdKeys['duplicate'].values[0], 15) if 'duplicate' in cmdKeys else 15
         exptime = cmdKeys['exptime'].values if 'exptime' in cmdKeys else [300]
 
-        job = self.resourceManager.request(cmd, spsSequence.Darks)
+        job = self.resourceManager.request(cmd, spsSequence.MasterDarks)
 
-        job.instantiate(cmd, exptime=exptime, seqtype='masterDarks', duplicate=duplicate, **seqKwargs)
+        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
         job.fire(cmd)
 
     def ditheredFlats(self, cmd):
         """dithered flat(fiberTrace) with given exptime. Used to construct masterFlat """
         cmdKeys = cmd.cmd.keywords
 
-        dcbOn, dcbOff = dcbKwargs(cmdKeys)
-        dcbOn['on'] = 'halogen'
+        dcbOn, dcbOff = dcbKwargs(cmdKeys, forceHalogen=True)
+        exptime, seqLib = fetchExpTime(cmdKeys)
+
         seqKwargs = genSeqKwargs(cmd, customMade=False)
         seqKwargs['name'] = 'calibProduct' if not seqKwargs['name'] else seqKwargs['name']
-        exptime = cmdKeys['exptime'].values
+
         pixels = cmdKeys['pixels'].values[0] if 'pixels' in cmdKeys else 0.3
         nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
         nPositions = (nPositions // 2) * 2
         positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1).round(2)
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
-        job = self.resourceManager.request(cmd, spsSequence.DitheredFlats)
+        job = self.resourceManager.request(cmd, seqLib.DitheredFlats)
         job.instantiate(cmd, exptime=exptime, positions=positions, dcbOn=dcbOn, dcbOff=dcbOff, duplicate=duplicate,
                         **seqKwargs)
         job.fire(cmd)
@@ -208,42 +206,40 @@ class SpsCmd(object):
         """sps science arcs. """
         cmdKeys = cmd.cmd.keywords
         isScience = 'arc' not in cmdKeys
-        seqtype = 'scienceArc' if isScience else 'arcs'
 
         seqKwargs = genSeqKwargs(cmd, customMade=not isScience)
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
-        exptime = cmdKeys['exptime'].values
+        exptime, seqLib = fetchExpTime(cmdKeys)
+
+        seqObj = seqLib.ScienceArc if isScience else seqLib.Arcs
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
-        job = self.resourceManager.request(cmd, spsSequence.Arcs, doCheckFocus=isScience)
-        job.instantiate(cmd, exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, seqtype=seqtype, duplicate=duplicate,
-                        **seqKwargs)
+        job = self.resourceManager.request(cmd, seqObj, doCheckFocus=isScience)
+        job.instantiate(cmd, exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, duplicate=duplicate, **seqKwargs)
         job.fire(cmd)
 
     def scienceTrace(self, cmd):
         """sps bias(es). """
         cmdKeys = cmd.cmd.keywords
         isScience = 'flat' not in cmdKeys
-        seqtype = 'scienceTrace' if isScience else 'flats'
 
         seqKwargs = genSeqKwargs(cmd, customMade=not isScience)
-        dcbOn, dcbOff = dcbKwargs(cmdKeys)
-        if not 'noLampCtl' in cmdKeys:
-            dcbOn['on'] = 'halogen'
+        forceHalogen = 'halogen' not in cmdKeys
+        dcbOn, dcbOff = dcbKwargs(cmdKeys, forceHalogen=forceHalogen)
+        exptime, seqLib = fetchExpTime(cmdKeys)
 
-        exptime = cmdKeys['exptime'].values
+        seqObj = seqLib.ScienceTrace if isScience else seqLib.Flats
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
-        job = self.resourceManager.request(cmd, spsSequence.Flats, doCheckFocus=isScience)
-        job.instantiate(cmd, exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, seqtype=seqtype, duplicate=duplicate,
-                        **seqKwargs)
+        job = self.resourceManager.request(cmd, seqObj, doCheckFocus=isScience)
+        job.instantiate(cmd, exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, duplicate=duplicate, **seqKwargs)
         job.fire(cmd)
 
     def scienceObject(self, cmd):
         """sps bias(es). """
         cmdKeys = cmd.cmd.keywords
-
         seqKwargs = genSeqKwargs(cmd, customMade=False)
+
         exptime = cmdKeys['exptime'].values
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
@@ -255,8 +251,8 @@ class SpsCmd(object):
     def doBias(self, cmd):
         """sps bias(es). """
         cmdKeys = cmd.cmd.keywords
-
         seqKwargs = genSeqKwargs(cmd)
+
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, spsSequence.Biases)
@@ -267,8 +263,8 @@ class SpsCmd(object):
     def doDark(self, cmd):
         """sps dark(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
-
         seqKwargs = genSeqKwargs(cmd, customMade=False)
+
         exptime = cmdKeys['exptime'].values
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
@@ -280,15 +276,16 @@ class SpsCmd(object):
     def slitThroughFocus(self, cmd):
         """sps slit through focus with given exptime. """
         cmdKeys = cmd.cmd.keywords
+        seqKwargs = genSeqKwargs(cmd)
 
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
-        seqKwargs = genSeqKwargs(cmd)
-        exptime = cmdKeys['exptime'].values
+        exptime, seqLib = fetchExpTime(cmdKeys)
+
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num)).round(6)
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
-        job = self.resourceManager.request(cmd, spsSequence.SlitThroughFocus)
+        job = self.resourceManager.request(cmd, seqLib.SlitThroughFocus)
         job.instantiate(cmd, exptime=exptime, positions=positions, dcbOn=dcbOn, dcbOff=dcbOff, duplicate=duplicate,
                         **seqKwargs)
         job.fire(cmd)
@@ -296,17 +293,18 @@ class SpsCmd(object):
     def detThroughFocus(self, cmd):
         """sps detector motors through focus with given exptime. """
         cmdKeys = cmd.cmd.keywords
+        seqKwargs = genSeqKwargs(cmd)
 
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
-        seqKwargs = genSeqKwargs(cmd)
-        exptime = cmdKeys['exptime'].values
+        exptime, seqLib = fetchExpTime(cmdKeys)
+
         start, stop, num = cmdKeys['position'].values
         tilt = np.array(cmdKeys['tilt'].values) if 'tilt' in cmdKeys else np.zeros(3)
         positions = np.array([np.linspace(start, stop - np.max(tilt), num=int(num)), ] * 3).transpose() + tilt
         positions = positions.round(2)
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
-        job = self.resourceManager.request(cmd, spsSequence.DetThroughFocus)
+        job = self.resourceManager.request(cmd, seqLib.DetThroughFocus)
         job.instantiate(cmd, exptime=exptime, positions=positions, dcbOn=dcbOn, dcbOff=dcbOff, duplicate=duplicate,
                         **seqKwargs)
         job.fire(cmd)
@@ -314,15 +312,16 @@ class SpsCmd(object):
     def ditheredArcs(self, cmd):
         """dithered Arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
+        seqKwargs = genSeqKwargs(cmd)
 
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
-        seqKwargs = genSeqKwargs(cmd)
-        exptime = cmdKeys['exptime'].values
+        exptime, seqLib = fetchExpTime(cmdKeys)
+
         pixels = cmdKeys['pixels'].values[0]
         doMinus = 'doMinus' in cmdKeys
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
-        job = self.resourceManager.request(cmd, spsSequence.DitheredArcs)
+        job = self.resourceManager.request(cmd, seqLib.DitheredArcs)
         job.instantiate(cmd, exptime=exptime, pixels=pixels, doMinus=doMinus, dcbOn=dcbOn, dcbOff=dcbOff,
                         duplicate=duplicate, **seqKwargs)
         job.fire(cmd)
@@ -330,17 +329,31 @@ class SpsCmd(object):
     def defocusedArcs(self, cmd):
         """defocused Arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
-
-        dcbOn, dcbOff = dcbKwargs(cmdKeys)
         seqKwargs = genSeqKwargs(cmd)
-        exptime = cmdKeys['exptime'].values
+        dcbOn, dcbOff = dcbKwargs(cmdKeys)
+        exptime, seqLib = fetchExpTime(cmdKeys)
+
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num)).round(6)
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
-        job = self.resourceManager.request(cmd, spsSequence.DefocusedArcs)
+        job = self.resourceManager.request(cmd, seqLib.DefocusedArcs)
         job.instantiate(cmd, exp_time_0=exptime, positions=positions, dcbOn=dcbOn, dcbOff=dcbOff, duplicate=duplicate,
                         **seqKwargs)
+        job.fire(cmd)
+
+    def hexapodStability(self, cmd):
+        """acquire hexapod stability grid. By default 12x12 and 3 duplicates at each position. """
+        cmdKeys = cmd.cmd.keywords
+        seqKwargs = genSeqKwargs(cmd)
+        timedLamps = timedDcbKwargs(cmdKeys)
+
+        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 3
+        position = cmdKeys['position'].values if 'position' in cmdKeys else [-0.05, 0.055, 0.01]
+        position = np.arange(*position)
+
+        job = self.resourceManager.request(cmd, timedSpsSequence.HexapodStability)
+        job.instantiate(cmd, position=position, timedLamps=timedLamps, duplicate=duplicate, **seqKwargs)
         job.fire(cmd)
 
     def custom(self, cmd):
@@ -351,109 +364,7 @@ class SpsCmd(object):
         job.instantiate(cmd, **seqKwargs)
         job.fire(cmd)
 
-    def doTimedDitheredFlats(self, cmd):
-        """ditheredFlat sequence, also known as masterFlat, controlled by lamp time. """
-        cmdKeys = cmd.cmd.keywords
-
-        timedLamps = timedDcbKwargs(cmdKeys)
-        seqKwargs = genSeqKwargs(cmd, customMade=False)
-        seqKwargs['name'] = 'calibProduct' if not seqKwargs['name'] else seqKwargs['name']
-        pixels = cmdKeys['pixels'].values[0] if 'pixels' in cmdKeys else 0.3
-        nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
-        nPositions = (nPositions // 2) * 2
-        positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1).round(2)
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.DitheredFlats)
-        job.instantiate(cmd, positions=positions, timedLamps=timedLamps, duplicate=duplicate, **seqKwargs)
-        job.fire(cmd)
-
-    def doTimedScienceArc(self, cmd):
-        """sps arc(s) controlled by lamp times """
-        cmdKeys = cmd.cmd.keywords
-        isScience = 'arc' not in cmdKeys
-        seqtype = 'scienceArc' if isScience else 'arcs'
-
-        timedLamps = timedDcbKwargs(cmdKeys)
-        seqKwargs = genSeqKwargs(cmd, customMade=not isScience)
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.Arcs, doCheckFocus=isScience)
-        job.instantiate(cmd, seqtype=seqtype, timedLamps=timedLamps, duplicate=duplicate, **seqKwargs)
-        job.fire(cmd)
-
-    def doTimedScienceTrace(self, cmd):
-        """sps arc(s) controlled by lamp times """
-        cmdKeys = cmd.cmd.keywords
-        isScience = 'flat' not in cmdKeys
-        seqtype = 'scienceTrace' if isScience else 'flats'
-
-        timedLamps = timedDcbKwargs(cmdKeys)
-        seqKwargs = genSeqKwargs(cmd, customMade=not isScience)
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.Flats, doCheckFocus=isScience)
-        job.instantiate(cmd, seqtype=seqtype, timedLamps=timedLamps, duplicate=duplicate, **seqKwargs)
-        job.fire(cmd)
-
-    def hexapodStability(self, cmd):
-        """acquire hexapod stability grid. By default 12x12 and 3 duplicates at each position. """
-        cmdKeys = cmd.cmd.keywords
-
-        timedLamps = timedDcbKwargs(cmdKeys)
-        seqKwargs = genSeqKwargs(cmd)
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 3
-        position = cmdKeys['position'].values if 'position' in cmdKeys else [-0.05, 0.055, 0.01]
-        position = np.arange(*position)
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.HexapodStability)
-        job.instantiate(cmd, position=position, timedLamps=timedLamps, duplicate=duplicate, **seqKwargs)
-        job.fire(cmd)
-
-    def doTimedDitheredArcs(self, cmd):
-        """dithered Arc(s), controlled by lamp time.  """
-        cmdKeys = cmd.cmd.keywords
-
-        timedLamps = timedDcbKwargs(cmdKeys)
-        seqKwargs = genSeqKwargs(cmd)
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-        pixels = cmdKeys['pixels'].values[0]
-        doMinus = 'doMinus' in cmdKeys
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.DitheredArcs)
-        job.instantiate(cmd, pixels=pixels, doMinus=doMinus, timedLamps=timedLamps, duplicate=duplicate, **seqKwargs)
-        job.fire(cmd)
-
-    def doTimedDetThroughFocus(self, cmd):
-        """sps detector motors through focus with given exptime. """
-        cmdKeys = cmd.cmd.keywords
-
-        timedLamps = timedDcbKwargs(cmdKeys)
-        seqKwargs = genSeqKwargs(cmd)
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-        start, stop, num = cmdKeys['position'].values
-        tilt = np.array(cmdKeys['tilt'].values) if 'tilt' in cmdKeys else np.zeros(3)
-        positions = np.array([np.linspace(start, stop - np.max(tilt), num=int(num)), ] * 3).transpose() + tilt
-        positions = positions.round(2)
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.DetThroughFocus)
-        job.instantiate(cmd, positions=positions, timedLamps=timedLamps, duplicate=duplicate, **seqKwargs)
-        job.fire(cmd)
-
-    def doTimedDefocusedArcs(self, cmd):
-        """sps detector motors through focus with given exptime. """
-        cmdKeys = cmd.cmd.keywords
-
-        timedLamps = timedDcbKwargs(cmdKeys)
-        seqKwargs = genSeqKwargs(cmd)
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-        start, stop, num = cmdKeys['position'].values
-        positions = np.linspace(start, stop, num=int(num)).round(6)
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.DefocusedArcs)
-        job.instantiate(cmd, positions=positions, timedLamps=timedLamps, duplicate=duplicate, **seqKwargs)
-        job.fire(cmd)
-
     def abort(self, cmd):
         """Not implemented."""
-        pass
+        self.resourceManager.finish(cmd, identifier='dcb')
+        cmd.finish()

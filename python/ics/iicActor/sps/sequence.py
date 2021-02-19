@@ -4,9 +4,10 @@ from pfs.utils.ncaplar import defocused_exposure_times_single_position
 
 class Object(Sequence):
     """ Simple exposure sequence """
+    seqtype = 'scienceObject'
 
-    def __init__(self, exptime, duplicate, cams, seqtype='scienceObject', doTest=False, **kwargs):
-        Sequence.__init__(self, seqtype, **kwargs)
+    def __init__(self, exptime, duplicate, cams, doTest=False, **kwargs):
+        Sequence.__init__(self, **kwargs)
         self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
 
@@ -17,37 +18,32 @@ class ObjectLoop(Object):
         Object.__init__(self, exptime, 1, cams, doTest=doTest, **kwargs)
 
 
-class ScienceFlat(Sequence):
-    """ Flat Field """
-
-    def __init__(self, exptime, duplicate, cams, seqtype='scienceFlat', doTest=False, **kwargs):
-        Sequence.__init__(self, seqtype, **kwargs)
-        self.expose(exptype='flat', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
-
-
 class Biases(Sequence):
     """ Biases sequence """
+    seqtype = 'biases'
     lightBeam = False
 
-    def __init__(self, duplicate, cams, seqtype='biases', doTest=False, **kwargs):
-        Sequence.__init__(self, seqtype, **kwargs)
+    def __init__(self, duplicate, cams, doTest=False, **kwargs):
+        Sequence.__init__(self, **kwargs)
         self.expose(exptype='bias', cams=cams, duplicate=duplicate, doTest=doTest)
 
 
 class Darks(Sequence):
     """ Darks sequence """
+    seqtype = 'darks'
     lightBeam = False
 
-    def __init__(self, exptime, duplicate, cams, seqtype='darks', doTest=False, **kwargs):
-        Sequence.__init__(self, seqtype, **kwargs)
+    def __init__(self, exptime, duplicate, cams, doTest=False, **kwargs):
+        Sequence.__init__(self, **kwargs)
         self.expose(exptype='dark', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
 
 class Arcs(Sequence):
     """ Arcs sequence """
+    seqtype = 'arcs'
 
-    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, seqtype='arcs', doTest=False, **kwargs):
-        Sequence.__init__(self, seqtype, **kwargs)
+    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, doTest=False, **kwargs):
+        Sequence.__init__(self, **kwargs)
 
         if any(dcbOn.values()):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
@@ -60,9 +56,10 @@ class Arcs(Sequence):
 
 class Flats(Sequence):
     """ Flat / fiberTrace sequence """
+    seqtype = 'flats'
 
-    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, seqtype='flats', doTest=False, **kwargs):
-        Sequence.__init__(self, seqtype, **kwargs)
+    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, doTest=False, **kwargs):
+        Sequence.__init__(self, **kwargs)
 
         if any(dcbOn.values()):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
@@ -72,11 +69,32 @@ class Flats(Sequence):
         self.expose(exptype='flat', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
 
+class MasterBiases(Biases):
+    """ Biases for calibration products """
+    seqtype = 'masterBiases'
+
+
+class MasterDarks(Darks):
+    """ Darks for calibration products """
+    seqtype = 'masterDarks'
+
+
+class ScienceArc(Arcs):
+    """ In-focus arcs """
+    seqtype = 'scienceArc'
+
+
+class ScienceTrace(Flats):
+    """ In-focus flat/fiberTrace"""
+    seqtype = 'scienceTrace'
+
+
 class SlitThroughFocus(Sequence):
     """ Slit through focus sequence """
+    seqtype = 'slitThroughFocus'
 
     def __init__(self, exptime, positions, duplicate, cams, dcbOn, dcbOff, doTest=False, **kwargs):
-        Sequence.__init__(self, 'slitThroughFocus', **kwargs)
+        Sequence.__init__(self, **kwargs)
 
         if any(dcbOn.values()):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
@@ -93,9 +111,10 @@ class SlitThroughFocus(Sequence):
 
 class DetThroughFocus(Sequence):
     """ Detector through focus sequence """
+    seqtype = 'detThroughFocus'
 
     def __init__(self, exptime, positions, duplicate, cams, dcbOn, dcbOff, doTest=False, **kwargs):
-        Sequence.__init__(self, 'detThroughFocus', **kwargs)
+        Sequence.__init__(self, **kwargs)
 
         if any(dcbOn.values()):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
@@ -111,9 +130,10 @@ class DetThroughFocus(Sequence):
 
 class DitheredFlats(Sequence):
     """ Dithered Flats sequence """
+    seqtype = 'ditheredFlats'
 
     def __init__(self, exptime, positions, duplicate, cams, dcbOn, dcbOff, doTest=False, **kwargs):
-        Sequence.__init__(self, 'ditheredFlats', **kwargs)
+        Sequence.__init__(self, **kwargs)
 
         if any(dcbOn.values()):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
@@ -136,9 +156,10 @@ class DitheredFlats(Sequence):
 
 class DitheredArcs(Sequence):
     """ Dithered Arcs sequence """
+    seqtype = 'ditheredArcs'
 
     def __init__(self, exptime, pixels, doMinus, duplicate, cams, dcbOn, dcbOff, doTest=False, **kwargs):
-        Sequence.__init__(self, 'ditheredArcs', **kwargs)
+        Sequence.__init__(self, **kwargs)
 
         if any(dcbOn.values()):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
@@ -159,9 +180,10 @@ class DitheredArcs(Sequence):
 
 class DefocusedArcs(Sequence):
     """ Defocus sequence """
+    seqtype = 'defocusedArcs'
 
     def __init__(self, exp_time_0, positions, duplicate, cams, dcbOn, dcbOff, doTest=False, **kwargs):
-        Sequence.__init__(self, 'defocusedArcs', **kwargs)
+        Sequence.__init__(self, **kwargs)
         att_value_0 = dcbOn['attenuator']
 
         if any(dcbOn.values()):
@@ -185,6 +207,7 @@ class DefocusedArcs(Sequence):
 
 class Custom(Sequence):
     """ Custom sequence """
+    seqtype = 'custom'
 
     def __init__(self, duplicate, cams, doTest=False, **kwargs):
-        Sequence.__init__(self, 'custom', **kwargs)
+        Sequence.__init__(self, **kwargs)
