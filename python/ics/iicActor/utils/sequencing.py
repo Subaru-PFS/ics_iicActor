@@ -63,7 +63,7 @@ class SubCmd(object):
         self.lastReply = ''
         self.visit = -1
 
-    def setId(self, sequence, cmdId):
+    def register(self, sequence, cmdId):
         """ Assign sequence and id to subcommand """
         self.sequence = sequence
         self.id = cmdId
@@ -155,6 +155,9 @@ class SpsExpose(SubCmd):
 
     def abort(self, cmd):
         """ Abort current exposure """
+        if self.visit == -1:
+            return
+
         ret = self.iicActor.cmdr.call(actor='sps',
                                       cmdStr=f'exposure abort visit={self.visit}',
                                       forUserCmd=cmd,
@@ -199,6 +202,7 @@ class Sequence(list):
     seqtype = 'sequence'
     lightBeam = True
     shutterRequired = True
+    doCheckFocus = False
 
     def __init__(self, name='', comments='', head=None, tail=None):
         super().__init__()
@@ -291,7 +295,7 @@ class Sequence(list):
         self.inform(cmd=cmd)
 
         for cmdId, subCmd in enumerate(self.subCmds):
-            subCmd.setId(self, cmdId=cmdId)
+            subCmd.register(self, cmdId=cmdId)
             subCmd.inform(cmd=cmd)
 
     def process(self, cmd):
@@ -317,7 +321,7 @@ class Sequence(list):
         try:
             self.processSubCmd(cmd, subCmd=subCmd)
 
-            while not (self.doAbort or self.doFinish):
+            while not self.doFinish:
                 self.archiveAndReset(cmd, subCmd)
                 self.processSubCmd(cmd, subCmd=subCmd)
 
@@ -328,33 +332,34 @@ class Sequence(list):
         """ archive a copy of the current command then reset it."""
         self.insert(subCmd.id, subCmd.copy())
         subCmd.initialise()
-        subCmd.setId(self, len(self.cmdList) - 1)
+        subCmd.register(self, len(self.cmdList) - 1)
         subCmd.inform(cmd=cmd)
 
     def processSubCmd(self, cmd, subCmd, doRaise=True):
-        """ Process each subcommand, handle error or abortion """
-        cmdVar = subCmd.callAndUpdate(cmd=cmd)
+        """ Process one subcommand, handle error or abortion """
+        cmdVar = subCmd.callAndUpdate(cmd)
 
-        if subCmd.didFail and doRaise:
-            self.handleError(cmd=cmd, cmdId=subCmd.id, cmdVar=cmdVar)
-            if not self.doFinish:
-                raise RuntimeError('Sub-command has failed.. sequence aborted..')
+        self.genProperOutput(cmd, didFail=subCmd.didFail, subCmd=subCmd, cmdVar=cmdVar)
 
-        if subCmd.isLast:
-            return
+        if not subCmd.isLast:
+            aborted = self.waitUntil(time.time() + subCmd.idleTime)
+            self.genProperOutput(cmd, didFail=aborted, subCmd=subCmd)
 
-        aborted = self.waitUntil(time.time() + subCmd.idleTime)
+    def genProperOutput(self, cmd, didFail, subCmd, cmdVar=None, doRaise=True):
+        """ Process one subcommand, handle error or abortion """
+        doRaise = False if self.doFinish else doRaise
 
-        if aborted and doRaise:
-            self.handleError(cmd=cmd, cmdId=subCmd.id)
-            raise RuntimeError('Abort sequence requested..')
+        if didFail or self.doFinish:
+            self.cancelRemainings(cmd, cmdId=subCmd.id)
+            if doRaise:
+                self.handleError(cmd, cmdId=subCmd.id, cmdVar=cmdVar)
+                if self.doAbort:
+                    raise RuntimeError('abort sequence requested...')
+                else:
+                    raise RuntimeError('Sub-command has failed.. sequence stopping now !!!')
 
     def handleError(self, cmd, cmdId, cmdVar=None):
-        """ Release remaining subcommand, generate warnings"""
-        for id in range(cmdId + 1, len(self.head + self.cmdList)):
-            self.subCmds[id].didFail = 1
-            self.subCmds[id].inform(cmd)
-
+        """ Catch error(s) and generate warnings"""
         if cmdVar is None:
             cmdErrors = [f'text={qstr(self.subCmds[cmdId].lastReply)}']
         else:
@@ -364,6 +369,12 @@ class Sequence(list):
 
         for cmdError in cmdErrors:
             cmd.warn(cmdError)
+
+    def cancelRemainings(self, cmd, cmdId):
+        """ Release remaining subcommand"""
+        for id in range(cmdId + 1, len(self.head + self.cmdList)):
+            self.subCmds[id].didFail = 1
+            self.subCmds[id].inform(cmd)
 
     def waitUntil(self, endTime, ti=0.01):
         """ Wait Until endTime"""
