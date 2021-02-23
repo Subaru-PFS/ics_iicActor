@@ -180,36 +180,45 @@ class ResourceManager(object):
         if prevJob is not None and prevJob not in self.jobs.values():
             prevJob.free()
 
-    def identify(self, identifier):
-        if identifier == 'sps':
-            for job in set(self.jobs.values()):
-                if job.lightSource is None:
-                    continue
+    def identify(self, identifier, lightSource=True):
+        """ identify jon from identifier(sps, dcb ...), look for job with light source first. """
+        ret = None
+
+        for job in set(self.jobs.values()):
+            if (lightSource and job.lightSource is None) or job.isProcessed:
+                continue
+
+            if identifier == 'sps':
                 if all([spec.specModule.spsModule for spec in job.specs]):
-                    return job
+                    ret = job
 
-        elif identifier in ['dcb', 'dcb2', 'sunss']:
-            for job in set(self.jobs.values()):
-                if job.isProcessed:
-                    continue
-                if all([spec.lightSource==identifier for spec in job.specs]):
-                    return job
+            elif identifier in ['dcb', 'dcb2', 'sunss']:
+                if all([spec.lightSource == identifier for spec in job.specs]):
+                    ret = job
+            else:
+                raise RuntimeError('unknown identifier')
 
-        else:
-            raise RuntimeError('unknown identifier')
+        if ret is None and lightSource:
+            return self.identify(identifier=identifier, lightSource=False)
+
+        if ret is None:
+            raise RuntimeError('could not identify job')
+
+        return ret
 
     def finish(self, cmd, identifier='sps'):
         """ finish an on going job. """
         job = self.identify(identifier=identifier)
 
-        if job is None:
-            raise RuntimeError('could not identify job')
+        cmd.inform(f'text="finalizing {identifier} exposure..."')
+        job.seq.finish(cmd)
 
-        if not job.isProcessed:
-            cmd.inform(f'text="finalizing {identifier} exposure..."')
-            job.seq.finish(cmd)
-        else:
-            cmd.inform(f'text="{identifier} exposure already finished..."')
+    def abort(self, cmd, identifier='sps'):
+        """ abort an on going job. """
+        job = self.identify(identifier=identifier)
+
+        cmd.inform(f'text="aborting {identifier} exposure..."')
+        job.seq.abort(cmd)
 
     def fetchLastVisitSetId(self):
         """ get last visit_set_id from opDB """
@@ -221,7 +230,7 @@ class ResourceManager(object):
     def arrangeVisitSetId(self):
         """ Multiple Jobs can happen in parallel, make sure you don't attribute same visit_set_id.  """
         lastVisitSetId = self.fetchLastVisitSetId() + 1
-        aliveVisitSetId = [job.visitSetId for job in self.jobs.values()]
+        aliveVisitSetId = [job.visitSetId for job in self.jobs.values() if not job.isProcessed]
         visitSetId = max(aliveVisitSetId) + 1 if lastVisitSetId in aliveVisitSetId else lastVisitSetId
         return visitSetId
 
