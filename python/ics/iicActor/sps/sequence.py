@@ -5,6 +5,7 @@ from pfs.utils.ncaplar import defocused_exposure_times_single_position
 class Object(Sequence):
     """ Simple exposure sequence """
     seqtype = 'scienceObject'
+    doCheckFocus = True
 
     def __init__(self, exptime, duplicate, cams, doTest=False, **kwargs):
         Sequence.__init__(self, **kwargs)
@@ -75,11 +76,13 @@ class MasterDarks(Darks):
 class ScienceArc(Arcs):
     """ In-focus arcs """
     seqtype = 'scienceArc'
+    doCheckFocus = True
 
 
 class ScienceTrace(Flats):
     """ In-focus flat/fiberTrace"""
     seqtype = 'scienceTrace'
+    doCheckFocus = True
 
 
 class SlitThroughFocus(Sequence):

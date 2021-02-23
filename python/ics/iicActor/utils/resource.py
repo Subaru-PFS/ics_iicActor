@@ -144,7 +144,7 @@ class ResourceManager(object):
 
         return keys
 
-    def request(self, cmd, seqObj, doCheckFocus=False):
+    def request(self, cmd, seqObj):
         """ Request a new Job and lock it if all checks passes. """
         identKeys = self.genIdentKeys(cmd.cmd.keywords)
         visitSetId = self.arrangeVisitSetId()
@@ -156,7 +156,7 @@ class ResourceManager(object):
         if any([resource in self.locked for resource in job.required]):
             raise RuntimeError('cannot fire your sequence, required resources already locked...')
 
-        if doCheckFocus and not job.isInFocus(cmd):
+        if seqObj.doCheckFocus and not job.isInFocus(cmd):
             raise RuntimeError('Spectrograph is not in focus...')
 
         return self.lock(job)

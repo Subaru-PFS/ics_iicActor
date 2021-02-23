@@ -214,7 +214,7 @@ class SpsCmd(object):
         seqObj = seqLib.ScienceArc if isScience else seqLib.Arcs
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
-        job = self.resourceManager.request(cmd, seqObj, doCheckFocus=isScience)
+        job = self.resourceManager.request(cmd, seqObj)
         job.instantiate(cmd, exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, duplicate=duplicate, **seqKwargs)
         job.fire(cmd)
 
@@ -231,7 +231,7 @@ class SpsCmd(object):
         seqObj = seqLib.ScienceTrace if isScience else seqLib.Flats
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
-        job = self.resourceManager.request(cmd, seqObj, doCheckFocus=isScience)
+        job = self.resourceManager.request(cmd, seqObj)
         job.instantiate(cmd, exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, duplicate=duplicate, **seqKwargs)
         job.fire(cmd)
 
@@ -243,7 +243,7 @@ class SpsCmd(object):
         exptime = cmdKeys['exptime'].values
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
-        job = self.resourceManager.request(cmd, spsSequence.Object, doCheckFocus=True)
+        job = self.resourceManager.request(cmd, spsSequence.Object)
         job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
 
         job.fire(cmd)
@@ -366,5 +366,5 @@ class SpsCmd(object):
 
     def abort(self, cmd):
         """Not implemented."""
-        self.resourceManager.finish(cmd, identifier='dcb')
+        self.resourceManager.abort(cmd, identifier='dcb')
         cmd.finish()

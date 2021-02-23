@@ -45,7 +45,7 @@ class SuNSSCmd(object):
         exptime = cmdKeys['exptime'].values
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
-        job = self.resourceManager.request(cmd, spsSequence.ScienceFlat, doCheckFocus=True)
+        job = self.resourceManager.request(cmd, spsSequence.ScienceFlat)
         job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
 
         job.fire(cmd)
@@ -56,7 +56,7 @@ class SuNSSCmd(object):
         seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
         exptime = cmdKeys['exptime'].values
 
-        job = self.resourceManager.request(cmd, spsSequence.Object, doCheckFocus=True)
+        job = self.resourceManager.request(cmd, spsSequence.Object)
         job.instantiate(cmd, exptime=exptime, duplicate=1, **seqKwargs)
 
         job.fire(cmd, doLoop=True)
