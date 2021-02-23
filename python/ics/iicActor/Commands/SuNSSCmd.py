@@ -18,7 +18,7 @@ class SuNSSCmd(object):
         identArgs = '[<cam>] [<arm>] [<sm>]'
         self.vocab = [
             ('sps', f'@startExposures <exptime> {identArgs} [<name>] [<comments>] [@doTest]', self.startExposures),
-            ('scienceFlat', f'<exptime> {identArgs} [<name>] [<comments>] [<duplicate>] [@doTest]', self.scienceFlat),
+            ('domeFlat', f'<exptime> {identArgs} [<name>] [<comments>] [<duplicate>] [@doTest]', self.domeFlat),
             ('sps', 'finishExposure', self.finishExposure)
         ]
 
@@ -38,14 +38,14 @@ class SuNSSCmd(object):
     def resourceManager(self):
         return self.actor.resourceManager
 
-    def scienceFlat(self, cmd):
+    def domeFlat(self, cmd):
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
         exptime = cmdKeys['exptime'].values
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
-        job = self.resourceManager.request(cmd, spsSequence.ScienceFlat)
+        job = self.resourceManager.request(cmd, spsSequence.DomeFlat)
         job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
 
         job.fire(cmd)

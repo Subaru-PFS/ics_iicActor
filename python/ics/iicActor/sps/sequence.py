@@ -12,6 +12,15 @@ class Object(Sequence):
         self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
 
+class DomeFlat(Sequence):
+    """ Flat/fiberTrace from Dome illumination. """
+    seqtype = 'domeFlat'
+    doCheckFocus = True
+    def __init__(self, exptime, duplicate, cams, doTest=False, **kwargs):
+        Sequence.__init__(self, **kwargs)
+        self.expose(exptype='domeflat', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
+
+
 class Biases(Sequence):
     """ Biases sequence """
     seqtype = 'biases'
