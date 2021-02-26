@@ -286,7 +286,7 @@ class Sequence(list):
         cmd.inform(self.genKeys())
 
     def genKeys(self):
-        return f'sps_sequence={self.visit_set_id},{self.seqtype},"{self.cmdStr}","{self.name}","{self.comments}"'
+        return f'sps_sequence={self.visit_set_id},{self.seqtype},"{self.cmdStr}","{self.name}","{self.comments}",{self.job.isProcessed}'
 
     def register(self, cmd):
         """ Register sequence and underlying subcommand"""

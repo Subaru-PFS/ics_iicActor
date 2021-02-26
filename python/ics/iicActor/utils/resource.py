@@ -3,6 +3,7 @@ from importlib import reload
 import ics.iicActor.sps.sequence as spsSequence
 import ics.iicActor.sps.timed as timedSpsSequence
 from actorcore.QThread import QThread
+from astropy import time as astroTime
 from ics.iicActor import visit
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
@@ -16,6 +17,7 @@ class SpectroJob(QThread):
     """ Placeholder which link the data request with the required resources and mhs commands. """
 
     def __init__(self, iicActor, identKeys, seqObj, visitSetId):
+        self.tStart = astroTime.Time.now()
         QThread.__init__(self, iicActor, 'toto')
         specs = SpsConfig.fromModel(self.actor.models['sps']).identify(**identKeys)
         self.isProcessed = False
@@ -51,7 +53,7 @@ class SpectroJob(QThread):
     def __str__(self):
         return f'SpectroJob(lightSource={self.lightSource} resources={",".join(self.required)} ' \
                f'visitSetId={self.visitSetId} visitRange={self.seq.visitStart},{self.seq.visitEnd} ' \
-               f'finished={self.isProcessed}'
+               f'finished={self.isProcessed} startedAt({self.tStart.datetime.isoformat()})'
 
     def getLightSource(self, specs):
         """ Get light source from our sets of specs. """
@@ -163,8 +165,9 @@ class ResourceManager(object):
 
     def lock(self, job):
         """ all specs points to the same job. """
-        for spec in job.specs:
-            self.allocate(job, key=spec.camName)
+        # for spec in job.specs:
+        #     self.allocate(job, key=spec.camName)
+        self.allocate(job, job.visitSetId)
 
         return job
 
@@ -179,6 +182,17 @@ class ResourceManager(object):
 
         if prevJob is not None and prevJob not in self.jobs.values():
             prevJob.free()
+
+        self.cleanHistory()
+
+    def cleanHistory(self, nDay=1):
+        """ Just associate a spec with a job, free a previous job if it's not longer referenced. """
+        now = float(astroTime.Time.now().mjd)
+        oldVisitSets = [job.visitSetId for job in self.jobs.values() if now - job.tStart.mjd > nDay]
+
+        for visitSetId in oldVisitSets:
+            self.jobs[visitSetId].free()
+            self.jobs.pop(visitSetId, None)
 
     def identify(self, identifier, lightSource=True):
         """ identify jon from identifier(sps, dcb ...), look for job with light source first. """
