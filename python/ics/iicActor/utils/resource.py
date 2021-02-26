@@ -52,7 +52,7 @@ class SpectroJob(QThread):
 
     def __str__(self):
         return f'SpectroJob(lightSource={self.lightSource} resources={",".join(self.required)} ' \
-               f'visitSetId={self.visitSetId} visitRange={self.seq.visitStart},{self.seq.visitEnd} ' \
+               f'visitRange={self.seq.visitStart},{self.seq.visitEnd} ' \
                f'finished={self.isProcessed} startedAt({self.tStart.datetime.isoformat()})'
 
     def getLightSource(self, specs):
@@ -102,6 +102,11 @@ class SpectroJob(QThread):
             self.isProcessed = True
 
         cmd.finish()
+
+    def getStatus(self, cmd):
+        """ Process the sequence in the Job's thread as it would behave in the main one. """
+        cmd.inform(f"seq{self.visitSetId}={qstr(self)}")
+        cmd.inform(self.seq.genKeys())
 
     def free(self):
         """ Make sure, you aren't leaving anything behind. """
@@ -248,9 +253,19 @@ class ResourceManager(object):
         visitSetId = max(aliveVisitSetId) + 1 if lastVisitSetId in aliveVisitSetId else lastVisitSetId
         return visitSetId
 
-    def getStatus(self, cmd):
+    def getStatus(self, cmd, visitSetId=None):
         """ generate Job(s) status(es). """
-        cmd.inform('text="on going jobs :"')
-        for i, job in enumerate((set(self.jobs.values()))):
-            cmd.inform(f"job{i}={qstr(job)}")
-            cmd.inform(job.seq.genKeys())
+
+        if visitSetId is not None:
+            try:
+                job = self.jobs[visitSetId]
+                return job.getStatus(cmd)
+            except KeyError:
+                raise RuntimeError(f'{visitSetId} is not valid, valids:{",".join(map(str, self.jobs.keys()))}')
+
+        activeIds = ",".join([str(job.visitSetId) for job in self.onGoing])
+        activeIds = 'None' if not activeIds else activeIds
+        cmd.inform(f'activeSequences={activeIds}')
+
+        for job in self.jobs.values():
+            job.getStatus(cmd)
