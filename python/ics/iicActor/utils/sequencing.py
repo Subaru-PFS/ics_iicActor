@@ -72,7 +72,7 @@ class SubCmd(object):
         """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs) """
         return dict(actor=self.actor,
                     cmdStr=self.cmdStr,
-                    forUserCmd=cmd,
+                    forUserCmd=None,
                     timeLim=self.timeLim)
 
     def call(self, cmd):
@@ -121,7 +121,7 @@ class SpsExpose(SubCmd):
     def build(self, cmd):
         """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visit """
         return dict(actor=self.actor, cmdStr=self.cmdStr.format(visit=self.visit, cams=self.sequence.exposable),
-                    forUserCmd=cmd, timeLim=self.timeLim)
+                    forUserCmd=None, timeLim=self.timeLim)
 
     def call(self, cmd):
         """ Get visit from gen2, Call subcommand, release visit """

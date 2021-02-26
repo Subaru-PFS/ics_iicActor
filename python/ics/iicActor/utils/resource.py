@@ -50,10 +50,15 @@ class SpectroJob(QThread):
     def camNames(self):
         return list(map(str, self.specs))
 
+    @property
+    def status(self):
+        return 'active' if not self.isProcessed else self.seq.status
+
     def __str__(self):
+
         return f'SpectroJob(lightSource={self.lightSource} resources={",".join(self.required)} ' \
-               f'visitRange={self.seq.visitStart},{self.seq.visitEnd} ' \
-               f'finished={self.isProcessed} startedAt({self.tStart.datetime.isoformat()})'
+               f'visitRange={self.seq.visitStart},{self.seq.visitEnd} startedAt({self.tStart.datetime.isoformat()}) ' \
+               f'status={self.status}'
 
     def getLightSource(self, specs):
         """ Get light source from our sets of specs. """
@@ -90,6 +95,8 @@ class SpectroJob(QThread):
         """ Process the sequence in the Job's thread as it would behave in the main one. """
         try:
             if doLoop:
+                cmd.finish()
+                cmd = self.actor.bcast
                 self.seq.loop(cmd)
             else:
                 self.seq.process(cmd)
