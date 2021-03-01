@@ -5,10 +5,10 @@ import ics.iicActor.sps.timed as timedSpsSequence
 from actorcore.QThread import QThread
 from astropy import time as astroTime
 from ics.iicActor import visit
+from iicActor.utils.lib import process
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
 from pfs.utils.sps.config import SpsConfig
-from iicActor.utils.lib import process
 
 reload(spsSequence)
 reload(timedSpsSequence)
@@ -90,13 +90,11 @@ class SpectroJob(QThread):
     def fire(self, cmd):
         """ Put Job on the Thread. """
         self.seq.process(cmd)
-        cmd.finish()
 
     @process
     def loop(self, cmd):
         """ Put Job on the Thread. """
-        cmd.finish()
-        self.seq.loop(self.actor.bcast)
+        self.seq.loop(cmd)
 
     def getStatus(self, cmd):
         """ Process the sequence in the Job's thread as it would behave in the main one. """

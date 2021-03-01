@@ -58,4 +58,5 @@ class SuNSSCmd(object):
         job = self.resourceManager.request(cmd, spsSequence.Object)
         job.instantiate(cmd, exptime=exptime, duplicate=1, **seqKwargs)
 
-        job.loop(cmd)
+        cmd.finish()
+        job.loop(cmd=self.actor.bcast)
