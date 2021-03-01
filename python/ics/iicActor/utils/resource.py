@@ -8,6 +8,7 @@ from ics.iicActor import visit
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
 from pfs.utils.sps.config import SpsConfig
+from iicActor.utils import process
 
 reload(spsSequence)
 reload(timedSpsSequence)
@@ -55,7 +56,6 @@ class SpectroJob(QThread):
         return 'active' if not self.isProcessed else self.seq.status
 
     def __str__(self):
-
         return f'SpectroJob(lightSource={self.lightSource} resources={",".join(self.required)} ' \
                f'visitRange={self.seq.visitStart},{self.seq.visitEnd} startedAt({self.tStart.datetime.isoformat()}) ' \
                f'status={self.status}'
@@ -86,29 +86,17 @@ class SpectroJob(QThread):
         self.seq = self.seqObj(cams=self.camNames, *args, **kwargs)
         self.seq.assign(cmd, self)
 
-    def fire(self, cmd, doLoop=False):
+    @process
+    def fire(self, cmd):
         """ Put Job on the Thread. """
-        self.start()
-        self.putMsg(self.process, cmd=cmd, doLoop=doLoop)
-
-    def process(self, cmd, doLoop):
-        """ Process the sequence in the Job's thread as it would behave in the main one. """
-        try:
-            if doLoop:
-                cmd.finish()
-                cmd = self.actor.bcast
-                self.seq.loop(cmd)
-            else:
-                self.seq.process(cmd)
-
-        except Exception as e:
-            cmd.fail('text=%s' % self.actor.strTraceback(e))
-            return
-
-        finally:
-            self.isProcessed = True
-
+        self.seq.process(cmd)
         cmd.finish()
+
+    @process
+    def loop(self, cmd):
+        """ Put Job on the Thread. """
+        cmd.finish()
+        self.seq.loop(self.actor.bcast)
 
     def getStatus(self, cmd):
         """ Process the sequence in the Job's thread as it would behave in the main one. """

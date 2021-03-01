@@ -59,7 +59,7 @@ class SuNSSCmd(object):
         job = self.resourceManager.request(cmd, spsSequence.Object)
         job.instantiate(cmd, exptime=exptime, duplicate=1, **seqKwargs)
 
-        job.fire(cmd, doLoop=True)
+        job.loop(cmd)
 
     def finishExposure(self, cmd):
         self.resourceManager.finish(cmd, identifier='sps')

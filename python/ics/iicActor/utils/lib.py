@@ -1,8 +1,5 @@
 import re
-import time
-from functools import partial
-
-from actorcore.QThread import QThread
+from functools import partial, wraps
 
 
 def stripQuotes(txt):
@@ -23,21 +20,23 @@ def stripField(rawCmd, field):
 
 
 def putMsg(func):
+    @wraps(func)
     def wrapper(self, cmd, *args, **kwargs):
-        thr = QThread(self.actor, str(time.time()))
-        thr.start()
-        thr.putMsg(partial(func, self, cmd, *args, **kwargs))
-        thr.exitASAP = True
+        self.start()
+        self.putMsg(partial(func, self, cmd, *args, **kwargs))
 
     return wrapper
 
 
-def singleShot(func):
+def process(func):
+    @wraps(func)
     @putMsg
     def wrapper(self, cmd, *args, **kwargs):
         try:
             return func(self, cmd, *args, **kwargs)
         except Exception as e:
             cmd.fail('text=%s' % self.actor.strTraceback(e))
+        finally:
+            self.isProcessed = True
 
     return wrapper
