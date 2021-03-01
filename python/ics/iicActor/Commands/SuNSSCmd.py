@@ -19,7 +19,6 @@ class SuNSSCmd(object):
         self.vocab = [
             ('sps', f'@startExposures <exptime> {identArgs} [<name>] [<comments>] [@doTest]', self.startExposures),
             ('domeFlat', f'<exptime> {identArgs} [<name>] [<comments>] [<duplicate>] [@doTest]', self.domeFlat),
-            ('sps', 'finishExposure', self.finishExposure)
         ]
 
         # Define typed command arguments for the above commands.
@@ -60,7 +59,3 @@ class SuNSSCmd(object):
         job.instantiate(cmd, exptime=exptime, duplicate=1, **seqKwargs)
 
         job.loop(cmd)
-
-    def finishExposure(self, cmd):
-        self.resourceManager.finish(cmd, identifier='sps')
-        cmd.finish()

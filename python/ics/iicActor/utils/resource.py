@@ -8,7 +8,7 @@ from ics.iicActor import visit
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
 from pfs.utils.sps.config import SpsConfig
-from iicActor.utils import process
+from iicActor.utils.lib import process
 
 reload(spsSequence)
 reload(timedSpsSequence)
@@ -198,6 +198,13 @@ class ResourceManager(object):
         """ identify jon from identifier(sps, dcb ...), look for job with light source first. """
         ret = None
 
+        if isinstance(identifier, int):
+            visitSetId = identifier
+            try:
+                return self.jobs[visitSetId]
+            except KeyError:
+                raise RuntimeError(f'{visitSetId} is not valid, valids:{",".join(map(str, self.jobs.keys()))}')
+
         for job in set(self.jobs.values()):
             if (lightSource and job.lightSource is None) or job.isProcessed:
                 continue
@@ -223,15 +230,19 @@ class ResourceManager(object):
     def finish(self, cmd, identifier='sps'):
         """ finish an on going job. """
         job = self.identify(identifier=identifier)
+        if job.isProcessed:
+            raise RuntimeError('job already finished')
 
-        cmd.inform(f'text="finalizing {identifier} exposure..."')
+        cmd.inform(f'text="finalizing exposure from sequence(id:{job.visitSetId})..."')
         job.seq.finish(cmd)
 
     def abort(self, cmd, identifier='sps'):
         """ abort an on going job. """
         job = self.identify(identifier=identifier)
+        if job.isProcessed:
+            raise RuntimeError('job already finished')
 
-        cmd.inform(f'text="aborting {identifier} exposure..."')
+        cmd.inform(f'text="aborting exposure from sequence(id:{job.visitSetId})..."')
         job.seq.abort(cmd)
 
     def fetchLastVisitSetId(self):
