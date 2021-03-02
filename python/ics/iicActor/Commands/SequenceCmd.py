@@ -1,6 +1,8 @@
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 
+from ics.iicActor.utils.lib import wait
+
 
 class SequenceCmd(object):
 
@@ -40,12 +42,20 @@ class SequenceCmd(object):
         cmdKeys = cmd.cmd.keywords
         identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else 'dcb'
 
-        self.resourceManager.abort(cmd, identifier=identifier)
+        job = self.resourceManager.abort(cmd, identifier=identifier)
+        while not job.isProcessed:
+            wait()
+
+        job.getStatus(cmd)
         cmd.finish()
 
     def finishExposure(self, cmd):
         cmdKeys = cmd.cmd.keywords
         identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else 'sps'
 
-        self.resourceManager.finish(cmd, identifier=identifier)
+        job = self.resourceManager.finish(cmd, identifier=identifier)
+        while not job.isProcessed:
+            wait()
+
+        job.getStatus(cmd)
         cmd.finish()

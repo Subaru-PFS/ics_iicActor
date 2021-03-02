@@ -1,4 +1,5 @@
 import re
+import time
 from functools import partial, wraps
 
 
@@ -46,3 +47,7 @@ def process(func):
             cmd.fail('text=%s' % self.actor.strTraceback(e))
 
     return wrapper
+
+
+def wait(ti=0.01):
+    time.sleep(ti)

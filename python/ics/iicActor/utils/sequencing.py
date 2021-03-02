@@ -1,7 +1,7 @@
 import time
 from functools import partial
 
-from ics.iicActor.utils.lib import stripQuotes, stripField
+from ics.iicActor.utils.lib import stripQuotes, stripField, wait
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
 
@@ -376,13 +376,13 @@ class Sequence(list):
             self.subCmds[id].didFail = 1
             self.subCmds[id].inform(cmd)
 
-    def waitUntil(self, endTime, ti=0.01):
+    def waitUntil(self, endTime):
         """ Wait Until endTime"""
         while time.time() < endTime:
             if self.doFinish or self.doAbort:
                 break
 
-            time.sleep(ti)
+            wait()
 
         return self.doAbort
 

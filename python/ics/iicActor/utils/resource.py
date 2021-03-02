@@ -124,6 +124,12 @@ class ResourceManager(object):
         return [job for job in self.jobs.values() if not job.isProcessed]
 
     @property
+    def activeIds(self):
+        activeIds = ",".join([str(job.visitSetId) for job in self.onGoing])
+        activeIds = 'None' if not activeIds else activeIds
+        return activeIds
+
+    @property
     def busy(self):
         return sum([job.required for job in self.onGoing], [])
 
@@ -201,7 +207,7 @@ class ResourceManager(object):
             try:
                 return self.jobs[visitSetId]
             except KeyError:
-                raise RuntimeError(f'{visitSetId} is not valid, valids:{",".join(map(str, self.jobs.keys()))}')
+                raise RuntimeError(f'{visitSetId} is not valid, on-going sequence:{self.activeIds}')
 
         for job in set(self.jobs.values()):
             if (lightSource and job.lightSource is None) or job.isProcessed:
@@ -233,6 +239,7 @@ class ResourceManager(object):
 
         cmd.inform(f'text="finalizing exposure from sequence(id:{job.visitSetId})..."')
         job.seq.finish(cmd)
+        return job
 
     def abort(self, cmd, identifier='sps'):
         """ abort an on going job. """
@@ -242,6 +249,7 @@ class ResourceManager(object):
 
         cmd.inform(f'text="aborting exposure from sequence(id:{job.visitSetId})..."')
         job.seq.abort(cmd)
+        return job
 
     def fetchLastVisitSetId(self):
         """ get last visit_set_id from opDB """
@@ -267,9 +275,7 @@ class ResourceManager(object):
             except KeyError:
                 raise RuntimeError(f'{visitSetId} is not valid, valids:{",".join(map(str, self.jobs.keys()))}')
 
-        activeIds = ",".join([str(job.visitSetId) for job in self.onGoing])
-        activeIds = 'None' if not activeIds else activeIds
-        cmd.inform(f'activeSequences={activeIds}')
+        cmd.inform(f'activeSequences={self.activeIds}')
 
         for job in self.jobs.values():
             job.getStatus(cmd)
