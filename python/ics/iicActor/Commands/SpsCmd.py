@@ -101,7 +101,6 @@ class SpsCmd(object):
             ('dither', f'arc <exptime> <pixels> [doMinus] {dcbArgs} {commonArgs}', self.ditheredArcs),
             ('defocus', f'arc <exptime> <position> {dcbArgs} {commonArgs}', self.defocusedArcs),
             ('custom', '[<name>] [<comments>] [<head>] [<tail>]', self.custom),
-            ('sps', 'abort', self.abort),
 
             ('ditheredFlats', f'<halogen> [<pixels>] [<nPositions>] {commonArgs}', self.ditheredFlats),
             ('scienceArc', f'{timedDcbArcArgs} {commonArgs}', self.scienceArc),
@@ -363,8 +362,3 @@ class SpsCmd(object):
         job = self.resourceManager.request(cmd, spsSequence.Custom)
         job.instantiate(cmd, **seqKwargs)
         job.fire(cmd)
-
-    def abort(self, cmd):
-        """Not implemented."""
-        self.resourceManager.abort(cmd, identifier='dcb')
-        cmd.finish()

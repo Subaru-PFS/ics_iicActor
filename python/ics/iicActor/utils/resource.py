@@ -3,7 +3,9 @@ from importlib import reload
 import ics.iicActor.sps.sequence as spsSequence
 import ics.iicActor.sps.timed as timedSpsSequence
 from actorcore.QThread import QThread
+from astropy import time as astroTime
 from ics.iicActor import visit
+from iicActor.utils.lib import process
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
 from pfs.utils.sps.config import SpsConfig
@@ -16,9 +18,10 @@ class SpectroJob(QThread):
     """ Placeholder which link the data request with the required resources and mhs commands. """
 
     def __init__(self, iicActor, identKeys, seqObj, visitSetId):
+        self.tStart = astroTime.Time.now()
         QThread.__init__(self, iicActor, 'toto')
         specs = SpsConfig.fromModel(self.actor.models['sps']).identify(**identKeys)
-        self.isProcessed = False
+        self.isDone = False
         self.visitor = visit.VisitManager(iicActor)
         self.seqObj = seqObj
         self.visitSetId = visitSetId
@@ -48,10 +51,24 @@ class SpectroJob(QThread):
     def camNames(self):
         return list(map(str, self.specs))
 
+    def getStatus(self, doShort=True):
+        if not self.isDone:
+            return 'active'
+
+        if self.seq.status in ['complete', 'finishRequested']:
+            status = 'finished'
+        elif self.seq.status == 'abortRequested':
+            status = 'aborted'
+        else:
+            status = 'failed' if doShort else self.seq.status
+
+        return status
+
+
     def __str__(self):
         return f'SpectroJob(lightSource={self.lightSource} resources={",".join(self.required)} ' \
-               f'visitSetId={self.visitSetId} visitRange={self.seq.visitStart},{self.seq.visitEnd} ' \
-               f'finished={self.isProcessed}'
+               f'visitRange={self.seq.visitStart},{self.seq.visitEnd} startedAt({self.tStart.datetime.isoformat()}) ' \
+               f'status={self.getStatus(doShort=False)}'
 
     def getLightSource(self, specs):
         """ Get light source from our sets of specs. """
@@ -79,27 +96,20 @@ class SpectroJob(QThread):
         self.seq = self.seqObj(cams=self.camNames, *args, **kwargs)
         self.seq.assign(cmd, self)
 
-    def fire(self, cmd, doLoop=False):
+    @process
+    def fire(self, cmd):
         """ Put Job on the Thread. """
-        self.start()
-        self.putMsg(self.process, cmd=cmd, doLoop=doLoop)
+        self.seq.process(cmd)
 
-    def process(self, cmd, doLoop):
+    @process
+    def loop(self, cmd):
+        """ Put Job on the Thread. """
+        self.seq.loop(cmd)
+
+    def genStatus(self, cmd):
         """ Process the sequence in the Job's thread as it would behave in the main one. """
-        try:
-            if doLoop:
-                self.seq.loop(cmd)
-            else:
-                self.seq.process(cmd)
-
-        except Exception as e:
-            cmd.fail('text=%s' % self.actor.strTraceback(e))
-            return
-
-        finally:
-            self.isProcessed = True
-
-        cmd.finish()
+        cmd.inform(f"seq{self.visitSetId}={qstr(self)}")
+        cmd.inform(self.seq.genKeys())
 
     def free(self):
         """ Make sure, you aren't leaving anything behind. """
@@ -121,7 +131,17 @@ class ResourceManager(object):
 
     @property
     def onGoing(self):
-        return [job for job in self.jobs.values() if not job.isProcessed]
+        return [job for job in self.jobs.values() if not job.isDone]
+
+    @property
+    def activeIds(self):
+        return [job.visitSetId for job in self.onGoing]
+
+    @property
+    def activeSequences(self):
+        activeSequences = ",".join(map(str, self.activeIds))
+        activeSequences = 'None' if not activeSequences else activeSequences
+        return activeSequences
 
     @property
     def busy(self):
@@ -163,8 +183,9 @@ class ResourceManager(object):
 
     def lock(self, job):
         """ all specs points to the same job. """
-        for spec in job.specs:
-            self.allocate(job, key=spec.camName)
+        # for spec in job.specs:
+        #     self.allocate(job, key=spec.camName)
+        self.allocate(job, job.visitSetId)
 
         return job
 
@@ -180,12 +201,30 @@ class ResourceManager(object):
         if prevJob is not None and prevJob not in self.jobs.values():
             prevJob.free()
 
+        self.cleanHistory()
+
+    def cleanHistory(self, nDay=1):
+        """ Just associate a spec with a job, free a previous job if it's not longer referenced. """
+        now = float(astroTime.Time.now().mjd)
+        oldVisitSets = [job.visitSetId for job in self.jobs.values() if now - job.tStart.mjd > nDay]
+
+        for visitSetId in oldVisitSets:
+            self.jobs[visitSetId].free()
+            self.jobs.pop(visitSetId, None)
+
     def identify(self, identifier, lightSource=True):
         """ identify jon from identifier(sps, dcb ...), look for job with light source first. """
         ret = None
 
+        if isinstance(identifier, int):
+            visitSetId = identifier
+            try:
+                return self.jobs[visitSetId]
+            except KeyError:
+                raise RuntimeError(f'{visitSetId} is not valid, activeSequences:{self.activeSequences}')
+
         for job in set(self.jobs.values()):
-            if (lightSource and job.lightSource is None) or job.isProcessed:
+            if (lightSource and job.lightSource is None) or job.isDone:
                 continue
 
             if identifier == 'sps':
@@ -209,16 +248,22 @@ class ResourceManager(object):
     def finish(self, cmd, identifier='sps'):
         """ finish an on going job. """
         job = self.identify(identifier=identifier)
+        if job.isDone:
+            raise RuntimeError('job already finished')
 
-        cmd.inform(f'text="finalizing {identifier} exposure..."')
+        cmd.inform(f'text="finalizing exposure from sequence(id:{job.visitSetId})..."')
         job.seq.finish(cmd)
+        return job
 
     def abort(self, cmd, identifier='sps'):
         """ abort an on going job. """
         job = self.identify(identifier=identifier)
+        if job.isDone:
+            raise RuntimeError('job already finished')
 
-        cmd.inform(f'text="aborting {identifier} exposure..."')
+        cmd.inform(f'text="aborting exposure from sequence(id:{job.visitSetId})..."')
         job.seq.abort(cmd)
+        return job
 
     def fetchLastVisitSetId(self):
         """ get last visit_set_id from opDB """
@@ -229,14 +274,21 @@ class ResourceManager(object):
 
     def arrangeVisitSetId(self):
         """ Multiple Jobs can happen in parallel, make sure you don't attribute same visit_set_id.  """
-        lastVisitSetId = self.fetchLastVisitSetId() + 1
-        aliveVisitSetId = [job.visitSetId for job in self.jobs.values() if not job.isProcessed]
-        visitSetId = max(aliveVisitSetId) + 1 if lastVisitSetId in aliveVisitSetId else lastVisitSetId
-        return visitSetId
+        lastVisitSetId = [self.fetchLastVisitSetId()]
+        newVisitSetId = max(lastVisitSetId + self.activeIds) + 1
+        return newVisitSetId
 
-    def getStatus(self, cmd):
+    def genStatus(self, cmd, visitSetId=None):
         """ generate Job(s) status(es). """
-        cmd.inform('text="on going jobs :"')
-        for i, job in enumerate((set(self.jobs.values()))):
-            cmd.inform(f"job{i}={qstr(job)}")
-            cmd.inform(job.seq.genKeys())
+
+        if visitSetId is not None:
+            try:
+                job = self.jobs[visitSetId]
+                return job.genStatus(cmd)
+            except KeyError:
+                raise RuntimeError(f'{visitSetId} is not valid, valids:{",".join(map(str, self.jobs.keys()))}')
+
+        cmd.inform(f'activeSequences={self.activeSequences}')
+
+        for job in self.jobs.values():
+            job.genStatus(cmd)

@@ -1,7 +1,7 @@
 import time
 from functools import partial
 
-from ics.iicActor.utils.lib import stripQuotes, stripField
+from ics.iicActor.utils.lib import stripQuotes, stripField, wait
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
 
@@ -72,7 +72,7 @@ class SubCmd(object):
         """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs) """
         return dict(actor=self.actor,
                     cmdStr=self.cmdStr,
-                    forUserCmd=cmd,
+                    forUserCmd=None,
                     timeLim=self.timeLim)
 
     def call(self, cmd):
@@ -121,7 +121,7 @@ class SpsExpose(SubCmd):
     def build(self, cmd):
         """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visit """
         return dict(actor=self.actor, cmdStr=self.cmdStr.format(visit=self.visit, cams=self.sequence.exposable),
-                    forUserCmd=cmd, timeLim=self.timeLim)
+                    forUserCmd=None, timeLim=self.timeLim)
 
     def call(self, cmd):
         """ Get visit from gen2, Call subcommand, release visit """
@@ -286,7 +286,7 @@ class Sequence(list):
         cmd.inform(self.genKeys())
 
     def genKeys(self):
-        return f'sps_sequence={self.visit_set_id},{self.seqtype},"{self.cmdStr}","{self.name}","{self.comments}"'
+        return f'sps_sequence={self.visit_set_id},{self.seqtype},"{self.cmdStr}","{self.name}","{self.comments}",{self.job.getStatus()}'
 
     def register(self, cmd):
         """ Register sequence and underlying subcommand"""
@@ -321,7 +321,7 @@ class Sequence(list):
         try:
             self.processSubCmd(cmd, subCmd=subCmd)
 
-            while not self.doFinish:
+            while not (self.doFinish or self.doAbort):
                 self.archiveAndReset(cmd, subCmd)
                 self.processSubCmd(cmd, subCmd=subCmd)
 
@@ -339,7 +339,7 @@ class Sequence(list):
         """ Process one subcommand, handle error or abortion """
         cmdVar = subCmd.callAndUpdate(cmd)
 
-        self.genProperOutput(cmd, didFail=subCmd.didFail, subCmd=subCmd, cmdVar=cmdVar)
+        self.genProperOutput(cmd, didFail=subCmd.didFail, subCmd=subCmd, cmdVar=cmdVar, doRaise=doRaise)
 
         if not subCmd.isLast:
             aborted = self.waitUntil(time.time() + subCmd.idleTime)
@@ -376,13 +376,13 @@ class Sequence(list):
             self.subCmds[id].didFail = 1
             self.subCmds[id].inform(cmd)
 
-    def waitUntil(self, endTime, ti=0.01):
+    def waitUntil(self, endTime):
         """ Wait Until endTime"""
         while time.time() < endTime:
             if self.doFinish or self.doAbort:
                 break
 
-            time.sleep(ti)
+            wait()
 
         return self.doAbort
 

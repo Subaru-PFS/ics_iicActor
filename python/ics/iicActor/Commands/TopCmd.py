@@ -1,6 +1,5 @@
 import opscore.protocols.keys as keys
-import opscore.protocols.types as types
-from opscore.utility.qstr import qstr
+
 
 class TopCmd(object):
 
@@ -22,7 +21,6 @@ class TopCmd(object):
         self.keys = keys.KeysDictionary("mcs_mcs", (1, 1),
                                         )
 
-
     def ping(self, cmd):
         """Query the actor for liveness/happiness."""
 
@@ -33,7 +31,4 @@ class TopCmd(object):
         """Report camera status and actor version. """
 
         self.actor.sendVersionKey(cmd)
-        self.actor.resourceManager.getStatus(cmd)
-
         cmd.finish()
-
