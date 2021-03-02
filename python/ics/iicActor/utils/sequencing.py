@@ -286,7 +286,7 @@ class Sequence(list):
         cmd.inform(self.genKeys())
 
     def genKeys(self):
-        return f'sps_sequence={self.visit_set_id},{self.seqtype},"{self.cmdStr}","{self.name}","{self.comments}",{self.job.isProcessed}'
+        return f'sps_sequence={self.visit_set_id},{self.seqtype},"{self.cmdStr}","{self.name}","{self.comments}",{self.job.getStatus()}'
 
     def register(self, cmd):
         """ Register sequence and underlying subcommand"""
@@ -321,7 +321,7 @@ class Sequence(list):
         try:
             self.processSubCmd(cmd, subCmd=subCmd)
 
-            while not self.doFinish:
+            while not (self.doFinish or self.doAbort):
                 self.archiveAndReset(cmd, subCmd)
                 self.processSubCmd(cmd, subCmd=subCmd)
 
@@ -339,7 +339,7 @@ class Sequence(list):
         """ Process one subcommand, handle error or abortion """
         cmdVar = subCmd.callAndUpdate(cmd)
 
-        self.genProperOutput(cmd, didFail=subCmd.didFail, subCmd=subCmd, cmdVar=cmdVar)
+        self.genProperOutput(cmd, didFail=subCmd.didFail, subCmd=subCmd, cmdVar=cmdVar, doRaise=doRaise)
 
         if not subCmd.isLast:
             aborted = self.waitUntil(time.time() + subCmd.idleTime)

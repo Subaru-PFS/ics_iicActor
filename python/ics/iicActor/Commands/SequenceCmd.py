@@ -35,7 +35,7 @@ class SequenceCmd(object):
         cmdKeys = cmd.cmd.keywords
         visitSetId = cmdKeys['id'].values[0] if 'id' in cmdKeys else None
 
-        self.actor.resourceManager.getStatus(cmd, visitSetId=visitSetId)
+        self.actor.resourceManager.genStatus(cmd, visitSetId=visitSetId)
         cmd.finish()
 
     def abortExposure(self, cmd):
@@ -43,10 +43,10 @@ class SequenceCmd(object):
         identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else 'dcb'
 
         job = self.resourceManager.abort(cmd, identifier=identifier)
-        while not job.isProcessed:
+        while not job.isDone:
             wait()
 
-        job.getStatus(cmd)
+        job.genStatus(cmd)
         cmd.finish()
 
     def finishExposure(self, cmd):
@@ -54,8 +54,8 @@ class SequenceCmd(object):
         identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else 'sps'
 
         job = self.resourceManager.finish(cmd, identifier=identifier)
-        while not job.isProcessed:
+        while not job.isDone:
             wait()
 
-        job.getStatus(cmd)
+        job.genStatus(cmd)
         cmd.finish()

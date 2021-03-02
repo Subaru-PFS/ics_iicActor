@@ -31,8 +31,8 @@ def putMsg(func):
 
 def process(func):
     def updateStatus(self, cmd):
-        self.isProcessed = True
-        self.getStatus(cmd)
+        self.isDone = True
+        self.genStatus(cmd)
 
     @wraps(func)
     @putMsg
