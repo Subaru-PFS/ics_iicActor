@@ -64,7 +64,6 @@ class SpectroJob(QThread):
 
         return status
 
-
     def __str__(self):
         return f'SpectroJob(lightSource={self.lightSource} resources={",".join(self.required)} ' \
                f'visitRange={self.seq.visitStart},{self.seq.visitEnd} startedAt({self.tStart.datetime.isoformat()}) ' \
@@ -100,11 +99,6 @@ class SpectroJob(QThread):
     def fire(self, cmd):
         """ Put Job on the Thread. """
         self.seq.process(cmd)
-
-    @process
-    def loop(self, cmd):
-        """ Put Job on the Thread. """
-        self.seq.loop(cmd)
 
     def genStatus(self, cmd):
         """ Process the sequence in the Job's thread as it would behave in the main one. """
@@ -245,14 +239,14 @@ class ResourceManager(object):
 
         return ret
 
-    def finish(self, cmd, identifier='sps'):
+    def finish(self, cmd, identifier='sps', **kwargs):
         """ finish an on going job. """
         job = self.identify(identifier=identifier)
         if job.isDone:
             raise RuntimeError('job already finished')
 
         cmd.inform(f'text="finalizing exposure from sequence(id:{job.visitSetId})..."')
-        job.seq.finish(cmd)
+        job.seq.finish(cmd, **kwargs)
         return job
 
     def abort(self, cmd, identifier='sps'):
