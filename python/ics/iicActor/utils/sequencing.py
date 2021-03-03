@@ -110,7 +110,13 @@ class Sequence(list):
 
     def process(self, cmd):
         """ Process full sequence, store in database"""
+        try:
+            self.commandLogic(cmd)
+        finally:
+            self.store()
 
+    def commandLogic(self, cmd):
+        """ Process full sequence, store in database"""
         try:
             for subCmd in (self.head + self.cmdList):
                 self.processSubCmd(cmd, subCmd=subCmd)
@@ -121,29 +127,6 @@ class Sequence(list):
         finally:
             for subCmd in self.tail:
                 self.processSubCmd(cmd, subCmd=subCmd, doRaise=False)
-
-            self.store()
-
-    def loop(self, cmd):
-        """ loop the command until being told to stop, store in database"""
-        [subCmd] = self.cmdList
-
-        try:
-            self.processSubCmd(cmd, subCmd=subCmd)
-
-            while not (self.doFinish or self.doAbort):
-                self.archiveAndReset(cmd, subCmd)
-                self.processSubCmd(cmd, subCmd=subCmd)
-
-        finally:
-            self.store()
-
-    def archiveAndReset(self, cmd, subCmd):
-        """ archive a copy of the current command then reset it."""
-        self.insert(subCmd.id, subCmd.copy())
-        subCmd.initialise()
-        subCmd.register(self, len(self.cmdList) - 1)
-        subCmd.inform(cmd=cmd)
 
     def processSubCmd(self, cmd, subCmd, doRaise=True):
         """ Process one subcommand, handle error or abortion """
@@ -220,6 +203,28 @@ class Sequence(list):
 
             for visit in self.visits:
                 utils.insert_row(opdb.OpDB.url, 'visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
+
+
+class ExposureLoop(Sequence):
+    def __init__(self, *args, **kwargs):
+        Sequence.__init__(self, *args, **kwargs)
+
+    def commandLogic(self, cmd):
+        """ loop the command until being told to stop, store in database"""
+        [subCmd] = self.cmdList
+        self.processSubCmd(cmd, subCmd=subCmd)
+
+        while not (self.doFinish or self.doAbort):
+            self.archiveAndReset(cmd, subCmd)
+            self.processSubCmd(cmd, subCmd=subCmd)
+
+    def archiveAndReset(self, cmd, subCmd):
+        """ archive a copy of the current command then reset it."""
+        self.insert(subCmd.id, subCmd.copy())
+        subCmd.initialise()
+        subCmd.register(self, len(self.cmdList) - 1)
+        subCmd.inform(cmd=cmd)
+        self.sort(key=lambda x: x.id)
 
 
 class CmdList(Sequence):

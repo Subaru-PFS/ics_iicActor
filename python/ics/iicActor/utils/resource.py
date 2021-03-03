@@ -64,7 +64,6 @@ class SpectroJob(QThread):
 
         return status
 
-
     def __str__(self):
         return f'SpectroJob(lightSource={self.lightSource} resources={",".join(self.required)} ' \
                f'visitRange={self.seq.visitStart},{self.seq.visitEnd} startedAt({self.tStart.datetime.isoformat()}) ' \
@@ -100,11 +99,6 @@ class SpectroJob(QThread):
     def fire(self, cmd):
         """ Put Job on the Thread. """
         self.seq.process(cmd)
-
-    @process
-    def loop(self, cmd):
-        """ Put Job on the Thread. """
-        self.seq.loop(cmd)
 
     def genStatus(self, cmd):
         """ Process the sequence in the Job's thread as it would behave in the main one. """
