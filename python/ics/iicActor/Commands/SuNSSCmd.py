@@ -55,8 +55,8 @@ class SuNSSCmd(object):
         seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
         exptime = cmdKeys['exptime'].values
 
-        job = self.resourceManager.request(cmd, spsSequence.Object)
-        job.instantiate(cmd, exptime=exptime, duplicate=1, **seqKwargs)
+        job = self.resourceManager.request(cmd, spsSequence.SuNSSLoop)
+        job.instantiate(cmd, exptime=exptime, **seqKwargs)
 
         cmd.finish()
-        job.loop(cmd=self.actor.bcast)
+        job.fire(cmd=self.actor.bcast)

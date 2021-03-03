@@ -1,4 +1,4 @@
-from ics.iicActor.utils.sequencing import Sequence
+from ics.iicActor.utils.sequencing import Sequence, ExposureLoop
 from pfs.utils.ncaplar import defocused_exposure_times_single_position
 
 
@@ -12,10 +12,39 @@ class Object(Sequence):
         self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
 
+class SuNSSLoop(ExposureLoop):
+    """ Simple exposure sequence """
+    seqtype = 'scienceObject'
+    doCheckFocus = True
+
+    def __init__(self, exptime, cams, doTest=False, **kwargs):
+        Sequence.__init__(self, **kwargs)
+        self.finalBias = True
+        self.expose(exptype='bias', cams=cams, duplicate=1, doTest=doTest)
+        self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=1, doTest=doTest)
+
+    def commandLogic(self, cmd):
+        """ loop the command until being told to stop, store in database"""
+        [bias, object] = self.cmdList
+        subCmd = None
+        try:
+            while True:
+                for subCmd in [bias, object]:
+                    self.processSubCmd(cmd, subCmd=subCmd)
+                    if self.doFinish or self.doAbort:
+                        raise StopIteration
+                    self.archiveAndReset(cmd, subCmd)
+
+        except StopIteration:
+            if self.finalBias and subCmd != bias:
+                self.processSubCmd(cmd, subCmd=bias)
+
+
 class DomeFlat(Sequence):
     """ Flat/fiberTrace from Dome illumination. """
     seqtype = 'domeFlat'
     doCheckFocus = True
+
     def __init__(self, exptime, duplicate, cams, doTest=False, **kwargs):
         Sequence.__init__(self, **kwargs)
         self.expose(exptype='domeflat', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
