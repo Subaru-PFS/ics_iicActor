@@ -239,14 +239,14 @@ class ResourceManager(object):
 
         return ret
 
-    def finish(self, cmd, identifier='sps'):
+    def finish(self, cmd, identifier='sps', **kwargs):
         """ finish an on going job. """
         job = self.identify(identifier=identifier)
         if job.isDone:
             raise RuntimeError('job already finished')
 
         cmd.inform(f'text="finalizing exposure from sequence(id:{job.visitSetId})..."')
-        job.seq.finish(cmd)
+        job.seq.finish(cmd, **kwargs)
         return job
 
     def abort(self, cmd, identifier='sps'):

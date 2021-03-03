@@ -39,6 +39,12 @@ class SuNSSLoop(ExposureLoop):
             if self.finalBias and subCmd != bias:
                 self.processSubCmd(cmd, subCmd=bias)
 
+    def finish(self, cmd, noSunssBias=False):
+        """ Finish current sequence """
+        self.doFinish = True
+        self.finalBias = not noSunssBias
+        self.current.finish(cmd=cmd)
+
 
 class DomeFlat(Sequence):
     """ Flat/fiberTrace from Dome illumination. """

@@ -190,7 +190,7 @@ class Sequence(list):
         self.doAbort = True
         self.current.abort(cmd=cmd)
 
-    def finish(self, cmd):
+    def finish(self, cmd, **kwargs):
         """ Finish current sequence """
         self.doFinish = True
         self.current.finish(cmd=cmd)

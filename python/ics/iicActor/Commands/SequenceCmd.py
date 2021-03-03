@@ -19,7 +19,7 @@ class SequenceCmd(object):
             ('sequenceStatus', '[<id>]', self.sequenceStatus),
             ('sps', '@abortExposure [<id>]', self.abortExposure),
             ('sps', '@abort [<id>]', self.abortExposure),
-            ('sps', '@finishExposure [<id>]', self.finishExposure)
+            ('sps', '@finishExposure [<id>] [@noSunssBias]', self.finishExposure)
         ]
 
         # Define typed command arguments for the above commands.
@@ -52,8 +52,9 @@ class SequenceCmd(object):
     def finishExposure(self, cmd):
         cmdKeys = cmd.cmd.keywords
         identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else 'sps'
+        noSunssBias = 'noSunssBias' in cmdKeys
 
-        job = self.resourceManager.finish(cmd, identifier=identifier)
+        job = self.resourceManager.finish(cmd, identifier=identifier, noSunssBias=noSunssBias)
         while not job.isDone:
             wait()
 
