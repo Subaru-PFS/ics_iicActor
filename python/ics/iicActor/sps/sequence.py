@@ -1,4 +1,4 @@
-from ics.iicActor.utils.sequencing import Sequence, ExposureLoop
+from ics.iicActor.utils.sequencing import Sequence, Loop
 from pfs.utils.ncaplar import defocused_exposure_times_single_position
 
 
@@ -11,8 +11,17 @@ class Object(Sequence):
         Sequence.__init__(self, **kwargs)
         self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
+class ObjectLoop(Loop):
+    """ Simple exposure sequence """
+    seqtype = 'scienceObject'
+    doCheckFocus = True
 
-class SuNSSLoop(ExposureLoop):
+    def __init__(self, exptime, cams, doTest=False, **kwargs):
+        Sequence.__init__(self, **kwargs)
+        self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=1, doTest=doTest)
+
+
+class ObjectInterleavedBiasLoop(Loop):
     """ Simple exposure sequence """
     seqtype = 'scienceObject'
     doCheckFocus = True
@@ -41,9 +50,8 @@ class SuNSSLoop(ExposureLoop):
 
     def finish(self, cmd, noSunssBias=False):
         """ Finish current sequence """
-        self.doFinish = True
         self.finalBias = not noSunssBias
-        self.current.finish(cmd=cmd)
+        Loop.finish(self, cmd=cmd)
 
 
 class DomeFlat(Sequence):

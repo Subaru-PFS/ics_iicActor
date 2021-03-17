@@ -205,7 +205,7 @@ class Sequence(list):
                 utils.insert_row(opdb.OpDB.url, 'visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
 
 
-class ExposureLoop(Sequence):
+class Loop(Sequence):
     def __init__(self, *args, **kwargs):
         Sequence.__init__(self, *args, **kwargs)
 

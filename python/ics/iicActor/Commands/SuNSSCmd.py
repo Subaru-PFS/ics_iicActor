@@ -17,7 +17,7 @@ class SuNSSCmd(object):
         #
         identArgs = '[<cam>] [<arm>] [<sm>]'
         self.vocab = [
-            ('sps', f'@startExposures <exptime> {identArgs} [<name>] [<comments>] [@doTest]', self.startExposures),
+            ('sps', f'@startExposures <exptime> {identArgs} [<name>] [<comments>] [@doBias] [@doTest]', self.startExposures),
             ('domeFlat', f'<exptime> {identArgs} [<name>] [<comments>] [<duplicate>] [@doTest]', self.domeFlat),
         ]
 
@@ -53,9 +53,10 @@ class SuNSSCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
-        exptime = cmdKeys['exptime'].values
+        exptime = cmdKeys['exptime'].values[0]
+        objectLoop = spsSequence.ObjectInterleavedBiasLoop if 'doBias' in cmdKeys else spsSequence.ObjectLoop
 
-        job = self.resourceManager.request(cmd, spsSequence.SuNSSLoop)
+        job = self.resourceManager.request(cmd, objectLoop)
         job.instantiate(cmd, exptime=exptime, **seqKwargs)
 
         cmd.finish()
