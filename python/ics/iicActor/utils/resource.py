@@ -6,7 +6,6 @@ from actorcore.QThread import QThread
 from astropy import time as astroTime
 from ics.iicActor import visit
 from iicActor.utils.lib import process
-from opdb import utils, opdb
 from opscore.utility.qstr import qstr
 from pfs.utils.sps.config import SpsConfig
 
@@ -17,14 +16,15 @@ reload(timedSpsSequence)
 class SpectroJob(QThread):
     """ Placeholder which link the data request with the required resources and mhs commands. """
 
-    def __init__(self, iicActor, identKeys, seqObj, visitSetId):
+    def __init__(self, iicActor, identKeys, seqObj):
         self.tStart = astroTime.Time.now()
+        self.isFirstVisitor = True
         QThread.__init__(self, iicActor, 'toto')
         specs = SpsConfig.fromModel(self.actor.models['sps']).identify(**identKeys)
         self.isDone = False
         self.visitor = visit.VisitManager(iicActor)
         self.seqObj = seqObj
-        self.visitSetId = visitSetId
+        self.visitSetId = self.getVisit(isFirstVisitor=False)
 
         self.lightSource = self.getLightSource(specs) if seqObj.lightBeam else None
         self.specs = specs
@@ -105,6 +105,23 @@ class SpectroJob(QThread):
         cmd.inform(f"seq{self.visitSetId}={qstr(self)}")
         cmd.inform(self.seq.genKeys())
 
+    def getVisit(self, isFirstVisitor=None):
+        """ Get visit, make sure visitSetId=first visit. """
+        isFirstVisitor = self.isFirstVisitor if isFirstVisitor is None else isFirstVisitor
+
+        if isFirstVisitor:
+            self.isFirstVisitor = False
+            visit = self.visitSetId
+        else:
+            ourVisit = self.visitor.newVisit('sps')
+            visit = ourVisit.visitId
+
+        return visit
+
+    def releaseVisit(self):
+        """ Release visit. """
+        self.visitor.releaseVisit()
+
     def free(self):
         """ Make sure, you aren't leaving anything behind. """
         self.seq.clear()
@@ -161,8 +178,7 @@ class ResourceManager(object):
     def request(self, cmd, seqObj):
         """ Request a new Job and lock it if all checks passes. """
         identKeys = self.genIdentKeys(cmd.cmd.keywords)
-        visitSetId = self.arrangeVisitSetId()
-        job = SpectroJob(self.actor, identKeys, seqObj, visitSetId)
+        job = SpectroJob(self.actor, identKeys, seqObj)
 
         if any([resource in self.busy for resource in job.resources]):
             raise RuntimeError('cannot fire your sequence, dependent resources already busy...')
@@ -258,19 +274,6 @@ class ResourceManager(object):
         cmd.inform(f'text="aborting exposure from sequence(id:{job.visitSetId})..."')
         job.seq.abort(cmd)
         return job
-
-    def fetchLastVisitSetId(self):
-        """ get last visit_set_id from opDB """
-        df = utils.fetch_query(opdb.OpDB.url, 'select max(visit_set_id) from sps_sequence')
-        visit_set_id, = df.loc[0].values
-        visit_set_id = 0 if visit_set_id is None else visit_set_id
-        return int(visit_set_id)
-
-    def arrangeVisitSetId(self):
-        """ Multiple Jobs can happen in parallel, make sure you don't attribute same visit_set_id.  """
-        lastVisitSetId = [self.fetchLastVisitSetId()]
-        newVisitSetId = max(lastVisitSetId + self.activeIds) + 1
-        return newVisitSetId
 
     def genStatus(self, cmd, visitSetId=None):
         """ generate Job(s) status(es). """
