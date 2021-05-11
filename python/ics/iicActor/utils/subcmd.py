@@ -92,6 +92,15 @@ class SubCmd(object):
     def finish(self, cmd):
         """ finish prototype"""
 
+    def getVisit(self):
+        """ getVisit prototype"""
+        pass
+
+    def releaseVisit(self):
+        """ releaseVisit prototype"""
+        pass
+
+
 class SpsExpose(SubCmd):
     """ Placeholder to handle sps expose command specificities"""
 
@@ -112,12 +121,12 @@ class SpsExpose(SubCmd):
     def call(self, cmd):
         """ Get visit from gen2, Call subcommand, release visit """
         try:
-            self.visit = self.sequence.job.getVisit()
+            self.visit = self.getVisit()
         except Exception as e:
             return 1, stripQuotes(str(e)), None
 
         ret = SubCmd.call(self, cmd)
-        self.sequence.job.releaseVisit()
+        self.releaseVisit()
         return ret
 
     def callAndUpdate(self, cmd):
@@ -129,6 +138,15 @@ class SpsExpose(SubCmd):
                     cmd.warn(reply.keywords.canonical(delimiter=';'))
 
         return cmdVar
+
+    def getVisit(self):
+        """ Get visit from ics.iicActor.visit.Visit """
+        ourVisit = self.sequence.job.visitor.newVisit('sps')
+        return ourVisit.visitId
+
+    def releaseVisit(self):
+        """ Release visit """
+        self.sequence.job.visitor.releaseVisit()
 
     def abort(self, cmd):
         """ Abort current exposure """
