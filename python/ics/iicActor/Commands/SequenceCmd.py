@@ -48,7 +48,7 @@ class SequenceCmd(object):
 
     def abortExposure(self, cmd):
         cmdKeys = cmd.cmd.keywords
-        identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else 'dcb'
+        identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else 'sps'
 
         job = self.resourceManager.abort(cmd, identifier=identifier)
         while not job.isDone:
