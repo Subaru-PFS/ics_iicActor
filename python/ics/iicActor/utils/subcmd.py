@@ -181,9 +181,22 @@ class DcbCmd(SubCmd):
     def __init__(self, *args, **kwargs):
         SubCmd.__init__(self, *args, **kwargs)
 
+    @property
+    def dcbActor(self):
+        return self.sequence.job.lightSource
+
+    def build(self, cmd):
+        """ Override dcbActor with actual lightSource """
+
+        return dict(actor=self.dcbActor,
+                    cmdStr=self.cmdStr,
+                    forUserCmd=None,
+                    timeLim=self.timeLim)
+
+
     def abort(self, cmd):
         """ Abort warmup """
-        ret = self.iicActor.cmdr.call(actor='dcb',
+        ret = self.iicActor.cmdr.call(actor=self.dcbActor,
                                       cmdStr='sources abort',
                                       forUserCmd=cmd,
                                       timeLim=10)
