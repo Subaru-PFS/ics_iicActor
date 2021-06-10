@@ -258,6 +258,7 @@ class CmdList(Sequence):
     def guessTimeLim(self, cmdStr, timeLim=0):
         """ Guess timeLim """
         keys = ['warmingTime', 'exptime']
+        offset = 120 if 'rexm' in cmdStr else 0
         args = cmdStr.split(' ')
         for arg in args:
             for key in keys:
@@ -266,4 +267,4 @@ class CmdList(Sequence):
                 except ValueError:
                     pass
 
-        return int(float(timeLim)) + 60
+        return int(float(timeLim)) + 60 + offset
