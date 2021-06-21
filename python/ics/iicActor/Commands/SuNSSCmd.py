@@ -19,6 +19,7 @@ class SuNSSCmd(object):
         self.vocab = [
             ('sps', f'@startExposures <exptime> {identArgs} [<name>] [<comments>] [@doBias] [@doTest]', self.startExposures),
             ('domeFlat', f'<exptime> {identArgs} [<name>] [<comments>] [<duplicate>] [@doTest]', self.domeFlat),
+            ('domeArc', f'<exptime> {identArgs} [<name>] [<comments>] [<duplicate>] [@doTest]', self.domeArc),
         ]
 
         # Define typed command arguments for the above commands.
@@ -45,6 +46,18 @@ class SuNSSCmd(object):
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, spsSequence.DomeFlat)
+        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
+
+        job.fire(cmd)
+
+    def domeArc(self, cmd):
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        exptime = cmdKeys['exptime'].values
+        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
+
+        job = self.resourceManager.request(cmd, spsSequence.DomeArc)
         job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
 
         job.fire(cmd)

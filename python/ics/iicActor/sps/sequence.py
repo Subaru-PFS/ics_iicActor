@@ -63,6 +63,15 @@ class DomeFlat(Sequence):
         Sequence.__init__(self, **kwargs)
         self.expose(exptype='domeflat', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
+class DomeArc(Sequence):
+    """ Arcs from Dome illumination. """
+    seqtype = 'domeArc'
+    doCheckFocus = True
+
+    def __init__(self, exptime, duplicate, cams, doTest=False, **kwargs):
+        Sequence.__init__(self, **kwargs)
+        self.expose(exptype='arc', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
+
 
 class Biases(Sequence):
     """ Biases sequence """
