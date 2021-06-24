@@ -1,6 +1,6 @@
 from importlib import reload
 
-import ics.iicActor.sps.sequence as spsSequence
+import ics.iicActor.sps.sequenceList as spsSequence
 import ics.iicActor.sps.timed as timedSpsSequence
 import numpy as np
 import opscore.protocols.keys as keys

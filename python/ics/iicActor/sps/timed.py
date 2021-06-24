@@ -1,9 +1,10 @@
-import ics.iicActor.sps.sequence as SpsSequence
-from ics.iicActor.utils.sequencing import Sequence, SpsExpose
+from ics.iicActor.sps.sequence import SpsSequence
+import ics.iicActor.sps.sequenceList as spsSequence
+from ics.iicActor.sps.subcmd import SpsExpose
 from pfs.utils.ncaplar import defocused_exposure_times_single_position
 
 
-class timedDcbSequence(Sequence):
+class timedDcbSequence(SpsSequence):
     shutterRequired = False
 
     def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, **identKeys):
@@ -26,39 +27,39 @@ class timedDcbSequence(Sequence):
                 self.append(SpsExpose.specify(exptype, expTime, doLamps=True, doTest=doTest, **identKeys))
 
 
-class ScienceArc(SpsSequence.ScienceArc, timedDcbSequence):
+class ScienceArc(spsSequence.ScienceArc, timedDcbSequence):
     """"""
 
 
-class ScienceTrace(SpsSequence.ScienceTrace, timedDcbSequence):
+class ScienceTrace(spsSequence.ScienceTrace, timedDcbSequence):
     """"""
 
 
-class Arcs(SpsSequence.Arcs, timedDcbSequence):
+class Arcs(spsSequence.Arcs, timedDcbSequence):
     """"""
 
 
-class Flats(SpsSequence.Flats, timedDcbSequence):
+class Flats(spsSequence.Flats, timedDcbSequence):
     """"""
 
 
-class SlitThroughFocus(SpsSequence.SlitThroughFocus, timedDcbSequence):
+class SlitThroughFocus(spsSequence.SlitThroughFocus, timedDcbSequence):
     """"""
 
 
-class DetThroughFocus(SpsSequence.DetThroughFocus, timedDcbSequence):
+class DetThroughFocus(spsSequence.DetThroughFocus, timedDcbSequence):
     """"""
 
 
-class DitheredArcs(SpsSequence.DitheredArcs, timedDcbSequence):
+class DitheredArcs(spsSequence.DitheredArcs, timedDcbSequence):
     """"""
 
 
-class DitheredFlats(SpsSequence.DitheredFlats, timedDcbSequence):
+class DitheredFlats(spsSequence.DitheredFlats, timedDcbSequence):
     """"""
 
 
-class HexapodStability(Sequence):
+class HexapodStability(SpsSequence):
     """ hexapod stability sequence """
 
     def __init__(self, position, duplicate, cams, timedLamps, doTest=False, **kwargs):
@@ -104,11 +105,11 @@ def defocused_exposure_times_no_atten(exp_time_0, defocused_value):
     return exptime
 
 
-class DefocusedArcs(SpsSequence.DefocusedArcs, timedDcbSequence):
+class DefocusedArcs(spsSequence.DefocusedArcs, timedDcbSequence):
     """ Defocus sequence """
 
     def __init__(self, exp_time_0, positions, duplicate, cams, dcbOn, dcbOff, doTest=False, **kwargs):
-        Sequence.__init__(self, **kwargs)
+        SpsSequence.__init__(self, **kwargs)
         timedLamps0 = [(k, v) for k, v in exp_time_0.items()]
 
         for position in positions:
