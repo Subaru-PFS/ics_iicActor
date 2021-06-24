@@ -1,4 +1,4 @@
-from iicActor.utils.resource import IICJob
+from iicActor.utils.job import IICJob
 
 
 class SpectroJob(IICJob):

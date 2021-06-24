@@ -2,7 +2,7 @@
 
 import actorcore.ICC
 from ics.iicActor import visit
-from ics.iicActor.utils.resource import ResourceManager
+from ics.iicActor.utils.resourceManager import ResourceManager
 from pfs.utils.spectroIds import getSite
 
 
