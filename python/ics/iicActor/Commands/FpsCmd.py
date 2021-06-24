@@ -1,9 +1,9 @@
-
+import ics.iicActor.Commands.SpsCmd as SpsCmd
+import ics.iicActor.fps.sequenceList as fpsSequence
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
-from opscore.utility.qstr import qstr
-
 from ics.iicActor import visit
+
 
 class BoresightLoop(object):
     """The state required to run a boresight measurement loop.
@@ -13,6 +13,7 @@ class BoresightLoop(object):
     end we are commanded to read the data and generate a new boresight.
 
     """
+
     def __init__(self, visit, expTime, nExposures):
         self.visit = visit
         self.expTime = expTime
@@ -21,16 +22,17 @@ class BoresightLoop(object):
 
     @property
     def startFrame(self):
-        return self.visit.visitId*100
+        return self.visit.visitId * 100
 
     @property
     def endFrame(self):
-        return self.visit.visitId*100 + self.frameId - 1
+        return self.visit.visitId * 100 + self.frameId - 1
 
     def nextFrameId(self):
         frameId = self.frameId
         self.frameId += 1
-        return self.visit.visitId*100 + frameId
+        return self.visit.visitId * 100 + frameId
+
 
 class FpsCmd(object):
 
@@ -45,6 +47,7 @@ class FpsCmd(object):
         # associated methods when matched. The callbacks will be
         # passed a single argument, the parsed and typed command.
         #
+        seqArgs = '[<name>] [<comments>]'
         self.vocab = [
             ('startBoresightAcquisition', '[<expTime>] [<nExposures>]',
              self.startBoresightAcquisition),
@@ -53,6 +56,7 @@ class FpsCmd(object):
             ('abortBoresightAcquisition', '', self.abortBoresightAcquisition),
 
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
+            ('movePhiToAngle', f'<angle> <iteration> {seqArgs}', self.movePhiToAngle),
             # ('mcsLoop', '[<expTime>] [<cnt>] [@noCentroids]', self.mcsLoop),
         ]
 
@@ -67,21 +71,44 @@ class FpsCmd(object):
                                                  help="times to run loop"),
                                         keys.Key("id", types.Long(),
                                                  help="fpsDesignId for the field, "
-                                                 "which defines the fiber positions"),
+                                                      "which defines the fiber positions"),
                                         keys.Key("expTime", types.Float(),
                                                  default=1.0,
-                                                 help="Seconds for exposure"))
+                                                 help="Seconds for exposure"),
+                                        keys.Key('name', types.String(), help='sps_sequence name'),
+                                        keys.Key('comments', types.String(), help='sps_sequence comments'),
+                                        keys.Key('angle', types.Int(), help='angle'),
+                                        keys.Key('iteration', types.Int(), help='iteration'),
+
+                                        )
+
+    @property
+    def resourceManager(self):
+        return self.actor.resourceManager
+
+    def movePhiToAngle(self, cmd):
+        """Run an MCS+FPS loop, without moving cobras. """
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        angle = cmdKeys['angle'].values[0]
+        iteration = cmdKeys['iteration'].values[0]
+
+        job = self.resourceManager.request(cmd, fpsSequence.MovePhiToAngle)
+        job.instantiate(cmd, angle=angle, iteration=iteration, **seqKwargs)
+
+        job.fire(cmd)
 
     def fpsLoop(self, cmd):
         """Run an MCS+FPS loop, without moving cobras. """
 
         cmdKeys = cmd.cmd.keywords
         expTime = cmdKeys['expTime'].values[0] \
-                  if 'expTime' in cmdKeys \
-                     else 1.0
+            if 'expTime' in cmdKeys \
+            else 1.0
         cnt = cmdKeys['cnt'].values[0] \
-              if 'cnt' in cmdKeys \
-                 else 1
+            if 'cnt' in cmdKeys \
+            else 1
 
         if cnt > 100:
             cmd.fail('text="cannot request more than 100 FPS images at once"')
@@ -94,7 +121,7 @@ class FpsCmd(object):
             raise
 
         fpsVisit = ourVisit.visitId
-        timeLim = 30+(15+expTime)*cnt
+        timeLim = 30 + (15 + expTime) * cnt
         cmd.inform(f'text="setting timeout for nexp={cnt} exptime={expTime} to {timeLim}"')
         try:
             ret = self.actor.cmdr.call(actor='fps',
@@ -112,11 +139,11 @@ class FpsCmd(object):
 
         cmdKeys = cmd.cmd.keywords
         expTime = cmdKeys['expTime'].values[0] \
-                  if 'expTime' in cmdKeys \
-                     else 2.0
+            if 'expTime' in cmdKeys \
+            else 2.0
         nExposures = cmdKeys['nExposures'].values[0] \
-              if 'nExposures' in cmdKeys \
-                 else 2
+            if 'nExposures' in cmdKeys \
+            else 2
 
         if self.boresightLoop is not None:
             cmd.fail('text="boresight loop already in progress"')
@@ -142,10 +169,10 @@ class FpsCmd(object):
         for i in range(self.boresightLoop.nExposures):
             try:
                 frameId = self.boresightLoop.nextFrameId()
-                cmd.inform('text="taking MCS exposure %d/%d"' % (i+1, self.boresightLoop.nExposures))
+                cmd.inform('text="taking MCS exposure %d/%d"' % (i + 1, self.boresightLoop.nExposures))
                 ret = self.actor.cmdr.call(actor='mcs',
                                            cmdStr=f'expose object expTime={expTime:0.2f} frameId={frameId} ',
-                                           timeLim=30+expTime)
+                                           timeLim=30 + expTime)
                 if ret.didFail:
                     raise RuntimeError("IIC failed to take a MCS exposure")
             except RuntimeError:
