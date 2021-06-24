@@ -1,42 +1,29 @@
-from importlib import reload
-
-import ics.iicActor.sps.sequence as spsSequence
-import ics.iicActor.sps.timed as timedSpsSequence
 from actorcore.QThread import QThread
 from astropy import time as astroTime
 from ics.iicActor import visit
 from iicActor.utils.lib import threaded
+from ics.iicActor.fps.resource import FpsJob
+from ics.iicActor.fps.sequence import FpsSequence
+from ics.iicActor.sps.resource import SpectroJob
+from ics.iicActor.sps.sequence import SpsSequence
+from iicActor.utils.lib import process, wait, genIdentKeys
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
 from pfs.utils.sps.config import SpsConfig
 
-reload(spsSequence)
-reload(timedSpsSequence)
 
-
-class SpectroJob(QThread):
-    """ Placeholder which link the data request with the required resources and mhs commands. """
-
-    def __init__(self, iicActor, identKeys, seqObj, visitSetId):
+class IICJob(QThread):
+    def __init__(self, iicActor, seqObj, visitSetId):
         self.tStart = astroTime.Time.now()
-        QThread.__init__(self, iicActor, 'toto')
-        specs = SpsConfig.fromModel(self.actor.models['sps']).identify(**identKeys)
+        QThread.__init__(self, iicActor, str(self.tStart))
+
+        self.isDone = False
         self.visitor = visit.VisitManager(iicActor)
         self.seqObj = seqObj
         self.visitSetId = visitSetId
 
-        self.lightSource = self.getLightSource(specs) if seqObj.lightBeam else None
-        self.specs = specs
-        self.dependencies = list(set(sum([spec.dependencies(seqObj) for spec in specs], [])))
-
-    @property
-    def basicResources(self):
-        return list(filter(None, [self.lightSource] + self.specs))
-
-    @property
-    def activeDependencies(self):
-        active = self.dependencies if self.lightSource is not None else []
-        return active
+        self.basicResources = []
+        self.dependencies = []
 
     @property
     def resources(self):
@@ -47,43 +34,12 @@ class SpectroJob(QThread):
         return list(map(str, self.basicResources + self.activeDependencies))
 
     @property
-    def camNames(self):
-        return list(map(str, self.specs))
+    def activeDependencies(self):
+        return self.dependencies
 
     @property
     def isDone(self):
         return self.seq.isDone
-
-    def __str__(self):
-        return f'SpectroJob(lightSource={self.lightSource} resources={",".join(self.required)} ' \
-               f'visitRange={self.seq.visitStart},{self.seq.visitEnd} startedAt({self.tStart.datetime.isoformat()}) ' \
-               f'active={not self.seq.isDone} didFail=({self.seq.didFail}, {self.seq.output})'
-
-    def getLightSource(self, specs):
-        """ Get light source from our sets of specs. """
-        try:
-            [light] = list(set([spec.lightSource for spec in specs]))
-        except:
-            raise RuntimeError('there can only be one light source for a given sequence')
-
-        return light
-
-    def isInFocus(self, cmd):
-        """ Check that the camera(s) are indeed in focus. """
-        ret = self.actor.cmdr.call(actor='sps', cmdStr=f'checkFocus cams={",".join(self.camNames)}', forUserCmd=cmd,
-                                   timeLim=10)
-
-        if ret.didFail:
-            for reply in ret.replyList:
-                cmd.warn(reply.keywords.canonical(delimiter=';'))
-            return False
-
-        return True
-
-    def instantiate(self, cmd, *args, **kwargs):
-        """ Instantiate seqObj with given args, kwargs. """
-        self.seq = self.seqObj(cams=self.camNames, *args, **kwargs)
-        self.seq.assign(cmd, self)
 
     @threaded
     def fire(self, cmd):
@@ -101,6 +57,32 @@ class SpectroJob(QThread):
         self.seq.clear()
         self.seq = None
         self.exit()
+
+    def instantiate(self, cmd, *args, **kwargs):
+        """ Instantiate seqObj with given args, kwargs. """
+        self.seq = self.seqObj(*args, **kwargs)
+        self.seq.assign(cmd, self)
+
+    def abort(self, cmd):
+        """ Make sure, you aren't leaving anything behind. """
+        self.seq.abort(cmd)
+
+        while not self.isDone:
+            wait()
+
+        self.genStatus(cmd)
+
+    def finish(self, cmd, **kwargs):
+        """ Make sure, you aren't leaving anything behind. """
+        self.seq.finish(cmd, **kwargs)
+
+        while not self.isDone:
+            wait()
+
+        self.genStatus(cmd)
+
+    def sanityCheck(self, cmd):
+        pass
 
     def handleTimeout(self):
         """ Called when the .get() times out. Intended to be overridden. """
@@ -136,24 +118,20 @@ class ResourceManager(object):
     def locked(self):
         return sum([job.resources for job in self.onGoing], [])
 
-    def genIdentKeys(self, cmdKeys):
-        """ Identify which spectrograph(cameras) is required to take data. """
-        keys = dict()
-        if 'cam' in cmdKeys and ('sm' in cmdKeys or 'arm' in cmdKeys):
-            raise RuntimeError('you cannot provide both cam and (sm or arm)')
-
-        for key in ['cam', 'arm', 'sm']:
-            # to be removed later on
-            tkey = 'cams' if key == 'cam' else key
-            keys[tkey] = cmdKeys[key].values if key in cmdKeys else None
-
-        return keys
-
     def request(self, cmd, seqObj):
         """ Request a new Job and lock it if all checks passes. """
-        identKeys = self.genIdentKeys(cmd.cmd.keywords)
         visitSetId = self.arrangeVisitSetId()
-        job = SpectroJob(self.actor, identKeys, seqObj, visitSetId)
+
+        if issubclass(seqObj, SpsSequence):
+            identKeys = genIdentKeys(cmd.cmd.keywords)
+            specs = SpsConfig.fromModel(self.actor.models['sps']).identify(**identKeys)
+            job = SpectroJob(self.actor, specs, seqObj, visitSetId)
+
+        elif issubclass(seqObj, FpsSequence):
+            job = FpsJob(self.actor, seqObj, visitSetId)
+
+        else:
+            raise RuntimeError('unknown sequence type')
 
         if any([resource in self.busy for resource in job.resources]):
             raise RuntimeError('cannot fire your sequence, dependent resources already busy...')
@@ -161,8 +139,7 @@ class ResourceManager(object):
         if any([resource in self.locked for resource in job.required]):
             raise RuntimeError('cannot fire your sequence, required resources already locked...')
 
-        if seqObj.doCheckFocus and not job.isInFocus(cmd):
-            raise RuntimeError('Spectrograph is not in focus...')
+        job.sanityCheck(cmd)
 
         return self.lock(job)
 
@@ -197,8 +174,8 @@ class ResourceManager(object):
             self.jobs[visitSetId].free()
             self.jobs.pop(visitSetId, None)
 
-    def identify(self, identifier, lightSource=True):
-        """ identify jon from identifier(sps, dcb ...), look for job with light source first. """
+    def identify(self, identifier):
+        """ identify job from identifier(sps, dcb ...), look for job with light source first. """
         ret = None
 
         if isinstance(identifier, int):
@@ -209,46 +186,21 @@ class ResourceManager(object):
                 raise RuntimeError(f'{visitSetId} is not valid, activeSequences:{self.activeSequences}')
 
         for job in set(self.jobs.values()):
-            if (lightSource and job.lightSource is None) or job.isDone:
+            if job.isDone:
                 continue
 
             if identifier == 'sps':
-                if all([spec.specModule.spsModule for spec in job.specs]):
+                if isinstance(job, SpectroJob) and all([spec.specModule.spsModule for spec in job.specs]):
                     ret = job
 
-            elif identifier in ['dcb', 'dcb2', 'sunss']:
-                if all([spec.lightSource == identifier for spec in job.specs]):
+            if identifier == 'fps':
+                if isinstance(job, FpsJob):
                     ret = job
-            else:
-                raise RuntimeError('unknown identifier')
-
-        if ret is None and lightSource:
-            return self.identify(identifier=identifier, lightSource=False)
 
         if ret is None:
             raise RuntimeError('could not identify job')
 
         return ret
-
-    def finish(self, cmd, identifier='sps', **kwargs):
-        """ finish an on going job. """
-        job = self.identify(identifier=identifier)
-        if job.isDone:
-            raise RuntimeError('job already finished')
-
-        cmd.inform(f'text="finalizing exposure from sequence(id:{job.visitSetId})..."')
-        job.seq.finish(cmd, **kwargs)
-        return job
-
-    def abort(self, cmd, identifier='sps'):
-        """ abort an on going job. """
-        job = self.identify(identifier=identifier)
-        if job.isDone:
-            raise RuntimeError('job already finished')
-
-        cmd.inform(f'text="aborting exposure from sequence(id:{job.visitSetId})..."')
-        job.seq.abort(cmd)
-        return job
 
     def fetchLastVisitSetId(self):
         """ get last visit_set_id from opDB """

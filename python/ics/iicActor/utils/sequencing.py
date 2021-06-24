@@ -2,7 +2,7 @@ import time
 from functools import partial
 
 from ics.iicActor.utils.lib import stripQuotes, stripField, wait
-from iicActor.utils.subcmd import SubCmd, DcbCmd, SpsExpose
+from iicActor.utils.subcmd import SubCmd
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
 
@@ -10,16 +10,13 @@ from opscore.utility.qstr import qstr
 class Sequence(list):
     """ Placeholder to handle sequence of subcommand """
     seqtype = 'sequence'
-    lightBeam = True
-    shutterRequired = True
-    doCheckFocus = False
 
     def __init__(self, name='', comments='', head=None, tail=None):
         super().__init__()
         self.name = name
         self.comments = comments
-        self.head = CmdList(head)
-        self.tail = CmdList(tail)
+        self.head = CmdList(self, head)
+        self.tail = CmdList(self, tail)
         self.isDone = False
         self.doAbort = False
         self.doFinish = False
@@ -79,15 +76,6 @@ class Sequence(list):
         return self.subCmds[[sub.didFail for sub in self.subCmds].index(-1)]
 
     @property
-    def exposable(self):
-        try:
-            cams = self.job.actor.models['sps'].keyVarDict['exposable'].getValue()
-        except:
-            return None
-
-        return ','.join(cams)
-
-    @property
     def visit_set_id(self):
         return self.job.visitSetId
 
@@ -96,19 +84,19 @@ class Sequence(list):
         self.job = job
         self.register(cmd)
 
-    def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, **identKeys):
-        """ Append duplicate * sps expose to sequence """
-        exptime = [exptime] if not isinstance(exptime, list) else exptime
-
-        for expTime in exptime:
-            for i in range(duplicate):
-                self.append(SpsExpose.specify(exptype, expTime, doTest=doTest, **identKeys))
-
     def add(self, actor, cmdStr, timeLim=60, idleTime=5.0, index=None, **kwargs):
         """ Append duplicate * subcommand to sequence """
         func = self.append if index is None else partial(self.insert, index)
-        cls = DcbCmd if actor == 'dcb' else SubCmd
+        cls = self.guessType(actor, cmdStr)
         func(cls(actor, cmdStr, timeLim=timeLim, idleTime=idleTime, **kwargs))
+
+    def guessType(self, actor, cmdStr):
+        """ Guess SubCmd type """
+        return SubCmd
+
+    def guessTimeLim(self, cmdStr, timeLim=0):
+        """ Guess timeLim """
+        return 60
 
     def genKeys(self):
         return f'sequence={self.visit_set_id},{self.seqtype},{self.statusStr},"{self.cmdStr}","{self.name}","{self.comments}"'
@@ -228,31 +216,11 @@ class Sequence(list):
                          status_flag=int(self.didFail), cmd_output=self.output)
 
 
-class Loop(Sequence):
-    def __init__(self, *args, **kwargs):
-        Sequence.__init__(self, *args, **kwargs)
-
-    def commandLogic(self, cmd):
-        """ loop the command until being told to stop, store in database"""
-        [subCmd] = self.cmdList
-        self.processSubCmd(cmd, subCmd=subCmd)
-
-        while not (self.doFinish or self.doAbort):
-            self.archiveAndReset(cmd, subCmd)
-            self.processSubCmd(cmd, subCmd=subCmd)
-
-    def archiveAndReset(self, cmd, subCmd):
-        """ archive a copy of the current command then reset it."""
-        self.insert(subCmd.id, subCmd.copy())
-        subCmd.initialise()
-        subCmd.register(self, len(self.cmdList) - 1)
-        subCmd.inform(cmd=cmd)
-        self.sort(key=lambda x: x.id)
-
-
 class CmdList(Sequence):
-    def __init__(self, cmdList):
+    def __init__(self, sequence, cmdList):
         cmdList = [] if cmdList is None else cmdList
+
+        self.sequence = sequence
 
         for fullCmd in cmdList:
             self.autoadd(fullCmd)
@@ -263,31 +231,6 @@ class CmdList(Sequence):
         if actor == 'iic':
             raise ValueError('cannot call iic recursively !')
 
-        cls = self.guessType(actor, cmdStr)
-        timeLim = self.guessTimeLim(cmdStr)
+        cls = self.sequence.guessType(actor, cmdStr)
+        timeLim = self.sequence.guessTimeLim(cmdStr)
         self.append(cls(actor, cmdStr, timeLim=timeLim))
-
-    def guessType(self, actor, cmdStr):
-        """ Guess SubCmd type """
-        if actor == 'dcb':
-            cls = DcbCmd
-        elif actor == 'sps' and 'expose' in cmdStr:
-            cls = SpsExpose
-        else:
-            cls = SubCmd
-
-        return cls
-
-    def guessTimeLim(self, cmdStr, timeLim=0):
-        """ Guess timeLim """
-        keys = ['warmingTime', 'exptime']
-        offset = 120 if 'rexm' in cmdStr else 0
-        args = cmdStr.split(' ')
-        for arg in args:
-            for key in keys:
-                try:
-                    __, timeLim = arg.split(f'{key}=')
-                except ValueError:
-                    pass
-
-        return int(float(timeLim)) + 60 + offset

@@ -3,6 +3,20 @@ import time
 from functools import partial, wraps
 
 
+def genIdentKeys(cmdKeys):
+    """ Identify which spectrograph(cameras) is required to take data. """
+    keys = dict()
+    if 'cam' in cmdKeys and ('sm' in cmdKeys or 'arm' in cmdKeys):
+        raise RuntimeError('you cannot provide both cam and (sm or arm)')
+
+    for key in ['cam', 'arm', 'sm']:
+        # to be removed later on
+        tkey = 'cams' if key == 'cam' else key
+        keys[tkey] = cmdKeys[key].values if key in cmdKeys else None
+
+    return keys
+
+
 def stripQuotes(txt):
     """ Strip quotes from string """
     return txt.replace('"', "'").strip()

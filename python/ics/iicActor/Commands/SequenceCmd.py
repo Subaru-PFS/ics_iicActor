@@ -50,11 +50,13 @@ class SequenceCmd(object):
         cmdKeys = cmd.cmd.keywords
         identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else 'sps'
 
-        job = self.resourceManager.abort(cmd, identifier=identifier)
-        while not job.isDone:
-            wait()
+        job = self.resourceManager.identify(identifier=identifier)
+        if job.isDone:
+            raise RuntimeError('job already finished')
 
-        job.genStatus(cmd)
+        cmd.inform(f'text="aborting exposure from sequence(id:{job.visitSetId})..."')
+        job.abort(cmd)
+
         cmd.finish()
 
     def finishExposure(self, cmd):
@@ -62,11 +64,13 @@ class SequenceCmd(object):
         identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else 'sps'
         noSunssBias = 'noSunssBias' in cmdKeys
 
-        job = self.resourceManager.finish(cmd, identifier=identifier, noSunssBias=noSunssBias)
-        while not job.isDone:
-            wait()
+        job = self.resourceManager.identify(identifier=identifier)
+        if job.isDone:
+            raise RuntimeError('job already finished')
 
-        job.genStatus(cmd)
+        cmd.inform(f'text="finalizing exposure from sequence(id:{job.visitSetId})..."')
+        job.finish(cmd, noSunssBias=noSunssBias)
+
         cmd.finish()
 
     def annotate(self, cmd):
