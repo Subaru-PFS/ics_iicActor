@@ -53,6 +53,7 @@ class SubCmd(object):
 
     def initialise(self):
         """ Reset sub command status"""
+        self.cmdVar = None
         self.didFail = -1
         self.id = 0
         self.lastReply = ''
@@ -72,19 +73,32 @@ class SubCmd(object):
 
     def call(self, cmd):
         """ Call subcommand """
-        cmdVar = self.iicActor.cmdr.call(**(self.build(cmd=cmd)))
-        return int(cmdVar.didFail), cmdVar.replyList[-1].keywords.canonical(delimiter=';'), cmdVar
+        return self.iicActor.cmdr.call(**(self.build(cmd=cmd)))
 
-    def callAndUpdate(self, cmd):
+    def makeOutput(self, cmdVar):
         """ Call subcommand, handle reply and generate status """
-        self.didFail, self.lastReply, cmdVar = self.call(cmd)
-        self.inform(cmd=cmd)
-        return cmdVar
+        return cmdVar, int(cmdVar.didFail), cmdVar.replyList[-1].keywords.canonical(delimiter=';')
+
+    def warn(self, cmd):
+        """ Generate subcommand warnings """
+        pass
 
     def inform(self, cmd):
         """ Generate subcommand status """
         cmd.inform(
             f'subCommand={self.sequence.visit_set_id},{self.id},"{self.fullCmd}",{self.didFail},"{stripQuotes(self.lastReply)}"')
+
+    def genOutput(self, cmd):
+        """ Generate subcommand status """
+        self.warn(cmd)
+        self.inform(cmd)
+
+    def callAndUpdate(self, cmd):
+        """ Call subcommand, handle reply and generate status """
+        cmdVar = self.call(cmd)
+        self.cmdVar, self.didFail, self.lastReply = self.makeOutput(cmdVar)
+        self.genOutput(cmd=cmd)
+        return cmdVar
 
     def abort(self, cmd):
         """ abort prototype"""
@@ -118,25 +132,27 @@ class SpsExpose(SubCmd):
         return dict(actor=self.actor, cmdStr=self.cmdStr.format(visit=self.visit, cams=self.sequence.exposable),
                     forUserCmd=None, timeLim=self.timeLim)
 
-    def call(self, cmd):
-        """ Get visit from gen2, Call subcommand, release visit """
+    def warn(self, cmd):
+        """ report from sps exposure warning """
+        if self.cmdVar is None:
+            return
+
+        for reply in self.cmdVar.replyList:
+            if reply.header.code == 'W' and not self.cmdVar.didFail:
+                cmd.warn(reply.keywords.canonical(delimiter=';'))
+
+    def callAndUpdate(self, cmd):
+        """Get visit, expose, release visit."""
         try:
             self.visit = self.getVisit()
         except Exception as e:
-            return 1, stripQuotes(str(e)), None
+            self.didFail = 1
+            self.lastReply = stripQuotes(str(e))
+            self.genOutput(cmd=cmd)
+            return None
 
-        ret = SubCmd.call(self, cmd)
-        self.releaseVisit()
-        return ret
-
-    def callAndUpdate(self, cmd):
-        """Hackity hack, report from sps exposure warning, but"""
         cmdVar = SubCmd.callAndUpdate(self, cmd)
-        if cmdVar is not None:
-            for reply in cmdVar.replyList:
-                if reply.header.code == 'W' and not cmdVar.didFail:
-                    cmd.warn(reply.keywords.canonical(delimiter=';'))
-
+        self.releaseVisit()
         return cmdVar
 
     def getVisit(self):
@@ -147,6 +163,9 @@ class SpsExpose(SubCmd):
     def releaseVisit(self):
         """ Release visit """
         self.sequence.job.visitor.releaseVisit()
+
+        if not self.didFail:
+            self.sequence.insertVisitSet(visit=self.visit)
 
     def abort(self, cmd):
         """ Abort current exposure """
@@ -192,7 +211,6 @@ class DcbCmd(SubCmd):
                     cmdStr=self.cmdStr,
                     forUserCmd=None,
                     timeLim=self.timeLim)
-
 
     def abort(self, cmd):
         """ Abort warmup """

@@ -20,9 +20,39 @@ class Sequence(list):
         self.comments = comments
         self.head = CmdList(head)
         self.tail = CmdList(tail)
+        self.isDone = False
         self.doAbort = False
         self.doFinish = False
         self.errorTrace = ''
+
+    @property
+    def didFail(self):
+        return bool(self.errorTrace)
+
+    @property
+    def statusStr(self):
+        if not self.isDone:
+            return 'active'
+        else:
+            if self.doAbort:
+                return 'aborted'
+            elif self.didFail:
+                return 'failed'
+            else:
+                return 'finished'
+
+    @property
+    def output(self):
+        if not self.isDone:
+            return ''
+        if self.didFail and not self.doAbort:
+            return self.errorTrace
+        elif self.doAbort:
+            return 'abortRequested'
+        elif self.doFinish:
+            return 'finishRequested'
+        else:
+            return 'complete'
 
     @property
     def cmdList(self):
@@ -47,17 +77,6 @@ class Sequence(list):
     @property
     def current(self):
         return self.subCmds[[sub.didFail for sub in self.subCmds].index(-1)]
-
-    @property
-    def status(self):
-        if self.doAbort:
-            return 'abortRequested'
-        elif self.doFinish:
-            return 'finishRequested'
-        elif self.errorTrace:
-            return self.errorTrace
-        else:
-            return 'complete'
 
     @property
     def exposable(self):
@@ -91,18 +110,14 @@ class Sequence(list):
         cls = DcbCmd if actor == 'dcb' else SubCmd
         func(cls(actor, cmdStr, timeLim=timeLim, idleTime=idleTime, **kwargs))
 
-    def inform(self, cmd):
-        """ Generate sps_sequence status """
-        cmd.inform(self.genKeys())
-
     def genKeys(self):
-        return f'sequence={self.visit_set_id},{self.seqtype},{self.job.getStatus()},"{self.cmdStr}","{self.name}","{self.comments}"'
+        return f'sequence={self.visit_set_id},{self.seqtype},{self.statusStr},"{self.cmdStr}","{self.name}","{self.comments}"'
 
     def register(self, cmd):
         """ Register sequence and underlying subcommand"""
         self.rawCmd = cmd.rawCmd
         self.cmdStr = f"iic {stripQuotes(stripField(stripField(cmd.rawCmd, 'name='), 'comments='))}"
-        self.inform(cmd=cmd)
+        cmd.inform(self.genKeys())
 
         for cmdId, subCmd in enumerate(self.subCmds):
             subCmd.register(self, cmdId=cmdId)
@@ -110,10 +125,11 @@ class Sequence(list):
 
     def process(self, cmd):
         """ Process full sequence, store in database"""
+        self.insertSequence()
         try:
             self.commandLogic(cmd)
         finally:
-            self.store()
+            self.finalize(cmd)
 
     def commandLogic(self, cmd):
         """ Process full sequence, store in database"""
@@ -195,14 +211,21 @@ class Sequence(list):
         self.doFinish = True
         self.current.finish(cmd=cmd)
 
-    def store(self):
+    def insertSequence(self):
         """ Store sequence in database """
-        if self.visits:
-            utils.insert_row(opdb.OpDB.url, 'sps_sequence', visit_set_id=self.visit_set_id, sequence_type=self.seqtype,
-                             name=self.name, comments=self.comments, cmd_str=self.rawCmd, status=self.status)
+        utils.insert_row(opdb.OpDB.url, 'sps_sequence', visit_set_id=self.visit_set_id, sequence_type=self.seqtype,
+                         name=self.name, comments=self.comments, cmd_str=self.rawCmd)
 
-            for visit in self.visits:
-                utils.insert_row(opdb.OpDB.url, 'visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
+    def insertVisitSet(self, visit):
+        """ Store sequence in database """
+        utils.insert_row(opdb.OpDB.url, 'visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
+
+    def finalize(self, cmd):
+        """ Store sequence in database """
+        self.isDone = True
+        cmd.inform(self.genKeys())
+        utils.insert_row(opdb.OpDB.url, 'sps_sequence_status', visit_set_id=self.visit_set_id,
+                         status_flag=int(self.didFail), output=self.output)
 
 
 class Loop(Sequence):
