@@ -29,21 +29,13 @@ def putMsg(func):
     return wrapper
 
 
-def process(func):
-    def updateStatus(self, cmd):
-        self.isDone = True
-        self.genStatus(cmd)
-
+def threaded(func):
     @wraps(func)
     @putMsg
     def wrapper(self, cmd, *args, **kwargs):
         try:
-            func(self, cmd, *args, **kwargs)
-            updateStatus(self, cmd)
-            cmd.finish()
-
+            return func(self, cmd, *args, **kwargs)
         except Exception as e:
-            updateStatus(self, cmd)
             cmd.fail('text=%s' % self.actor.strTraceback(e))
 
     return wrapper

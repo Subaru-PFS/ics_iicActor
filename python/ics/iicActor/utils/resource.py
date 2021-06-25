@@ -5,7 +5,7 @@ import ics.iicActor.sps.timed as timedSpsSequence
 from actorcore.QThread import QThread
 from astropy import time as astroTime
 from ics.iicActor import visit
-from iicActor.utils.lib import process
+from iicActor.utils.lib import threaded
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
 from pfs.utils.sps.config import SpsConfig
@@ -21,7 +21,6 @@ class SpectroJob(QThread):
         self.tStart = astroTime.Time.now()
         QThread.__init__(self, iicActor, 'toto')
         specs = SpsConfig.fromModel(self.actor.models['sps']).identify(**identKeys)
-        self.isDone = False
         self.visitor = visit.VisitManager(iicActor)
         self.seqObj = seqObj
         self.visitSetId = visitSetId
@@ -51,23 +50,14 @@ class SpectroJob(QThread):
     def camNames(self):
         return list(map(str, self.specs))
 
-    def getStatus(self, doShort=True):
-        if not self.isDone:
-            return 'active'
-
-        if self.seq.status in ['complete', 'finishRequested']:
-            status = 'finished'
-        elif self.seq.status == 'abortRequested':
-            status = 'aborted'
-        else:
-            status = 'failed' if doShort else self.seq.status
-
-        return status
+    @property
+    def isDone(self):
+        return self.seq.isDone
 
     def __str__(self):
         return f'SpectroJob(lightSource={self.lightSource} resources={",".join(self.required)} ' \
                f'visitRange={self.seq.visitStart},{self.seq.visitEnd} startedAt({self.tStart.datetime.isoformat()}) ' \
-               f'status={self.getStatus(doShort=False)}'
+               f'active={not self.seq.isDone} didFail=({self.seq.didFail}, {self.seq.output})'
 
     def getLightSource(self, specs):
         """ Get light source from our sets of specs. """
@@ -95,10 +85,11 @@ class SpectroJob(QThread):
         self.seq = self.seqObj(cams=self.camNames, *args, **kwargs)
         self.seq.assign(cmd, self)
 
-    @process
+    @threaded
     def fire(self, cmd):
         """ Put Job on the Thread. """
         self.seq.process(cmd)
+        cmd.finish()
 
     def genStatus(self, cmd):
         """ Process the sequence in the Job's thread as it would behave in the main one. """
