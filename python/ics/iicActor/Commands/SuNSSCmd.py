@@ -29,8 +29,8 @@ class SuNSSCmd(object):
                                         keys.Key('arm', types.String() * (1,), help='arm to take exposure from'),
                                         keys.Key('sm', types.Int() * (1,),
                                                  help='spectrograph module(s) to take exposure from'),
-                                        keys.Key('name', types.String(), help='sps_sequence name'),
-                                        keys.Key('comments', types.String(), help='sps_sequence comments'),
+                                        keys.Key('name', types.String(), help='iic_sequence name'),
+                                        keys.Key('comments', types.String(), help='iic_sequence comments'),
                                         keys.Key('duplicate', types.Int(), help='exposure duplicate (1 is default)'),
                                         )
 

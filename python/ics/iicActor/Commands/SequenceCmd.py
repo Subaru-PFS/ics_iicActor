@@ -31,7 +31,7 @@ class SequenceCmd(object):
                                         keys.Key('visitSet', types.Int(), help='optional visit_set_id.'),
                                         keys.Key('cam', types.String() * (1,), help='camera(s)'),
                                         keys.Key('sm', types.Int() * (1,), help='spectrograph module(s)'),
-                                        keys.Key('arm', types.String() * (1,), help='spectrograph arm'),
+                                        keys.Key('arm', types.String() * (1,), help='spspectrograph arm'),
                                         keys.Key('notes', types.String() * (1,), help='additional notes'),
                                         )
 
