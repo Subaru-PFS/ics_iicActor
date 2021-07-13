@@ -25,7 +25,7 @@ class SpectroJob(IICJob):
     def __str__(self):
         return f'SpectroJob(lightSource={self.lightSource} resources={",".join(self.required)} ' \
                f'visitRange={self.seq.visitStart},{self.seq.visitEnd} startedAt({self.tStart.datetime.isoformat()}) ' \
-               f'status={self.getStatus(doShort=False)}'
+               f'active={not self.seq.isDone} didFail=({self.seq.didFail}, {self.seq.output})'
 
     def getLightSource(self, specs):
         """ Get light source from our sets of specs. """

@@ -1,12 +1,11 @@
 from actorcore.QThread import QThread
 from astropy import time as astroTime
 from ics.iicActor import visit
-from iicActor.utils.lib import threaded
-from ics.iicActor.fps.resource import FpsJob
+from ics.iicActor.fps.job import FpsJob
 from ics.iicActor.fps.sequence import FpsSequence
-from ics.iicActor.sps.resource import SpectroJob
+from ics.iicActor.sps.job import SpectroJob
 from ics.iicActor.sps.sequence import SpsSequence
-from iicActor.utils.lib import process, wait, genIdentKeys
+from iicActor.utils.lib import threaded, wait, genIdentKeys
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
 from pfs.utils.sps.config import SpsConfig

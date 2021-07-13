@@ -12,25 +12,27 @@ class FpsCmd(SubCmd):
         """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visit """
         return dict(actor=self.actor, cmdStr=self.cmdStr.format(visit=self.visit), forUserCmd=None, timeLim=self.timeLim)
 
-    def call(self, cmd):
-        """ Get visit from gen2, Call subcommand, release visit """
+    def warn(self, cmd):
+        """ report from cmd warning """
+        if self.cmdVar is None:
+            return
+
+        for reply in self.cmdVar.replyList:
+            if reply.header.code == 'W' and not self.cmdVar.didFail:
+                cmd.warn(reply.keywords.canonical(delimiter=';'))
+
+    def callAndUpdate(self, cmd):
+        """Get visit, expose, release visit."""
         try:
             self.visit = self.getVisit()
         except Exception as e:
-            return 1, stripQuotes(str(e)), None
+            self.didFail = 1
+            self.lastReply = stripQuotes(str(e))
+            self.genOutput(cmd=cmd)
+            return None
 
-        ret = SubCmd.call(self, cmd)
-        self.releaseVisit()
-        return ret
-
-    def callAndUpdate(self, cmd):
-        """Hackity hack, report from sps exposure warning, but"""
         cmdVar = SubCmd.callAndUpdate(self, cmd)
-        if cmdVar is not None:
-            for reply in cmdVar.replyList:
-                if reply.header.code == 'W' and not cmdVar.didFail:
-                    cmd.warn(reply.keywords.canonical(delimiter=';'))
-
+        self.releaseVisit()
         return cmdVar
 
     def getVisit(self):
@@ -41,6 +43,9 @@ class FpsCmd(SubCmd):
     def releaseVisit(self):
         """ Release visit """
         self.sequence.job.visitor.releaseVisit()
+
+        if not self.didFail:
+            self.sequence.insertVisitSet(visit=self.visit)
 
     def abort(self, cmd):
         """ Abort current exposure """

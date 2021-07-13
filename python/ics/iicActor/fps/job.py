@@ -12,4 +12,5 @@ class FpsJob(IICJob):
 
     def __str__(self):
         return f'FpsJob(resources={",".join(self.required)} visit={self.seq.visitStart} ' \
-               f'startedAt({self.tStart.datetime.isoformat()}) status={self.getStatus(doShort=False)}'
+               f'startedAt({self.tStart.datetime.isoformat()}) ' \
+               f'active={not self.seq.isDone} didFail=({self.seq.didFail}, {self.seq.output})'

@@ -3,7 +3,7 @@ from ics.iicActor.utils.sequencing import Sequence
 
 
 class FpsSequence(Sequence):
-    """Capture SpS sequence specificities here..."""
+    """Capture Fps sequence specificities here..."""
 
     def __init__(self, *args, **kwargs):
         Sequence.__init__(self, *args, **kwargs)
