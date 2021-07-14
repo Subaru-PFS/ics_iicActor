@@ -213,7 +213,7 @@ class Sequence(list):
 
     def insertSequence(self):
         """ Store sequence in database """
-        utils.insert_row(opdb.OpDB.url, 'sps_sequence', visit_set_id=self.visit_set_id, sequence_type=self.seqtype,
+        utils.insert_row(opdb.OpDB.url, 'iic_sequence', visit_set_id=self.visit_set_id, sequence_type=self.seqtype,
                          name=self.name, comments=self.comments, cmd_str=self.rawCmd)
 
     def insertVisitSet(self, visit):
@@ -224,8 +224,8 @@ class Sequence(list):
         """ Store sequence in database """
         self.isDone = True
         cmd.inform(self.genKeys())
-        utils.insert_row(opdb.OpDB.url, 'sps_sequence_status', visit_set_id=self.visit_set_id,
-                         status_flag=int(self.didFail), output=self.output)
+        utils.insert_row(opdb.OpDB.url, 'iic_sequence_status', visit_set_id=self.visit_set_id,
+                         status_flag=int(self.didFail), cmd_output=self.output)
 
 
 class Loop(Sequence):

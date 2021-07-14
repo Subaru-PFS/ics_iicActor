@@ -252,7 +252,7 @@ class ResourceManager(object):
 
     def fetchLastVisitSetId(self):
         """ get last visit_set_id from opDB """
-        df = utils.fetch_query(opdb.OpDB.url, 'select max(visit_set_id) from sps_sequence')
+        df = utils.fetch_query(opdb.OpDB.url, 'select max(visit_set_id) from iic_sequence')
         visit_set_id, = df.loc[0].values
         visit_set_id = 0 if visit_set_id is None else visit_set_id
         return int(visit_set_id)
