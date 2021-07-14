@@ -225,7 +225,7 @@ class Sequence(list):
         self.isDone = True
         cmd.inform(self.genKeys())
         utils.insert_row(opdb.OpDB.url, 'iic_sequence_status', visit_set_id=self.visit_set_id,
-                         status_flag=int(self.didFail), output=self.output)
+                         status_flag=int(self.didFail), cmd_output=self.output)
 
 
 class Loop(Sequence):
