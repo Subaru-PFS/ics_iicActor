@@ -54,10 +54,19 @@ class FpsCmd(object):
             ('addBoresightPosition', '', self.addBoresightPosition),
             ('reduceBoresightData', '', self.reduceBoresightData),
             ('abortBoresightAcquisition', '', self.abortBoresightAcquisition),
-
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
-            ('movePhiToAngle', f'<angle> <iteration> {seqArgs}', self.movePhiToAngle),
             # ('mcsLoop', '[<expTime>] [<cnt>] [@noCentroids]', self.mcsLoop),
+
+            ('moveToPfsDesign', f'<pfsDesign> {seqArgs}', self.moveToPfsDesign),
+            ('movePhiToAngle', f'<angle> <iteration> {seqArgs}', self.movePhiToAngle),
+            ('moveToHome', f'@(phi|theta|all) {seqArgs}', self.moveToHome),
+            ('moveToSafePosition', f'{seqArgs}', self.moveToSafePosition),
+            ('gotoVerticalFromPhi60', f'{seqArgs}', self.gotoVerticalFromPhi60),
+            ('makeMotorMap', f'@(phi|theta) <stepsize> <repeat> [@slowOnly] {seqArgs}', self.makeMotorMap),
+            ('makeOntimeMap', f'@(phi|theta) {seqArgs}', self.makeOntimeMap),
+            ('angleConvergenceTest', f'@(phi|theta) <angleTargets> {seqArgs}', self.angleConvergenceTest),
+            ('targetConvergenceTest', f'@(ontime|speed) <totalTargets> <maxsteps> {seqArgs}',self.targetConvergenceTest),
+            ('motorOntimeSearch', f'@(phi|theta) {seqArgs}', self.motorOntimeSearch),
         ]
 
         # Define typed command arguments for the above commands.
@@ -66,25 +75,42 @@ class FpsCmd(object):
                                                  help="number of angles to measure at"),
                                         keys.Key("nExposures", types.Int(),
                                                  help="number of exposures to take at each position"),
-                                        keys.Key("cnt", types.Int(),
-                                                 default=1,
-                                                 help="times to run loop"),
-                                        keys.Key("id", types.Long(),
-                                                 help="fpsDesignId for the field, "
-                                                      "which defines the fiber positions"),
                                         keys.Key("expTime", types.Float(),
                                                  default=1.0,
                                                  help="Seconds for exposure"),
                                         keys.Key('name', types.String(), help='sps_sequence name'),
                                         keys.Key('comments', types.String(), help='sps_sequence comments'),
-                                        keys.Key('angle', types.Int(), help='angle'),
-                                        keys.Key('iteration', types.Int(), help='iteration'),
-
+                                        keys.Key("cnt", types.Int(), default=1, help="times to run loop"),
+                                        keys.Key("angle", types.Int(), help="arm angle"),
+                                        keys.Key("stepsize", types.Int(), help="step size of motor"),
+                                        keys.Key("repeat", types.Int(),
+                                                 help="number of iteration for motor map generation"),
+                                        keys.Key("angleTargets", types.Int(),
+                                                 help="Target number for angle convergence"),
+                                        keys.Key("totalTargets", types.Int(),
+                                                 help="Target number for 2D convergence"),
+                                        keys.Key("maxsteps", types.Int(),
+                                                 help="Maximum step number for 2D convergence test"),
+                                        keys.Key("iteration", types.Int(), help="Interation number"),
+                                        keys.Key("pfsDesign", types.Long(),
+                                                 help="pfsDesignId for the field,which defines the fiber positions"),
                                         )
 
     @property
     def resourceManager(self):
         return self.actor.resourceManager
+
+    def moveToPfsDesign(self, cmd):
+        """Run an MCS+FPS loop, without moving cobras. """
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        pfsDesign = cmdKeys['pfsDesign'].values[0]
+
+        job = self.resourceManager.request(cmd, fpsSequence.MoveToPfsDesign)
+        job.instantiate(cmd, pfsDesign=pfsDesign, **seqKwargs)
+
+        job.fire(cmd)
 
     def movePhiToAngle(self, cmd):
         """Run an MCS+FPS loop, without moving cobras. """
@@ -96,6 +122,108 @@ class FpsCmd(object):
 
         job = self.resourceManager.request(cmd, fpsSequence.MovePhiToAngle)
         job.instantiate(cmd, angle=angle, iteration=iteration, **seqKwargs)
+
+        job.fire(cmd)
+
+    def moveToHome(self, cmd):
+        """Run an MCS+FPS loop, without moving cobras. """
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        phi = 'phi' in cmdKeys
+        theta = 'theta' in cmdKeys
+        all = 'all' in cmdKeys
+
+        job = self.resourceManager.request(cmd, fpsSequence.MoveToHome)
+        job.instantiate(cmd, phi=phi, theta=theta, all=all, **seqKwargs)
+
+        job.fire(cmd)
+
+    def moveToSafePosition(self, cmd):
+        """Run an MCS+FPS loop, without moving cobras. """
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+
+        job = self.resourceManager.request(cmd, fpsSequence.MoveToSafePosition)
+        job.instantiate(cmd, **seqKwargs)
+
+        job.fire(cmd)
+
+    def gotoVerticalFromPhi60(self, cmd):
+        """Run an MCS+FPS loop, without moving cobras. """
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        job = self.resourceManager.request(cmd, fpsSequence.GotoVerticalFromPhi60)
+        job.instantiate(cmd, **seqKwargs)
+
+        job.fire(cmd)
+
+    def makeMotorMap(self, cmd):
+        """Run an MCS+FPS loop, without moving cobras. """
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        phi = 'phi' in cmdKeys
+        theta = 'theta' in cmdKeys
+        stepsize = cmdKeys['stepsize'].values[0]
+        repeat = cmdKeys['repeat'].values[0]
+        slowOnly = 'slowOnly' in cmdKeys
+
+        job = self.resourceManager.request(cmd, fpsSequence.MakeMotorMap)
+        job.instantiate(cmd, phi=phi, theta=theta, stepsize=stepsize, repeat=repeat, slowOnly=slowOnly, **seqKwargs)
+
+        job.fire(cmd)
+
+    def makeOntimeMap(self, cmd):
+        """Run an MCS+FPS loop, without moving cobras. """
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        phi = 'phi' in cmdKeys
+        theta = 'theta' in cmdKeys
+
+        job = self.resourceManager.request(cmd, fpsSequence.MakeOntimeMap)
+        job.instantiate(cmd, phi=phi, theta=theta, **seqKwargs)
+
+        job.fire(cmd)
+
+    def angleConvergenceTest(self, cmd):
+        """Run an MCS+FPS loop, without moving cobras. """
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        phi = 'phi' in cmdKeys
+        theta = 'theta' in cmdKeys
+        angleTargets = cmdKeys['angleTargets'].values[0]
+
+        job = self.resourceManager.request(cmd, fpsSequence.AngleConvergenceTest)
+        job.instantiate(cmd, phi=phi, theta=theta, angleTargets=angleTargets, **seqKwargs)
+
+        job.fire(cmd)
+
+    def targetConvergenceTest(self, cmd):
+        """Run an MCS+FPS loop, without moving cobras. """
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        ontime = 'ontime' in cmdKeys
+        speed = 'speed' in cmdKeys
+        totalTargets = cmdKeys['totalTargets'].values[0]
+        maxsteps = cmdKeys['maxsteps'].values[0]
+
+        job = self.resourceManager.request(cmd, fpsSequence.TargetConvergenceTest)
+        job.instantiate(cmd, ontime=ontime, speed=speed, totalTargets=totalTargets, maxsteps=maxsteps, **seqKwargs)
+
+        job.fire(cmd)
+
+    def motorOntimeSearch(self, cmd):
+        """Run an MCS+FPS loop, without moving cobras. """
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        phi = 'phi' in cmdKeys
+        theta = 'theta' in cmdKeys
+
+        job = self.resourceManager.request(cmd, fpsSequence.MotorOntimeSearch)
+        job.instantiate(cmd, phi=phi, theta=theta, **seqKwargs)
 
         job.fire(cmd)
 

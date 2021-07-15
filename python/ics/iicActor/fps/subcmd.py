@@ -6,7 +6,7 @@ class FpsCmd(SubCmd):
     """ Placeholder to handle dcb command specificities"""
 
     def __init__(self, cmdStr, timeLim=120, **kwargs):
-        SubCmd.__init__(self, 'fps', cmdStr, timeLim=timeLim, visit='{visit}', **kwargs)
+        SubCmd.__init__(self, 'fps', cmdStr, timeLim=timeLim, **kwargs, visit='{visit}')
 
     def build(self, cmd):
         """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visit """
