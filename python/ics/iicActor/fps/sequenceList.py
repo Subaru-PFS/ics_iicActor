@@ -9,18 +9,19 @@ class MoveToPfsDesign(FpsSequence):
 
     def __init__(self, pfsDesign, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        self.fpsCommand(pfsDesign=pfsDesign)
+        self.fpsCommand(pfsDesign=pfsDesign, timeLim=MoveToPfsDesign.timeLim)
 
 
 class MovePhiToAngle(FpsSequence):
     """ fps MovePhiToAngle command. """
     seqtype = 'movePhiToAngle'
-    timeLim = 900
+    timePerIteration = 150
     dependencies = ['mcs']
 
     def __init__(self, angle, iteration, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        self.fpsCommand(angle=angle, iteration=iteration)
+        timeLim = iteration * MovePhiToAngle.timePerIteration
+        self.fpsCommand(angle=angle, iteration=iteration, timeLim=timeLim)
 
 
 class MoveToHome(FpsSequence):
@@ -31,7 +32,7 @@ class MoveToHome(FpsSequence):
 
     def __init__(self, phi, theta, all, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        self.fpsCommand(phi=phi, theta=theta, all=all)
+        self.fpsCommand(phi=phi, theta=theta, all=all, timeLim=MoveToHome.timeLim)
 
 
 class MoveToSafePosition(FpsSequence):
@@ -42,7 +43,7 @@ class MoveToSafePosition(FpsSequence):
 
     def __init__(self, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        self.fpsCommand()
+        self.fpsCommand(timeLim=MoveToSafePosition.timeLim)
 
 
 class GotoVerticalFromPhi60(FpsSequence):
@@ -53,18 +54,19 @@ class GotoVerticalFromPhi60(FpsSequence):
 
     def __init__(self, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        self.fpsCommand()
+        self.fpsCommand(timeLim=GotoVerticalFromPhi60.timeLim)
 
 
 class MakeMotorMap(FpsSequence):
     """ fps MakeMotorMap command. """
     seqtype = 'makeMotorMap'
-    timeLim = 900
+    timePerRepeat = 150
     dependencies = ['mcs']
 
     def __init__(self, phi, theta, stepsize, repeat, slowOnly, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        self.fpsCommand(phi=phi, theta=theta, stepsize=stepsize, repeat=repeat, slowOnly=slowOnly)
+        timeLim = MakeMotorMap * MakeMotorMap.timePerRepeat
+        self.fpsCommand(phi=phi, theta=theta, stepsize=stepsize, repeat=repeat, slowOnly=slowOnly, timeLim=timeLim)
 
 
 class MakeOntimeMap(FpsSequence):
@@ -75,7 +77,7 @@ class MakeOntimeMap(FpsSequence):
 
     def __init__(self, phi, theta, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        self.fpsCommand(phi=phi, theta=theta)
+        self.fpsCommand(phi=phi, theta=theta, timeLim=MakeOntimeMap.timeLim)
 
 
 class AngleConvergenceTest(FpsSequence):
@@ -86,7 +88,7 @@ class AngleConvergenceTest(FpsSequence):
 
     def __init__(self, phi, theta, angleTargets, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        self.fpsCommand(phi=phi, theta=theta, angleTargets=angleTargets)
+        self.fpsCommand(phi=phi, theta=theta, angleTargets=angleTargets, timeLim=AngleConvergenceTest.timeLim)
 
 
 class TargetConvergenceTest(FpsSequence):
@@ -97,7 +99,8 @@ class TargetConvergenceTest(FpsSequence):
 
     def __init__(self, ontime, speed, totalTargets, maxsteps, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        self.fpsCommand(ontime=ontime, speed=speed, totalTargets=totalTargets, maxsteps=maxsteps)
+        timeLim = int(TargetConvergenceTest.timeLim / speed)
+        self.fpsCommand(ontime=ontime, speed=speed, totalTargets=totalTargets, maxsteps=maxsteps, timeLim=timeLim)
 
 
 class MotorOntimeSearch(FpsSequence):
@@ -108,4 +111,4 @@ class MotorOntimeSearch(FpsSequence):
 
     def __init__(self, phi, theta, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        self.fpsCommand(phi=phi, theta=theta, )
+        self.fpsCommand(phi=phi, theta=theta, timeLim=MotorOntimeSearch.timeLim)
