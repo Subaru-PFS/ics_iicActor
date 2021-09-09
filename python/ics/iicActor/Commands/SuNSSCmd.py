@@ -1,5 +1,5 @@
 import ics.iicActor.Commands.SpsCmd as SpsCmd
-import ics.iicActor.sps.sequence as spsSequence
+import ics.iicActor.sps.sequenceList as spsSequence
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 
