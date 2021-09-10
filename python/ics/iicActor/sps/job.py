@@ -56,3 +56,29 @@ class SpectroJob(IICJob):
         """ Instantiate seqObj with given args, kwargs. """
         self.seq = self.seqObj(cams=self.camNames, *args, **kwargs)
         self.seq.assign(cmd, self)
+
+
+class RdaJob(IICJob):
+    def __init__(self, iicActor, specModules, seqObj, visitSetId):
+        IICJob.__init__(self, iicActor=iicActor, seqObj=seqObj, visitSetId=visitSetId)
+        self.specModules = specModules
+        self.basicResources = [str(specModule.rda) for specModule in specModules]
+
+    def __str__(self):
+        return f'RdaJob(resources={",".join(self.required)} startedAt({self.tStart.datetime.isoformat()}) ' \
+               f'active={not self.seq.isDone} didFail=({self.seq.didFail}, {self.seq.output})'
+
+    @property
+    def specNames(self):
+        return list(map(str, [specModule.specNum for specModule in self.specModules]))
+
+    def instantiate(self, cmd, *args, **kwargs):
+        """ Instantiate seqObj with given args, kwargs. """
+        self.seq = self.seqObj(specNames=self.specNames, *args, **kwargs)
+        self.seq.assign(cmd, self)
+
+    def sanityCheck(self, cmd):
+        for specModule in self.specModules:
+            if not specModule.rda.checkTarget(targetPosition=self.seqObj.targetPosition):
+                raise RuntimeError(f'{specModule.specName} rda is not operational, '
+                                   f'cannot reach targetPosition :{self.seqObj.targetPosition}...')

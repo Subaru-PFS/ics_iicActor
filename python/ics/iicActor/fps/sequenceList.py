@@ -65,7 +65,7 @@ class MakeMotorMap(FpsSequence):
 
     def __init__(self, phi, theta, stepsize, repeat, slowOnly, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        timeLim = MakeMotorMap * MakeMotorMap.timePerRepeat
+        timeLim = repeat * MakeMotorMap.timePerRepeat
         self.fpsCommand(phi=phi, theta=theta, stepsize=stepsize, repeat=repeat, slowOnly=slowOnly, timeLim=timeLim)
 
 
