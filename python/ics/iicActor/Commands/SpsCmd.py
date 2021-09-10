@@ -5,9 +5,11 @@ import ics.iicActor.sps.timed as timedSpsSequence
 import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+import ics.iicActor.sps.engineering as engineering
 
 reload(spsSequence)
 reload(timedSpsSequence)
+reload(engineering)
 
 
 def genSeqKwargs(cmd, customMade=True):
@@ -112,6 +114,7 @@ class SpsCmd(object):
             ('detector', f'throughfocus {timedDcbArcArgs} <position> [<tilt>] {commonArgs}',
              self.detThroughFocus),
             ('defocus', f'arc {timedDcbArcArgs} <position> {commonArgs}', self.defocusedArcs),
+            ('sps', 'rdaMove (low|med) [<sm>]', self.rdaMove)
         ]
 
         # Define typed command arguments for the above commands.
@@ -361,4 +364,19 @@ class SpsCmd(object):
 
         job = self.resourceManager.request(cmd, spsSequence.Custom)
         job.instantiate(cmd, **seqKwargs)
+        job.fire(cmd)
+
+    def rdaMove(self, cmd):
+        """dithered Arc(s) with given exptime. """
+        cmdKeys = cmd.cmd.keywords
+
+        if 'low' in cmdKeys:
+            seqObj = engineering.RdaLow
+        elif 'med' in cmdKeys:
+            seqObj = engineering.RdaMed
+        else:
+            raise ValueError('incorrect target position')
+
+        job = self.resourceManager.request(cmd, seqObj)
+        job.instantiate(cmd)
         job.fire(cmd)

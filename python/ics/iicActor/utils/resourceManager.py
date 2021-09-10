@@ -3,8 +3,9 @@ from astropy import time as astroTime
 from ics.iicActor import visit
 from ics.iicActor.fps.job import FpsJob
 from ics.iicActor.fps.sequence import FpsSequence
-from ics.iicActor.sps.job import SpectroJob
+from ics.iicActor.sps.job import SpectroJob, RdaJob
 from ics.iicActor.sps.sequence import SpsSequence
+import ics.iicActor.sps.engineering as spsEngineering
 from iicActor.utils.lib import threaded, wait, genIdentKeys
 from opdb import utils, opdb
 from opscore.utility.qstr import qstr
@@ -129,6 +130,11 @@ class ResourceManager(object):
         elif issubclass(seqObj, FpsSequence):
             job = FpsJob(self.actor, seqObj, visitSetId)
 
+        elif issubclass(seqObj, spsEngineering.RdaMove):
+            identKeys = genIdentKeys(cmd.cmd.keywords)
+            specModules = SpsConfig.fromModel(self.actor.models['sps']).selectModules(identKeys['sm'])
+            job = RdaJob(self.actor, specModules, seqObj, visitSetId)
+
         else:
             raise RuntimeError('unknown sequence type')
 
@@ -144,8 +150,6 @@ class ResourceManager(object):
 
     def lock(self, job):
         """ all specs points to the same job. """
-        # for spec in job.specs:
-        #     self.allocate(job, key=spec.camName)
         self.allocate(job, job.visitSetId)
 
         return job
