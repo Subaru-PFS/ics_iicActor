@@ -49,11 +49,11 @@ def dcbKwargs(cmdKeys, forceHalogen=False):
     return dcbOn, dcbOff
 
 
-def timedDcbKwargs(cmdKeys):
-    lampNames = 'halogen', 'hgar', 'argon', 'neon', 'krypton'
-    dcbPrepare = {name: cmdKeys[name].values[0] for name in lampNames if name in cmdKeys}
+def timedLampsKwargs(cmdKeys):
+    lampNames = 'halogen', 'hgcd', 'hgar', 'argon', 'neon', 'krypton', 'xenon'
+    lampsPrepare = {name: cmdKeys[name].values[0] for name in lampNames if name in cmdKeys}
 
-    return dcbPrepare
+    return lampsPrepare
 
 
 def fetchExpTime(cmdKeys):
@@ -61,7 +61,7 @@ def fetchExpTime(cmdKeys):
         exptime = cmdKeys['exptime'].values
         seqLib = spsSequence
     except KeyError:
-        exptime = timedDcbKwargs(cmdKeys)
+        exptime = timedLampsKwargs(cmdKeys)
         seqLib = timedSpsSequence
 
     return exptime, seqLib
@@ -84,7 +84,7 @@ class SpsCmd(object):
         commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
         dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [<attenuator>] [force]'
 
-        timedDcbArcArgs = '[<hgar>] [<argon>] [<neon>] [<krypton>]'
+        timedLampsArcArgs = '[<hgar>] [<argon>] [<neon>] [<krypton>]'
         self.vocab = [
             ('masterBiases', f'{commonArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {commonArgs}', self.masterDarks),
@@ -105,15 +105,15 @@ class SpsCmd(object):
             ('custom', '[<name>] [<comments>] [<head>] [<tail>]', self.custom),
 
             ('ditheredFlats', f'<halogen> [<pixels>] [<nPositions>] {commonArgs}', self.ditheredFlats),
-            ('scienceArc', f'{timedDcbArcArgs} {commonArgs}', self.scienceArc),
+            ('scienceArc', f'{timedLampsArcArgs} {commonArgs}', self.scienceArc),
             ('scienceTrace', f'<halogen> {commonArgs}', self.scienceTrace),
-            ('expose', f'arc {timedDcbArcArgs} {commonArgs}', self.scienceArc),
+            ('expose', f'arc {timedLampsArcArgs} {commonArgs}', self.scienceArc),
             ('expose', f'flat <halogen> {commonArgs}', self.scienceTrace),
-            ('test', f'hexapodStability {timedDcbArcArgs} [<position>] {commonArgs}', self.hexapodStability),
-            ('dither', f'arc {timedDcbArcArgs} <pixels> [doMinus] {commonArgs}', self.ditheredArcs),
-            ('detector', f'throughfocus {timedDcbArcArgs} <position> [<tilt>] {commonArgs}',
+            ('test', f'hexapodStability {timedLampsArcArgs} [<position>] {commonArgs}', self.hexapodStability),
+            ('dither', f'arc {timedLampsArcArgs} <pixels> [doMinus] {commonArgs}', self.ditheredArcs),
+            ('detector', f'throughfocus {timedLampsArcArgs} <position> [<tilt>] {commonArgs}',
              self.detThroughFocus),
-            ('defocus', f'arc {timedDcbArcArgs} <position> {commonArgs}', self.defocusedArcs),
+            ('defocus', f'arc {timedLampsArcArgs} <position> {commonArgs}', self.defocusedArcs),
             ('sps', 'rdaMove (low|med) [<sm>]', self.rdaMove)
         ]
 
@@ -348,7 +348,7 @@ class SpsCmd(object):
         """acquire hexapod stability grid. By default 12x12 and 3 duplicates at each position. """
         cmdKeys = cmd.cmd.keywords
         seqKwargs = genSeqKwargs(cmd)
-        timedLamps = timedDcbKwargs(cmdKeys)
+        timedLamps = timedLampsKwargs(cmdKeys)
 
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 3
         position = cmdKeys['position'].values if 'position' in cmdKeys else [-0.05, 0.055, 0.01]

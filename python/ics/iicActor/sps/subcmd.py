@@ -81,30 +81,38 @@ class SpsExpose(SubCmd):
             raise RuntimeError("Failed to finish exposure")
 
 
-class DcbCmd(SubCmd):
-    """ Placeholder to handle dcb command specificities"""
+class LampsCmd(SubCmd):
+    """ Placeholder to handle lamps command specificities"""
 
     def __init__(self, *args, **kwargs):
         SubCmd.__init__(self, *args, **kwargs)
 
-    @property
-    def dcbActor(self):
-        return self.sequence.job.lightSource
-
     def build(self, cmd):
         """ Override dcbActor with actual lightSource """
 
-        return dict(actor=self.dcbActor,
+        return dict(actor=self.sequence.job.lightSource.lampsActor,
                     cmdStr=self.cmdStr,
                     forUserCmd=None,
                     timeLim=self.timeLim)
 
     def abort(self, cmd):
         """ Abort warmup """
-        ret = self.iicActor.cmdr.call(actor=self.dcbActor,
-                                      cmdStr='sources abort',
+        ret = self.iicActor.cmdr.call(actor=self.sequence.job.lightSource.lampsActor,
+                                      cmdStr='abort',
                                       forUserCmd=cmd,
                                       timeLim=10)
         if ret.didFail:
             cmd.warn(ret.replyList[-1].keywords.canonical(delimiter=';'))
             raise RuntimeError("Failed to abort exposure")
+
+
+class DcbCmd(LampsCmd):
+    def __init__(self, *args, **kwargs):
+        LampsCmd.__init__(self, *args, **kwargs)
+
+    def build(self, cmd):
+        """ Override dcbActor with actual lightSource """
+        if not self.sequence.job.lightSource.isDcb:
+            raise RuntimeError('this command has been designed for dcb only')
+
+        return LampsCmd.build(self, cmd)
