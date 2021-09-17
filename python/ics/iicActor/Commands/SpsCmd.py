@@ -84,7 +84,7 @@ class SpsCmd(object):
         commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
         dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [<attenuator>] [force]'
 
-        timedLampsArcArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>]'
+        timedLampsArcArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>]'
         self.vocab = [
             ('masterBiases', f'{commonArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {commonArgs}', self.masterDarks),
@@ -151,6 +151,7 @@ class SpsCmd(object):
                                         keys.Key('neon', types.Float(), help='Ne lamp on time'),
                                         keys.Key('krypton', types.Float(), help='Kr lamp on time'),
                                         keys.Key('hgcd', types.Float(), help='HgCd lamp on time'),
+                                        keys.Key('xenon', types.Float(), help='Xenon lamp on time'),
 
                                         )
 
