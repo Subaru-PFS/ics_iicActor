@@ -84,7 +84,7 @@ class Sequence(list):
         self.job = job
         self.register(cmd)
 
-    def add(self, actor, cmdStr, timeLim=60, idleTime=5.0, index=None, **kwargs):
+    def add(self, actor, cmdStr, timeLim=60, idleTime=1.0, index=None, **kwargs):
         """ Append duplicate * subcommand to sequence """
         func = self.append if index is None else partial(self.insert, index)
         cls = self.guessType(actor, cmdStr)
