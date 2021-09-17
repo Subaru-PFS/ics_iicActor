@@ -1,5 +1,5 @@
-from ics.iicActor.sps.sequence import SpsSequence
 import ics.iicActor.sps.sequenceList as spsSequence
+from ics.iicActor.sps.sequence import SpsSequence
 from ics.iicActor.sps.subcmd import SpsExpose
 from pfs.utils.ncaplar import defocused_exposure_times_single_position
 
@@ -16,16 +16,18 @@ class timedLampsSequence(SpsSequence):
 
             for lamp in ['argon', 'hgcd', 'hgar', 'krypton', 'neon', 'xenon', 'halogen']:
                 if lamp in timedLamps.keys():
-                    exptime = max(exptime, float(timedLamps[lamp]))
-                    lamps.append(f"{lamp}={float(timedLamps[lamp]):0.2f}")
+                    exptime = max(exptime, timedLamps[lamp])
+                    lamps.append(f"{lamp}={timedLamps[lamp]}")
             return [exptime], f'prepare {" ".join(lamps)}'
 
         exptime, lampsCmdStr = doTimedLamps(exptime)
 
         for expTime in exptime:
             for i in range(duplicate):
+                timeOffset = 240 if 'hgcd' in lampsCmdStr else 120
                 self.add(actor='lamps', cmdStr=lampsCmdStr)
-                self.append(SpsExpose.specify(exptype, expTime, doLamps=True, doTest=doTest, **identKeys))
+                self.append(SpsExpose.specify(exptype, expTime,
+                                              doLamps=True, timeOffset=timeOffset, doTest=doTest, **identKeys))
 
 
 class ScienceArc(spsSequence.ScienceArc, timedLampsSequence):

@@ -9,8 +9,8 @@ class SpsExpose(SubCmd):
         SubCmd.__init__(self, actor, cmdStr, timeLim=timeLim, visit='{visit}', **kwargs)
 
     @classmethod
-    def specify(cls, exptype, exptime, **kwargs):
-        timeLim = 120 + exptime
+    def specify(cls, exptype, exptime, timeOffset=120, **kwargs):
+        timeLim = timeOffset + exptime
         exptime = exptime if exptime else None
         return cls('sps', f'expose {exptype}', timeLim=timeLim, exptime=exptime, **kwargs)
 
