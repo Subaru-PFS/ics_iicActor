@@ -1,4 +1,4 @@
-from ics.iicActor.sps.subcmd import DcbCmd, SpsExpose
+from ics.iicActor.sps.subcmd import SpsExpose, DcbCmd, LampsCmd
 from ics.iicActor.utils.sequencing import Sequence
 from ics.iicActor.utils.subcmd import SubCmd
 
@@ -31,7 +31,9 @@ class SpsSequence(Sequence):
 
     def guessType(self, actor, cmdStr):
         """ Guess SubCmd type """
-        if actor == 'dcb':
+        if actor == 'lamps':
+            cls = LampsCmd
+        elif actor == 'dcb':
             cls = DcbCmd
         elif actor == 'sps' and 'expose' in cmdStr:
             cls = SpsExpose

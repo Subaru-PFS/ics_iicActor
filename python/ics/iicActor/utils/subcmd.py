@@ -4,7 +4,7 @@ from ics.iicActor.utils.lib import stripQuotes
 class SubCmd(object):
     """ Placeholder to handle subcommand processing, status and error"""
 
-    def __init__(self, actor, cmdStr, timeLim=60, idleTime=5.0, **kwargs):
+    def __init__(self, actor, cmdStr, timeLim=60, idleTime=1.0, **kwargs):
         object.__init__(self)
         cmdStr = ' '.join([cmdStr] + SubCmd.parse(**kwargs))
         self.actor = actor
