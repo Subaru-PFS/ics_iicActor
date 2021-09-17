@@ -1,11 +1,11 @@
 from importlib import reload
 
+import ics.iicActor.sps.engineering as engineering
 import ics.iicActor.sps.sequenceList as spsSequence
 import ics.iicActor.sps.timed as timedSpsSequence
 import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
-import ics.iicActor.sps.engineering as engineering
 
 reload(spsSequence)
 reload(timedSpsSequence)
@@ -51,7 +51,7 @@ def dcbKwargs(cmdKeys, forceHalogen=False):
 
 def timedLampsKwargs(cmdKeys):
     lampNames = 'halogen', 'hgcd', 'hgar', 'argon', 'neon', 'krypton', 'xenon'
-    lampsPrepare = {name: cmdKeys[name].values[0] for name in lampNames if name in cmdKeys}
+    lampsPrepare = {name: int(round(cmdKeys[name].values[0])) for name in lampNames if name in cmdKeys}
 
     return lampsPrepare
 
@@ -84,7 +84,7 @@ class SpsCmd(object):
         commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
         dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [<attenuator>] [force]'
 
-        timedLampsArcArgs = '[<hgar>] [<argon>] [<neon>] [<krypton>]'
+        timedLampsArcArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>]'
         self.vocab = [
             ('masterBiases', f'{commonArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {commonArgs}', self.masterDarks),
@@ -150,6 +150,8 @@ class SpsCmd(object):
                                         keys.Key('hgar', types.Float(), help='HgAr lamp on time'),
                                         keys.Key('neon', types.Float(), help='Ne lamp on time'),
                                         keys.Key('krypton', types.Float(), help='Kr lamp on time'),
+                                        keys.Key('hgcd', types.Float(), help='HgCd lamp on time'),
+
                                         )
 
     @property
