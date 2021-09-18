@@ -1,4 +1,5 @@
 import opscore.protocols.keys as keys
+import opscore.protocols.types as types
 
 
 class TopCmd(object):
@@ -15,10 +16,12 @@ class TopCmd(object):
         self.vocab = [
             ('ping', '', self.ping),
             ('status', '', self.status),
+            ('observe', '<designId>', self.genPfsDesignId)
         ]
 
         # Define typed command arguments for the above commands.
-        self.keys = keys.KeysDictionary("mcs_mcs", (1, 1),
+        self.keys = keys.KeysDictionary("iic_iic", (1, 1),
+                                        keys.Key('designId', types.Long(), help='selected pfsDesignId')
                                         )
 
     def ping(self, cmd):
@@ -32,3 +35,9 @@ class TopCmd(object):
 
         self.actor.sendVersionKey(cmd)
         cmd.finish()
+
+    def genPfsDesignId(self, cmd):
+        """Report camera status and actor version. """
+        cmdKeys = cmd.cmd.keywords
+        pfsDesignId = cmdKeys['designId'].values[0]
+        cmd.finish('designId=0x%016x' % pfsDesignId)
