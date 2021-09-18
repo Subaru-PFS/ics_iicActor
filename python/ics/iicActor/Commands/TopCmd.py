@@ -21,7 +21,7 @@ class TopCmd(object):
 
         # Define typed command arguments for the above commands.
         self.keys = keys.KeysDictionary("iic_iic", (1, 1),
-                                        keys.Key('designId', types.Int(), help='selected pfsDesignId')
+                                        keys.Key('designId', types.Long(), help='selected pfsDesignId')
                                         )
 
     def ping(self, cmd):
