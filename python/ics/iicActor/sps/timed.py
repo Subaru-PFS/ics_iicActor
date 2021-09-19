@@ -18,16 +18,21 @@ class timedLampsSequence(SpsSequence):
                 if lamp in timedLamps.keys():
                     exptime = max(exptime, timedLamps[lamp])
                     lamps.append(f"{lamp}={timedLamps[lamp]}")
-            return [exptime], f'prepare {" ".join(lamps)}'
+            return exptime, f'prepare {" ".join(lamps)}'
 
+        shutterTiming = exptime['shutterTiming']
+        doLampsTiming = not shutterTiming
         exptime, lampsCmdStr = doTimedLamps(exptime)
 
-        for expTime in exptime:
-            for i in range(duplicate):
-                timeOffset = 240 if 'hgcd' in lampsCmdStr else 120
-                self.add(actor='lamps', cmdStr=lampsCmdStr)
-                self.append(SpsExpose.specify(exptype, expTime,
+        for i in range(duplicate):
+            timeOffset = 240 if 'hgcd' in lampsCmdStr else 120
+            self.add(actor='lamps', cmdStr=lampsCmdStr)
+            if doLampsTiming:
+                self.append(SpsExpose.specify(exptype, exptime,
                                               doLamps=True, timeOffset=timeOffset, doTest=doTest, **identKeys))
+            else:
+                self.add(actor='lamps', cmdStr='go noWait', idleTime=2)
+                self.append(SpsExpose.specify(exptype, shutterTiming, doTest=doTest, **identKeys))
 
 
 class ScienceArc(spsSequence.ScienceArc, timedLampsSequence):

@@ -51,7 +51,11 @@ def dcbKwargs(cmdKeys, forceHalogen=False):
 
 def timedLampsKwargs(cmdKeys):
     lampNames = 'halogen', 'hgcd', 'hgar', 'argon', 'neon', 'krypton', 'xenon'
-    lampsPrepare = {name: int(round(cmdKeys[name].values[0])) for name in lampNames if name in cmdKeys}
+    doShutterTiming = 'doShutterTiming' in cmdKeys
+    timingOverHead = 5 if doShutterTiming else 0
+
+    lampsPrepare = {name: int(round(cmdKeys[name].values[0]) + timingOverHead) for name in lampNames if name in cmdKeys}
+    lampsPrepare['shutterTiming'] = max(lampsPrepare.values()) - timingOverHead if doShutterTiming else 0
 
     return lampsPrepare
 
@@ -84,7 +88,7 @@ class SpsCmd(object):
         commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
         dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [<attenuator>] [force]'
 
-        timedLampsArcArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>]'
+        timedLampsArcArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>] [doShutterTiming]'
         self.vocab = [
             ('masterBiases', f'{commonArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {commonArgs}', self.masterDarks),
