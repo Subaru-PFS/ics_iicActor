@@ -7,7 +7,7 @@ from pfs.utils.ncaplar import defocused_exposure_times_single_position
 class timedLampsSequence(SpsSequence):
     shutterRequired = False
 
-    def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, **identKeys):
+    def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, timeOffset=120, **identKeys):
         """ Append duplicate * sps expose to sequence """
 
         def doTimedLamps(timedLamps):
@@ -18,21 +18,24 @@ class timedLampsSequence(SpsSequence):
                 if lamp in timedLamps.keys():
                     exptime = max(exptime, timedLamps[lamp])
                     lamps.append(f"{lamp}={timedLamps[lamp]}")
+
             return exptime, f'prepare {" ".join(lamps)}'
 
-        shutterTiming = exptime['shutterTiming']
-        doLampsTiming = not shutterTiming
-        exptime, lampsCmdStr = doTimedLamps(exptime)
+        maxLampOnTime, lampsCmdStr = doTimedLamps(exptime)
+        timeOffset = 240 if 'hgcd' in lampsCmdStr else timeOffset
+
+        if exptime['shutterTiming']:
+            exptime = exptime['shutterTiming']
+            doShutterTiming = True
+        else:
+            exptime = maxLampOnTime
+            doShutterTiming = False
 
         for i in range(duplicate):
-            timeOffset = 240 if 'hgcd' in lampsCmdStr else 120
             self.add(actor='lamps', cmdStr=lampsCmdStr)
-            if doLampsTiming:
-                self.append(SpsExpose.specify(exptype, exptime,
-                                              doLamps=True, timeOffset=timeOffset, doTest=doTest, **identKeys))
-            else:
-                self.add(actor='lamps', cmdStr='go noWait', idleTime=2)
-                self.append(SpsExpose.specify(exptype, shutterTiming, doTest=doTest, **identKeys))
+            self.append(SpsExpose.specify(exptype, exptime,
+                                          doLamps=True, doShutterTiming=doShutterTiming, timeOffset=timeOffset,
+                                          doTest=doTest, **identKeys))
 
 
 class ScienceArc(spsSequence.ScienceArc, timedLampsSequence):
