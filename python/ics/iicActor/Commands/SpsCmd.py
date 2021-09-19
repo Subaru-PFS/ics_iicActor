@@ -108,9 +108,9 @@ class SpsCmd(object):
             ('defocus', f'arc <exptime> <position> {dcbArgs} {commonArgs}', self.defocusedArcs),
             ('custom', '[<name>] [<comments>] [<head>] [<tail>]', self.custom),
 
-            ('ditheredFlats', f'<halogen> [<pixels>] [<nPositions>] {commonArgs}', self.ditheredFlats),
+            ('ditheredFlats', f'<halogen> [doShutterTiming] [<pixels>] [<nPositions>] {commonArgs}', self.ditheredFlats),
             ('scienceArc', f'{timedLampsArcArgs} {commonArgs}', self.scienceArc),
-            ('scienceTrace', f'<halogen> {commonArgs}', self.scienceTrace),
+            ('scienceTrace', f'<halogen> [doShutterTiming] {commonArgs}', self.scienceTrace),
             ('expose', f'arc {timedLampsArcArgs} {commonArgs}', self.scienceArc),
             ('expose', f'flat <halogen> {commonArgs}', self.scienceTrace),
             ('test', f'hexapodStability {timedLampsArcArgs} [<position>] {commonArgs}', self.hexapodStability),
