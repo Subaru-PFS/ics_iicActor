@@ -3,8 +3,8 @@ from functools import partial
 
 from ics.iicActor.utils.lib import stripQuotes, stripField, wait
 from iicActor.utils.subcmd import SubCmd
-from opdb import utils, opdb
 from opscore.utility.qstr import qstr
+from pfs.utils.opdb import opDB
 
 
 class Sequence(list):
@@ -201,19 +201,20 @@ class Sequence(list):
 
     def insertSequence(self):
         """ Store sequence in database """
-        utils.insert_row(opdb.OpDB.url, 'iic_sequence', visit_set_id=self.visit_set_id, sequence_type=self.seqtype,
-                         name=self.name, comments=self.comments, cmd_str=self.rawCmd)
+        opDB.insert('iic_sequence',
+                    visit_set_id=self.visit_set_id, sequence_type=self.seqtype, name=self.name,
+                    comments=self.comments, cmd_str=self.rawCmd)
 
     def insertVisitSet(self, visit):
         """ Store sequence in database """
-        utils.insert_row(opdb.OpDB.url, 'visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
+        opDB.insert('visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
 
     def finalize(self, cmd):
         """ Store sequence in database """
         self.isDone = True
         cmd.inform(self.genKeys())
-        utils.insert_row(opdb.OpDB.url, 'iic_sequence_status', visit_set_id=self.visit_set_id,
-                         status_flag=int(self.didFail), cmd_output=self.output)
+        opDB.insert('iic_sequence_status',
+                    visit_set_id=self.visit_set_id, status_flag=int(self.didFail), cmd_output=self.output)
 
 
 class CmdList(Sequence):

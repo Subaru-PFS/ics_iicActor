@@ -1,8 +1,7 @@
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 import pandas as pd
-from ics.iicActor.utils.lib import wait
-from opdb import utils, opdb
+from pfs.utils.opdb import opDB
 
 
 class SequenceCmd(object):
@@ -81,19 +80,19 @@ class SequenceCmd(object):
 
         if 'visitSet' in cmdKeys:
             visitSetId = cmdKeys['visitSet'].values[0]
-            df = utils.fetch_query(opdb.OpDB.url, f'select pfs_visit_id from visit_set where visit_set_id={visitSetId}')
-            visits = df.pfs_visit_id.values
+            visits = opDB.fetchall(f'select pfs_visit_id from visit_set where visit_set_id={visitSetId}')[:, 0]
         elif 'visit' in cmdKeys:
             visits = cmdKeys['visit'].values
         else:
             raise KeyError('visitSet or at least visit must at least be specified')
 
-        spsExposures = pd.concat([utils.fetch_query(opdb.OpDB.url,
-                                                    f'select pfs_visit_id,sps_exposure.sps_camera_id,sps_module_id,arm '
-                                                    f'from sps_exposure inner join sps_camera on'
-                                                    f' sps_exposure.sps_camera_id=sps_camera.sps_camera_id '
-                                                    f'where pfs_visit_id={pfs_visit_id}') for pfs_visit_id in
-                                  visits]).reset_index(drop=True)
+        spsExposures = pd.concat(
+            [pd.DataFrame(opDB.fetchall(f'select pfs_visit_id,sps_exposure.sps_camera_id,sps_module_id,arm '
+                                        f'from sps_exposure inner join sps_camera on'
+                                        f' sps_exposure.sps_camera_id=sps_camera.sps_camera_id '
+                                        f'where pfs_visit_id={pfs_visit_id}'),
+                          columns=['pfs_visit_id', 'sps_camera_id', 'sps_module_id', 'arm']) for pfs_visit_id in
+             visits]).reset_index(drop=True)
 
         spsExposures['cam'] = [f'{row.arm}{row.sps_module_id}' for j, row in spsExposures.iterrows()]
 
@@ -117,8 +116,9 @@ class SequenceCmd(object):
             cmd.debug(
                 f'''text="inserting data_flag={dataFlag} notes={notes} into sps_annotation where {' '.join([f'{k}={exposure[k]}' for k in spsExposures.columns])}"''')
 
-            utils.insert_row(opdb.OpDB.url, 'sps_annotation', pfs_visit_id=int(exposure.pfs_visit_id),
-                             sps_camera_id=int(exposure.sps_camera_id), data_flag=int(dataFlag), notes=str(notes), created_at='now')
+            opDB.insert('sps_annotation',
+                        pfs_visit_id=int(exposure.pfs_visit_id), sps_camera_id=int(exposure.sps_camera_id),
+                        data_flag=int(dataFlag), notes=str(notes), created_at='now')
 
         cmd.finish(f'text="{len(spsExposures)} rows successfully inserted into sps_annotation with '
                    f'data_flag={dataFlag}({dataFlagStr}) notes={notes}"')

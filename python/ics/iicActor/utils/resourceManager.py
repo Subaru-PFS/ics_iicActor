@@ -7,7 +7,7 @@ from ics.iicActor.sps.job import SpectroJob, RdaJob
 from ics.iicActor.sps.sequence import SpsSequence
 import ics.iicActor.sps.engineering as spsEngineering
 from iicActor.utils.lib import threaded, wait, genIdentKeys
-from opdb import utils, opdb
+from pfs.utils.opdb import opDB
 from opscore.utility.qstr import qstr
 from pfs.utils.sps.config import SpsConfig
 
@@ -207,8 +207,7 @@ class ResourceManager(object):
 
     def fetchLastVisitSetId(self):
         """ get last visit_set_id from opDB """
-        df = utils.fetch_query(opdb.OpDB.url, 'select max(visit_set_id) from iic_sequence')
-        visit_set_id, = df.loc[0].values
+        visit_set_id, = opDB.fetchone('select max(visit_set_id) from iic_sequence')
         visit_set_id = 0 if visit_set_id is None else visit_set_id
         return int(visit_set_id)
 
