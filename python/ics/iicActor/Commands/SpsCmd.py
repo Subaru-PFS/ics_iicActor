@@ -3,6 +3,8 @@ from importlib import reload
 import ics.iicActor.sps.engineering as engineering
 import ics.iicActor.sps.sequenceList as spsSequence
 import ics.iicActor.sps.timed as timedSpsSequence
+import ics.iicActor.utils.parsing as iicCmd
+
 import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
@@ -10,23 +12,8 @@ import opscore.protocols.types as types
 reload(spsSequence)
 reload(timedSpsSequence)
 reload(engineering)
+reload(iicCmd)
 
-
-def genSeqKwargs(cmd, customMade=True):
-    cmdKeys = cmd.cmd.keywords
-    head = cmdKeys['head'].values if 'head' in cmdKeys else None
-    tail = cmdKeys['tail'].values if 'tail' in cmdKeys else None
-
-    if not customMade and (head is not None or tail is not None):
-        cmd.warn('text="not parsing head or tail here, sorry...')
-        head = None
-        tail = None
-
-    name = cmdKeys['name'].values[0] if 'name' in cmdKeys else ''
-    comments = cmdKeys['comments'].values[0] if 'comments' in cmdKeys else ''
-    doTest = 'doTest' in cmdKeys
-
-    return dict(name=name, comments=comments, head=head, tail=tail, doTest=doTest)
 
 
 def dcbKwargs(cmdKeys, forceHalogen=False):
@@ -167,7 +154,7 @@ class SpsCmd(object):
         """sps master bias(es). """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
         seqKwargs['name'] = 'calibProduct' if not seqKwargs['name'] else seqKwargs['name']
         duplicate = min(cmdKeys['duplicate'].values[0], 15) if 'duplicate' in cmdKeys else 15
 
@@ -180,7 +167,7 @@ class SpsCmd(object):
         """sps master dark(s). """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
         seqKwargs['name'] = 'calibProduct' if not seqKwargs['name'] else seqKwargs['name']
         duplicate = min(cmdKeys['duplicate'].values[0], 15) if 'duplicate' in cmdKeys else 15
         exptime = cmdKeys['exptime'].values if 'exptime' in cmdKeys else [300]
@@ -197,7 +184,7 @@ class SpsCmd(object):
         dcbOn, dcbOff = dcbKwargs(cmdKeys, forceHalogen=True)
         exptime, seqLib = fetchExpTime(cmdKeys)
 
-        seqKwargs = genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
         seqKwargs['name'] = 'calibProduct' if not seqKwargs['name'] else seqKwargs['name']
 
         pixels = cmdKeys['pixels'].values[0] if 'pixels' in cmdKeys else 0.3
@@ -216,7 +203,7 @@ class SpsCmd(object):
         cmdKeys = cmd.cmd.keywords
         isScience = 'arc' not in cmdKeys
 
-        seqKwargs = genSeqKwargs(cmd, customMade=not isScience)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd, customMade=not isScience)
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
         exptime, seqLib = fetchExpTime(cmdKeys)
 
@@ -232,7 +219,7 @@ class SpsCmd(object):
         cmdKeys = cmd.cmd.keywords
         isScience = 'flat' not in cmdKeys
 
-        seqKwargs = genSeqKwargs(cmd, customMade=not isScience)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd, customMade=not isScience)
         forceHalogen = 'halogen' not in cmdKeys
         dcbOn, dcbOff = dcbKwargs(cmdKeys, forceHalogen=forceHalogen)
         exptime, seqLib = fetchExpTime(cmdKeys)
@@ -247,7 +234,7 @@ class SpsCmd(object):
     def scienceObject(self, cmd):
         """sps bias(es). """
         cmdKeys = cmd.cmd.keywords
-        seqKwargs = genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
 
         exptime = cmdKeys['exptime'].values
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
@@ -260,7 +247,7 @@ class SpsCmd(object):
     def doBias(self, cmd):
         """sps bias(es). """
         cmdKeys = cmd.cmd.keywords
-        seqKwargs = genSeqKwargs(cmd)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd, customMade=True)
 
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
@@ -272,7 +259,7 @@ class SpsCmd(object):
     def doDark(self, cmd):
         """sps dark(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
-        seqKwargs = genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd, customMade=True)
 
         exptime = cmdKeys['exptime'].values
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
@@ -285,7 +272,7 @@ class SpsCmd(object):
     def slitThroughFocus(self, cmd):
         """sps slit through focus with given exptime. """
         cmdKeys = cmd.cmd.keywords
-        seqKwargs = genSeqKwargs(cmd)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd, customMade=True)
 
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
         exptime, seqLib = fetchExpTime(cmdKeys)
@@ -302,7 +289,7 @@ class SpsCmd(object):
     def detThroughFocus(self, cmd):
         """sps detector motors through focus with given exptime. """
         cmdKeys = cmd.cmd.keywords
-        seqKwargs = genSeqKwargs(cmd)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd, customMade=True)
 
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
         exptime, seqLib = fetchExpTime(cmdKeys)
@@ -321,7 +308,7 @@ class SpsCmd(object):
     def ditheredArcs(self, cmd):
         """dithered Arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
-        seqKwargs = genSeqKwargs(cmd)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd, customMade=True)
 
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
         exptime, seqLib = fetchExpTime(cmdKeys)
@@ -338,7 +325,7 @@ class SpsCmd(object):
     def defocusedArcs(self, cmd):
         """defocused Arc(s) with given exptime. """
         cmdKeys = cmd.cmd.keywords
-        seqKwargs = genSeqKwargs(cmd)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd, customMade=True)
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
         exptime, seqLib = fetchExpTime(cmdKeys)
 
@@ -354,7 +341,7 @@ class SpsCmd(object):
     def hexapodStability(self, cmd):
         """acquire hexapod stability grid. By default 12x12 and 3 duplicates at each position. """
         cmdKeys = cmd.cmd.keywords
-        seqKwargs = genSeqKwargs(cmd)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd, customMade=True)
         timedLamps = timedLampsKwargs(cmdKeys)
 
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 3
@@ -367,7 +354,7 @@ class SpsCmd(object):
 
     def custom(self, cmd):
         """dithered Arc(s) with given exptime. """
-        seqKwargs = genSeqKwargs(cmd)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd, customMade=True)
 
         job = self.resourceManager.request(cmd, spsSequence.Custom)
         job.instantiate(cmd, **seqKwargs)

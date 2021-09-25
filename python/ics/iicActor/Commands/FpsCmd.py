@@ -1,8 +1,13 @@
-import ics.iicActor.Commands.SpsCmd as SpsCmd
+from importlib import reload
+
 import ics.iicActor.fps.sequenceList as fpsSequence
+import ics.iicActor.utils.parsing as iicCmd
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.iicActor import visit
+
+reload(fpsSequence)
+reload(iicCmd)
 
 
 class BoresightLoop(object):
@@ -65,7 +70,8 @@ class FpsCmd(object):
             ('makeMotorMap', f'@(phi|theta) <stepsize> <repeat> [@slowOnly] {seqArgs}', self.makeMotorMap),
             ('makeOntimeMap', f'@(phi|theta) {seqArgs}', self.makeOntimeMap),
             ('angleConvergenceTest', f'@(phi|theta) <angleTargets> {seqArgs}', self.angleConvergenceTest),
-            ('targetConvergenceTest', f'@(ontime|speed) <totalTargets> <maxsteps> {seqArgs}',self.targetConvergenceTest),
+            ('targetConvergenceTest', f'@(ontime|speed) <totalTargets> <maxsteps> {seqArgs}',
+             self.targetConvergenceTest),
             ('motorOntimeSearch', f'@(phi|theta) {seqArgs}', self.motorOntimeSearch),
         ]
 
@@ -104,7 +110,7 @@ class FpsCmd(object):
         """Run an MCS+FPS loop, without moving cobras. """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
         designId = cmdKeys['designId'].values[0]
         cmd.inform('designId=0x%016x' % designId)
 
@@ -117,7 +123,7 @@ class FpsCmd(object):
         """Run an MCS+FPS loop, without moving cobras. """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
         angle = cmdKeys['angle'].values[0]
         iteration = cmdKeys['iteration'].values[0]
 
@@ -130,7 +136,7 @@ class FpsCmd(object):
         """Run an MCS+FPS loop, without moving cobras. """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
         phi = 'phi' in cmdKeys
         theta = 'theta' in cmdKeys
         all = 'all' in cmdKeys
@@ -142,7 +148,7 @@ class FpsCmd(object):
 
     def moveToSafePosition(self, cmd):
         """Run an MCS+FPS loop, without moving cobras. """
-        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
 
         job = self.resourceManager.request(cmd, fpsSequence.MoveToSafePosition)
         job.instantiate(cmd, **seqKwargs)
@@ -151,7 +157,7 @@ class FpsCmd(object):
 
     def gotoVerticalFromPhi60(self, cmd):
         """Run an MCS+FPS loop, without moving cobras. """
-        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
         job = self.resourceManager.request(cmd, fpsSequence.GotoVerticalFromPhi60)
         job.instantiate(cmd, **seqKwargs)
 
@@ -161,7 +167,7 @@ class FpsCmd(object):
         """Run an MCS+FPS loop, without moving cobras. """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
         phi = 'phi' in cmdKeys
         theta = 'theta' in cmdKeys
         stepsize = cmdKeys['stepsize'].values[0]
@@ -177,7 +183,7 @@ class FpsCmd(object):
         """Run an MCS+FPS loop, without moving cobras. """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
         phi = 'phi' in cmdKeys
         theta = 'theta' in cmdKeys
 
@@ -190,7 +196,7 @@ class FpsCmd(object):
         """Run an MCS+FPS loop, without moving cobras. """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
         phi = 'phi' in cmdKeys
         theta = 'theta' in cmdKeys
         angleTargets = cmdKeys['angleTargets'].values[0]
@@ -204,7 +210,7 @@ class FpsCmd(object):
         """Run an MCS+FPS loop, without moving cobras. """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
         ontime = 'ontime' in cmdKeys
         speed = 'speed' in cmdKeys
         totalTargets = cmdKeys['totalTargets'].values[0]
@@ -219,7 +225,7 @@ class FpsCmd(object):
         """Run an MCS+FPS loop, without moving cobras. """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicCmd.genSequenceKwargs(cmd)
         phi = 'phi' in cmdKeys
         theta = 'theta' in cmdKeys
 
