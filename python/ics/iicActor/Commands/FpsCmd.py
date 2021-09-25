@@ -57,7 +57,7 @@ class FpsCmd(object):
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
             # ('mcsLoop', '[<expTime>] [<cnt>] [@noCentroids]', self.mcsLoop),
 
-            ('moveToPfsDesign', f'<pfsDesign> {seqArgs}', self.moveToPfsDesign),
+            ('moveToPfsDesign', f'<designId> {seqArgs}', self.moveToPfsDesign),
             ('movePhiToAngle', f'<angle> <iteration> {seqArgs}', self.movePhiToAngle),
             ('moveToHome', f'@(phi|theta|all) {seqArgs}', self.moveToHome),
             ('moveToSafePosition', f'{seqArgs}', self.moveToSafePosition),
@@ -92,7 +92,7 @@ class FpsCmd(object):
                                         keys.Key("maxsteps", types.Int(),
                                                  help="Maximum step number for 2D convergence test"),
                                         keys.Key("iteration", types.Int(), help="Interation number"),
-                                        keys.Key("pfsDesign", types.Long(),
+                                        keys.Key("designId", types.Long(),
                                                  help="pfsDesignId for the field,which defines the fiber positions"),
                                         )
 
@@ -105,10 +105,11 @@ class FpsCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
-        pfsDesign = cmdKeys['pfsDesign'].values[0]
+        designId = cmdKeys['designId'].values[0]
+        cmd.inform('designId=0x%016x' % designId)
 
         job = self.resourceManager.request(cmd, fpsSequence.MoveToPfsDesign)
-        job.instantiate(cmd, pfsDesign=pfsDesign, **seqKwargs)
+        job.instantiate(cmd, designId=designId, **seqKwargs)
 
         job.fire(cmd)
 
