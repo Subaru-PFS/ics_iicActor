@@ -1,4 +1,4 @@
-import ics.iicActor.Commands.SpsCmd as SpsCmd
+import ics.iicActor.utils.lib as iicUtils
 import ics.iicActor.sps.sequenceList as spsSequence
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
@@ -41,7 +41,7 @@ class SuNSSCmd(object):
     def domeFlat(self, cmd):
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=False)
         exptime = cmdKeys['exptime'].values
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
@@ -53,7 +53,7 @@ class SuNSSCmd(object):
     def domeArc(self, cmd):
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=False)
         exptime = cmdKeys['exptime'].values
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
@@ -65,7 +65,7 @@ class SuNSSCmd(object):
     def startExposures(self, cmd):
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = SpsCmd.genSeqKwargs(cmd, customMade=False)
+        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=False)
         exptime = cmdKeys['exptime'].values[0]
         objectLoop = spsSequence.ObjectInterleavedBiasLoop if 'doBias' in cmdKeys else spsSequence.ObjectLoop
 
