@@ -16,7 +16,7 @@ class SpsExpose(SubCmd):
 
     def build(self, cmd):
         """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visit """
-        return dict(actor=self.actor, cmdStr=self.cmdStr.format(visit=self.visit, cams=self.sequence.exposable),
+        return dict(actor=self.actor, cmdStr=self.cmdStr.format(visit=self.visit),
                     forUserCmd=None, timeLim=self.timeLim)
 
     def warn(self, cmd):

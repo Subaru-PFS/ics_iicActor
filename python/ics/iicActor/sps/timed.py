@@ -99,15 +99,15 @@ class HexapodStability(SpsSequence):
 
         self.add('sps', 'slit', focus=0.0, abs=True)
         self.add('sps', 'slit dither', x=0.0, y=0.0, abs=True, cams=cams)
-        self.expose('arc', exptime=timedLamps, cams='{cams}', duplicate=duplicate, doTest=doTest)
+        self.expose('arc', exptime=timedLamps, cams=cams, duplicate=duplicate, doTest=doTest)
         for pos in positions:
             # Move y once separately
             self.add('sps', 'slit dither', y=round(pos, 5), abs=True, cams=cams)
             for pos in positions:
                 self.add('sps', f'slit dither', x=round(pos, 5), abs=True, cams=cams)
-                self.expose('arc', exptime=timedLamps, cams='{cams}', duplicate=duplicate, doTest=doTest)
+                self.expose('arc', exptime=timedLamps, cams=cams, duplicate=duplicate, doTest=doTest)
         self.add('sps', 'slit dither', x=0.0, y=0.0, abs=True, cams=cams)
-        self.expose('arc', exptime=timedLamps, cams='{cams}', duplicate=duplicate, doTest=doTest)
+        self.expose('arc', exptime=timedLamps, cams=cams, duplicate=duplicate, doTest=doTest)
 
 
 def defocused_exposure_times_no_atten(exp_time_0, defocused_value):
@@ -127,4 +127,4 @@ class DefocusedArcs(spsSequence.DefocusedArcs, timedLampsSequence):
             calcExptime = [defocused_exposure_times_no_atten(exptime, position) for lamp, exptime in timedLamps0]
             calcTimedLamps = dict([(lamp, exptime) for (lamp, __), exptime in zip(timedLamps0, calcExptime)])
             self.add(actor='sps', cmdStr='slit', focus=position, abs=True, cams=cams)
-            self.expose('arc', exptime=calcTimedLamps, cams='{cams}', duplicate=duplicate, doTest=doTest)
+            self.expose('arc', exptime=calcTimedLamps, cams=cams, duplicate=duplicate, doTest=doTest)

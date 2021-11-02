@@ -163,7 +163,7 @@ class SlitThroughFocus(SpsSequence):
 
         for position in positions:
             self.add(actor='sps', cmdStr='slit', focus=position, abs=True, cams=cams)
-            self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate, doTest=doTest)
+            self.expose(exptype='arc', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
         self.tail.add(actor='sps', cmdStr='slit', focus=0, abs=True, cams=cams)
 
@@ -184,7 +184,7 @@ class DetThroughFocus(SpsSequence):
         for motorA, motorB, motorC in positions:
             self.add(actor='sps', cmdStr='ccdMotors move',
                      a=motorA, b=motorB, c=motorC, microns=True, abs=True, cams=cams)
-            self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate, doTest=doTest)
+            self.expose(exptype='arc', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
 
 class DitheredFlats(SpsSequence):
@@ -201,14 +201,14 @@ class DitheredFlats(SpsSequence):
             self.tail.add(index=0, actor='dcb', cmdStr='arc', **dcbOff)
 
         self.add(actor='sps', cmdStr='slit dither', x=0, pixels=True, abs=True, cams=cams)
-        self.expose(exptype='flat', exptime=exptime, cams='{cams}', duplicate=duplicate, doTest=doTest)
+        self.expose(exptype='flat', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
         for position in positions:
             self.add(actor='sps', cmdStr='slit dither', x=position, pixels=True, abs=True, cams=cams)
-            self.expose(exptype='flat', exptime=exptime, cams='{cams}', duplicate=duplicate, doTest=doTest)
+            self.expose(exptype='flat', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
         self.add(actor='sps', cmdStr='slit dither', x=0, pixels=True, abs=True, cams=cams)
-        self.expose(exptype='flat', exptime=exptime, cams='{cams}', duplicate=duplicate, doTest=doTest)
+        self.expose(exptype='flat', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
         self.tail.add(actor='sps', cmdStr='slit dither', x=0, y=0, pixels=True, abs=True, cams=cams)
 
@@ -232,7 +232,7 @@ class DitheredArcs(SpsSequence):
             for y in range(start, end):
                 self.add(actor='sps', cmdStr='slit dither',
                          x=x * pixels, y=y * pixels, pixels=True, abs=True, cams=cams)
-                self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate, doTest=doTest)
+                self.expose(exptype='arc', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
         self.tail.add(actor='sps', cmdStr='slit dither', x=0, y=0, pixels=True, abs=True, cams=cams)
 
@@ -259,7 +259,7 @@ class DefocusedArcs(SpsSequence):
                 self.add(actor='dcb', cmdStr='arc', attenuator=attenuator, timeLim=300)
 
             self.add(actor='sps', cmdStr='slit', focus=position, abs=True, cams=cams)
-            self.expose(exptype='arc', exptime=exptime, cams='{cams}', duplicate=duplicate, doTest=doTest)
+            self.expose(exptype='arc', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
 
         self.tail.add(actor='sps', cmdStr='slit', focus=0, abs=True, cams=cams)
 

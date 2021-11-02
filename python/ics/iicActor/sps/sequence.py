@@ -12,15 +12,6 @@ class SpsSequence(Sequence):
     def __init__(self, *args, **kwargs):
         Sequence.__init__(self, *args, **kwargs)
 
-    @property
-    def exposable(self):
-        try:
-            cams = self.job.actor.models['sps'].keyVarDict['exposable'].getValue()
-        except:
-            return None
-
-        return ','.join(cams)
-
     def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, **identKeys):
         """ Append duplicate * sps expose to sequence """
         exptime = [exptime] if not isinstance(exptime, list) else exptime
