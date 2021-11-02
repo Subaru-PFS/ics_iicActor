@@ -42,6 +42,10 @@ def timedLampsKwargs(cmdKeys):
     timingOverHead = 5 if doShutterTiming else 0
 
     lampsPrepare = {name: int(round(cmdKeys[name].values[0]) + timingOverHead) for name in lampNames if name in cmdKeys}
+
+    if not lampsPrepare:
+        raise ValueError('exptime nor per-lamp time has been specified')
+
     lampsPrepare['shutterTiming'] = max(lampsPrepare.values()) - timingOverHead if doShutterTiming else 0
 
     return lampsPrepare
