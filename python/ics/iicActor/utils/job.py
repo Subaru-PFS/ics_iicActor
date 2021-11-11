@@ -1,10 +1,10 @@
 from actorcore.QThread import QThread
 from astropy import time as astroTime
 from ics.iicActor import visit
-from iicActor.utils.lib import threaded, wait, genIdentKeys
+from ics.utils.threading import threaded
+from ics.iicActor.utils.lib import wait
 
 from opscore.utility.qstr import qstr
-
 
 
 class IICJob(QThread):

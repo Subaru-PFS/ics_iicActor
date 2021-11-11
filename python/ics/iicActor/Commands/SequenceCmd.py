@@ -1,7 +1,7 @@
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 import pandas as pd
-from pfs.utils.opdb import opDB
+from ics.utils.opdb import opDB
 
 
 class SequenceCmd(object):

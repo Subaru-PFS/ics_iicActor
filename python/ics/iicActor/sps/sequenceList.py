@@ -1,5 +1,5 @@
 from ics.iicActor.sps.sequence import SpsSequence, Loop
-from pfs.utils.ncaplar import defocused_exposure_times_single_position
+from ics.utils.sps.defocus import defocused_exposure_times_single_position
 
 
 class Object(SpsSequence):

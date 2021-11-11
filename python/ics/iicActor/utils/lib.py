@@ -1,6 +1,5 @@
 import re
 import time
-from functools import partial, wraps
 
 
 def genIdentKeys(cmdKeys):
@@ -15,6 +14,7 @@ def genIdentKeys(cmdKeys):
         keys[tkey] = cmdKeys[key].values if key in cmdKeys else None
 
     return keys
+
 
 def genSequenceKwargs(cmd, customMade=False):
     cmdKeys = cmd.cmd.keywords
@@ -48,27 +48,6 @@ def stripField(rawCmd, field):
     pattern = f' {field}{sub[0]}(.*?){sub[0]}' if sub[0] in ['"', "'"] else f' {field}{sub}'
     m = re.search(pattern, rawCmd)
     return rawCmd.replace(m.group(), '').strip()
-
-
-def putMsg(func):
-    @wraps(func)
-    def wrapper(self, cmd, *args, **kwargs):
-        self.start()
-        self.putMsg(partial(func, self, cmd, *args, **kwargs))
-
-    return wrapper
-
-
-def threaded(func):
-    @wraps(func)
-    @putMsg
-    def wrapper(self, cmd, *args, **kwargs):
-        try:
-            return func(self, cmd, *args, **kwargs)
-        except Exception as e:
-            cmd.fail('text=%s' % self.actor.strTraceback(e))
-
-    return wrapper
 
 
 def wait(ti=0.01):

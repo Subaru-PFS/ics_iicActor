@@ -1,7 +1,7 @@
 import ics.iicActor.sps.sequenceList as spsSequence
 from ics.iicActor.sps.sequence import SpsSequence
 from ics.iicActor.sps.subcmd import SpsExpose
-from pfs.utils.ncaplar import defocused_exposure_times_single_position
+from ics.utils.sps.defocus import defocused_exposure_times_single_position
 
 
 class timedLampsSequence(SpsSequence):

@@ -4,7 +4,7 @@ from functools import partial
 from ics.iicActor.utils.lib import stripQuotes, stripField, wait
 from iicActor.utils.subcmd import SubCmd
 from opscore.utility.qstr import qstr
-from pfs.utils.opdb import opDB
+from ics.utils.opdb import opDB
 
 
 class Sequence(list):
