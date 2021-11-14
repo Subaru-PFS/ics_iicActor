@@ -54,8 +54,13 @@ class IICJob(QThread):
 
     def instantiate(self, cmd, *args, **kwargs):
         """ Instantiate seqObj with given args, kwargs. """
-        self.seq = self.seqObj(*args, **kwargs)
+        self.seq = self.createSequenceObject(*args, **kwargs)
         self.seq.assign(cmd, self)
+        self.start()
+
+    def createSequenceObject(self, *args, **kwargs):
+        """create sequence object with given argument"""
+        return self.seqObj(*args, **kwargs)
 
     def abort(self, cmd):
         """ Make sure, you aren't leaving anything behind. """

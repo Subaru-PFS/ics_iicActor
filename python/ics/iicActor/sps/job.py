@@ -52,10 +52,9 @@ class SpectroJob(IICJob):
         if self.seqObj.doCheckFocus and not self.isInFocus(cmd):
             raise RuntimeError('Spectrograph is not in focus...')
 
-    def instantiate(self, cmd, *args, **kwargs):
-        """ Instantiate seqObj with given args, kwargs. """
-        self.seq = self.seqObj(cams=self.camNames, *args, **kwargs)
-        self.seq.assign(cmd, self)
+    def createSequenceObject(self, *args, **kwargs):
+        """create sequence object with given argument"""
+        return self.seqObj(cams=self.camNames, *args, **kwargs)
 
 
 class RdaJob(IICJob):
