@@ -9,16 +9,16 @@ class SpsSequence(Sequence):
     shutterRequired = True
     doCheckFocus = False
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, doWindow=False, **kwargs):
         Sequence.__init__(self, *args, **kwargs)
 
-    def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, **identKeys):
+    def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, window=False, **identKeys):
         """ Append duplicate * sps expose to sequence """
         exptime = [exptime] if not isinstance(exptime, list) else exptime
 
         for expTime in exptime:
             for i in range(duplicate):
-                self.append(SpsExpose.specify(exptype, expTime, doTest=doTest, **identKeys))
+                self.append(SpsExpose.specify(exptype, expTime, doTest=doTest, window=window, **identKeys))
 
     def guessType(self, actor, cmdStr):
         """ Guess SubCmd type """

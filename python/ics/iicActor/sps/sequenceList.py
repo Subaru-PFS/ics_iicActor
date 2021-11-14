@@ -7,9 +7,11 @@ class Object(SpsSequence):
     seqtype = 'scienceObject'
     doCheckFocus = True
 
-    def __init__(self, exptime, duplicate, cams, doTest=False, **kwargs):
+    def __init__(self, exptime, duplicate, cams, doTest=False, window=False, **kwargs):
         SpsSequence.__init__(self, **kwargs)
-        self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
+        self.seqtype = f'{self.seqtype}_windowed' if window is not False else self.seqtype
+
+        self.expose(exptype='object', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest, window=window)
 
 
 class ObjectLoop(Loop):
@@ -60,9 +62,11 @@ class DomeFlat(SpsSequence):
     seqtype = 'domeFlat'
     doCheckFocus = True
 
-    def __init__(self, exptime, duplicate, cams, doTest=False, **kwargs):
+    def __init__(self, exptime, duplicate, cams, doTest=False, window=False, **kwargs):
         SpsSequence.__init__(self, **kwargs)
-        self.expose(exptype='domeflat', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
+        self.seqtype = f'{self.seqtype}_windowed' if window is not False else self.seqtype
+
+        self.expose(exptype='domeflat', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest, window=window)
 
 
 class DomeArc(SpsSequence):
@@ -115,15 +119,17 @@ class Flats(SpsSequence):
     """ Flat / fiberTrace sequence """
     seqtype = 'flats'
 
-    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, doTest=False, **kwargs):
+    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, doTest=False, window=False, **kwargs):
         SpsSequence.__init__(self, **kwargs)
+        self.seqtype = f'{self.seqtype}_windowed' if window is not False else self.seqtype
 
         if any(dcbOn.values()):
             self.head.add(actor='dcb', cmdStr='arc', **dcbOn)
 
         if any(dcbOff.values()):
             self.tail.add(index=0, actor='dcb', cmdStr='arc', **dcbOff)
-        self.expose(exptype='flat', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
+
+        self.expose(exptype='flat', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest, window=window)
 
 
 class MasterBiases(Biases):

@@ -4,7 +4,6 @@ import ics.iicActor.sps.engineering as engineering
 import ics.iicActor.sps.sequenceList as spsSequence
 import ics.iicActor.sps.timed as timedSpsSequence
 import ics.iicActor.utils.lib as iicUtils
-
 import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
@@ -13,7 +12,6 @@ reload(spsSequence)
 reload(timedSpsSequence)
 reload(engineering)
 reload(iicUtils)
-
 
 
 def dcbKwargs(cmdKeys, forceHalogen=False):
@@ -78,16 +76,18 @@ class SpsCmd(object):
         identArgs = '[<cam>] [<arm>] [<sm>]'
         commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
         dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [<attenuator>] [force]'
-
         timedLampsArcArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>] [@doShutterTiming]'
+
         self.vocab = [
             ('masterBiases', f'{commonArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {commonArgs}', self.masterDarks),
             ('ditheredFlats', f'<exptime> [<pixels>] [<nPositions>] [switchOff] {dcbArgs} {commonArgs}',
              self.ditheredFlats),
             ('scienceArc', f'<exptime> {dcbArgs} {commonArgs}', self.scienceArc),
-            ('scienceTrace', f'<exptime> [switchOff] {dcbArgs} {commonArgs}', self.scienceTrace),
-            ('scienceObject', f'<exptime> {commonArgs}', self.scienceObject),
+            ('scienceTrace', f'<exptime> [<window>] [switchOff] {dcbArgs} {commonArgs}', self.scienceTrace),
+            ('scienceObject', f'<exptime> [<window>] {commonArgs}', self.scienceObject),
+            ('domeFlat', f'<exptime> [<window>] {commonArgs}', self.domeFlat),
+
             ('bias', f'{commonArgs}', self.doBias),
             ('dark', f'<exptime> {commonArgs}', self.doDark),
             ('expose', f'arc <exptime> {dcbArgs} {commonArgs}', self.scienceArc),
@@ -100,8 +100,9 @@ class SpsCmd(object):
             ('custom', '[<name>] [<comments>] [<head>] [<tail>]', self.custom),
 
             ('ditheredFlats', f'<halogen> [@doShutterTiming] [<pixels>] [<nPositions>] {commonArgs}', self.ditheredFlats),
+
             ('scienceArc', f'{timedLampsArcArgs} {commonArgs}', self.scienceArc),
-            ('scienceTrace', f'<halogen> [@doShutterTiming] {commonArgs}', self.scienceTrace),
+            ('scienceTrace', f'<halogen> [@doShutterTiming]  [<window>] {commonArgs}', self.scienceTrace),
             ('expose', f'arc {timedLampsArcArgs} {commonArgs}', self.scienceArc),
             ('expose', f'flat <halogen> {commonArgs}', self.scienceTrace),
             ('test', f'hexapodStability {timedLampsArcArgs} [<position>] {commonArgs}', self.hexapodStability),
@@ -111,7 +112,6 @@ class SpsCmd(object):
             ('defocus', f'arc {timedLampsArcArgs} <position> {commonArgs}', self.defocusedArcs),
             ('sps', 'rdaMove (low|med) [<sm>]', self.rdaMove),
 
-            ('domeFlat', f'<exptime> {identArgs} [<name>] [<comments>] [<duplicate>] [@doTest]', self.domeFlat),
         ]
 
         # Define typed command arguments for the above commands.
@@ -149,6 +149,8 @@ class SpsCmd(object):
                                         keys.Key('krypton', types.Float(), help='Kr lamp on time'),
                                         keys.Key('hgcd', types.Float(), help='HgCd lamp on time'),
                                         keys.Key('xenon', types.Float(), help='Xenon lamp on time'),
+                                        keys.Key("window", types.Int() * (1, 2),
+                                                 help='first row, total number of rows to read'),
 
                                         )
 
@@ -229,12 +231,14 @@ class SpsCmd(object):
         forceHalogen = 'halogen' not in cmdKeys
         dcbOn, dcbOff = dcbKwargs(cmdKeys, forceHalogen=forceHalogen)
         exptime, seqLib = fetchExpTime(cmdKeys)
+        window = cmdKeys['window'].values if 'window' in cmdKeys else False
 
         seqObj = seqLib.ScienceTrace if isScience else seqLib.Flats
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, seqObj)
-        job.instantiate(cmd, exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, duplicate=duplicate, **seqKwargs)
+        job.instantiate(cmd, exptime=exptime, dcbOn=dcbOn, dcbOff=dcbOff, duplicate=duplicate, window=window,
+                        **seqKwargs)
         job.fire(cmd)
 
     def scienceObject(self, cmd):
@@ -244,9 +248,10 @@ class SpsCmd(object):
 
         exptime = cmdKeys['exptime'].values
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
+        window = cmdKeys['window'].values if 'window' in cmdKeys else False
 
         job = self.resourceManager.request(cmd, spsSequence.Object)
-        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
+        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, window=window, **seqKwargs)
 
         job.fire(cmd)
 
@@ -256,9 +261,10 @@ class SpsCmd(object):
         seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=False)
         exptime = cmdKeys['exptime'].values
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
+        window = cmdKeys['window'].values if 'window' in cmdKeys else False
 
         job = self.resourceManager.request(cmd, spsSequence.DomeFlat)
-        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
+        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, window=window, **seqKwargs)
 
         job.fire(cmd)
 
