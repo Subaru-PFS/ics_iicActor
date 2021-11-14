@@ -109,7 +109,9 @@ class SpsCmd(object):
             ('detector', f'throughfocus {timedLampsArcArgs} <position> [<tilt>] {commonArgs}',
              self.detThroughFocus),
             ('defocus', f'arc {timedLampsArcArgs} <position> {commonArgs}', self.defocusedArcs),
-            ('sps', 'rdaMove (low|med) [<sm>]', self.rdaMove)
+            ('sps', 'rdaMove (low|med) [<sm>]', self.rdaMove),
+
+            ('domeFlat', f'<exptime> {identArgs} [<name>] [<comments>] [<duplicate>] [@doTest]', self.domeFlat),
         ]
 
         # Define typed command arguments for the above commands.
@@ -244,6 +246,18 @@ class SpsCmd(object):
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, spsSequence.Object)
+        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
+
+        job.fire(cmd)
+
+    def domeFlat(self, cmd):
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=False)
+        exptime = cmdKeys['exptime'].values
+        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
+
+        job = self.resourceManager.request(cmd, spsSequence.DomeFlat)
         job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
 
         job.fire(cmd)
