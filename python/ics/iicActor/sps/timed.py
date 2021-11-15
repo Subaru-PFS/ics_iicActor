@@ -7,7 +7,7 @@ from ics.utils.sps.defocus import defocused_exposure_times_single_position
 class timedLampsSequence(SpsSequence):
     shutterRequired = False
 
-    def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, timeOffset=120, **identKeys):
+    def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, timeOffset=120, window=False, **identKeys):
         """ Append duplicate * sps expose to sequence """
 
         def doTimedLamps(timedLamps):
@@ -35,7 +35,7 @@ class timedLampsSequence(SpsSequence):
             self.add(actor='lamps', cmdStr=lampsCmdStr)
             self.append(SpsExpose.specify(exptype, exptime,
                                           doLamps=True, doShutterTiming=doShutterTiming, timeOffset=timeOffset,
-                                          doTest=doTest, **identKeys))
+                                          doTest=doTest, window=window, **identKeys))
 
 
 class ScienceArc(spsSequence.ScienceArc, timedLampsSequence):
