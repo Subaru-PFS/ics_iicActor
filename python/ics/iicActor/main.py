@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import actorcore.ICC
-from ics.iicActor import visit
+from ics.utils import visit
 from ics.iicActor.utils.resourceManager import ResourceManager
 from ics.utils.sps.spectroIds import getSite
 

@@ -4,7 +4,7 @@ import ics.iicActor.fps.sequenceList as fpsSequence
 import ics.iicActor.utils.lib as iicUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
-from ics.iicActor import visit
+
 
 reload(fpsSequence)
 reload(iicUtils)

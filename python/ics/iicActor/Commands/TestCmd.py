@@ -4,7 +4,7 @@ import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from opscore.utility.qstr import qstr
 
-from ics.iicActor import visit
+from ics.utils import visit
 
 class TestCmd(object):
 

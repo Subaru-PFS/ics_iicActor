@@ -1,9 +1,7 @@
 from actorcore.QThread import QThread
 from astropy import time as astroTime
-from ics.iicActor import visit
-from ics.utils.threading import threaded
 from ics.iicActor.utils.lib import wait
-
+from ics.utils.threading import threaded
 from opscore.utility.qstr import qstr
 
 
@@ -12,7 +10,6 @@ class IICJob(QThread):
         self.tStart = astroTime.Time.now()
         QThread.__init__(self, iicActor, str(self.tStart))
 
-        self.visitor = visit.VisitManager(iicActor)
         self.seqObj = seqObj
         self.visitSetId = visitSetId
 
