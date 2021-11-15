@@ -106,10 +106,46 @@ class SubCmd(object):
     def finish(self, cmd):
         """ finish prototype"""
 
-    def getVisit(self):
-        """ getVisit prototype"""
-        pass
 
-    def releaseVisit(self):
-        """ releaseVisit prototype"""
-        pass
+class VisitedCmd(SubCmd):
+    """ Placeholder to handle sps expose command specificities"""
+
+    def __init__(self, actor, cmdStr, timeLim=120, **kwargs):
+        SubCmd.__init__(self, actor, cmdStr, timeLim=timeLim, visit='{visit}', **kwargs)
+
+    def build(self, cmd):
+        """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visit """
+        return dict(actor=self.actor, cmdStr=self.cmdStr.format(visit=self.visit),
+                    forUserCmd=None, timeLim=self.timeLim)
+
+    def warn(self, cmd):
+        """ report from sps exposure warning """
+        if self.cmdVar is None:
+            return
+
+        for reply in self.cmdVar.replyList:
+            if reply.header.code == 'W' and not self.cmdVar.didFail:
+                cmd.warn(reply.keywords.canonical(delimiter=';'))
+
+    def callAndUpdate(self, cmd):
+        """Get visit, expose, release visit."""
+        try:
+            self.visit = self.getVisit()
+        except Exception as e:
+            self.didFail = 1
+            self.lastReply = f'{type(e).__name__}({stripQuotes(str(e))})'
+            self.genOutput(cmd=cmd)
+            return None
+
+        cmdVar = SubCmd.callAndUpdate(self, cmd)
+        self.releaseVisit(cmdVar)
+        return cmdVar
+
+    def getVisit(self):
+        """ Get visit from ics.iicActor.visit.Visit """
+        ourVisit = self.iicActor.visitor.newVisit(self.actor)
+        return ourVisit.visitId
+
+    def releaseVisit(self, cmdVar=None):
+        """ Release visit """
+        self.iicActor.visitor.releaseVisit()

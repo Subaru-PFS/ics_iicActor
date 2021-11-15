@@ -205,10 +205,6 @@ class Sequence(list):
                     visit_set_id=self.visit_set_id, sequence_type=self.seqtype, name=self.name,
                     comments=self.comments, cmd_str=self.rawCmd)
 
-    def insertVisitSet(self, visit):
-        """ Store sequence in database """
-        opDB.insert('visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
-
     def finalize(self, cmd):
         """ Store sequence in database """
         self.isDone = True

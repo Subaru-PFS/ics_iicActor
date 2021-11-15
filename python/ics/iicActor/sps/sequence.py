@@ -1,6 +1,7 @@
 from ics.iicActor.sps.subcmd import SpsExpose, DcbCmd, LampsCmd
 from ics.iicActor.utils.sequencing import Sequence
 from ics.iicActor.utils.subcmd import SubCmd
+from ics.utils.opdb import opDB
 
 
 class SpsSequence(Sequence):
@@ -46,6 +47,10 @@ class SpsSequence(Sequence):
                     pass
 
         return int(float(timeLim)) + 60 + offset
+
+    def insertVisitSet(self, visit):
+        """ Store sequence in database """
+        opDB.insert('visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
 
 
 class Loop(SpsSequence):

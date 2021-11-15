@@ -11,3 +11,7 @@ class FpsSequence(Sequence):
     def fpsCommand(self, **kwargs):
         """ Append duplicate * sps expose to sequence """
         self.append(FpsCmd(self.seqtype, **kwargs))
+
+    # def moveToPfsDesign(self, **kwargs):
+    #     """ Append duplicate * sps expose to sequence """
+    #     self.append(MoveToPfsDesignCmd(**kwargs))
