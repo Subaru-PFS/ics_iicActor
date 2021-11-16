@@ -27,7 +27,7 @@ class SubCmd(object):
 
     @property
     def iicActor(self):
-        return self.sequence.job.actor
+        return self.sequence.iicActor
 
     @staticmethod
     def parse(**kwargs):
@@ -143,9 +143,9 @@ class VisitedCmd(SubCmd):
 
     def getVisit(self):
         """ Get visit from ics.iicActor.visit.Visit """
-        ourVisit = self.iicActor.visitor.newVisit(self.actor)
+        ourVisit = self.iicActor.visitor.getVisit(consumer=self.actor)
         return ourVisit.visitId
 
     def releaseVisit(self, cmdVar=None):
         """ Release visit """
-        self.iicActor.visitor.releaseVisit()
+        self.iicActor.visitor.releaseVisit(self.visit, consumer=self.actor)
