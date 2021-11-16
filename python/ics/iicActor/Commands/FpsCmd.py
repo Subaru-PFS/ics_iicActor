@@ -1,6 +1,7 @@
 from importlib import reload
 
 import ics.iicActor.fps.sequenceList as fpsSequence
+from ics.utils import visit
 import ics.iicActor.utils.lib as iicUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
@@ -23,7 +24,6 @@ class BoresightLoop(object):
         self.visit = visit
         self.expTime = expTime
         self.nExposures = nExposures
-        self.frameId = 0
 
     @property
     def startFrame(self):
@@ -31,12 +31,10 @@ class BoresightLoop(object):
 
     @property
     def endFrame(self):
-        return self.visit.visitId * 100 + self.frameId - 1
+        return self.visit.visitId * 100 + self.visit.fpsFrameId() - 1
 
     def nextFrameId(self):
-        frameId = self.frameId
-        self.frameId += 1
-        return self.visit.visitId * 100 + frameId
+        return self.visit.frameForFPS()
 
 
 class FpsCmd(object):
@@ -250,7 +248,7 @@ class FpsCmd(object):
             return
 
         try:
-            ourVisit = self.actor.visitor.newVisit('fpsLoop')
+            ourVisit = self.actor.visitor.getVisit('fps', 'fpsLoop')
         except visit.VisitActiveError:
             cmd.fail('text="IIC already has an active visit: %s"' % (self.actor.visitor.activeVisit))
             raise
@@ -265,7 +263,7 @@ class FpsCmd(object):
             if ret.didFail:
                 raise RuntimeError("FPS failed to run a testLoop!")
         finally:
-            self.actor.visitor.releaseVisit()
+            self.actor.visitor.releaseVisit(fpsVisit)
 
         cmd.finish()
 
@@ -285,7 +283,7 @@ class FpsCmd(object):
             return
 
         try:
-            visit = self.actor.visitor.newVisit()
+            visit = self.actor.visitor.getVisit('fps', 'boresightLoop')
         except Exception as e:
             cmd.fail('text="failed to start boresight loop: %s"' % e)
             return
@@ -342,8 +340,8 @@ class FpsCmd(object):
             cmd.fail('text="failed to reduce boresight, closed loop: %s"' % (str(e)))
             return
         finally:
+            self.actor.visitor.releaseVisit(self.boresightLoop.visit.visitId)
             self.boresightLoop = None
-            self.actor.visitor.releaseVisit()
 
         cmd.finish('')
 
@@ -351,9 +349,10 @@ class FpsCmd(object):
         """Abort a boresight acquisition loop. """
 
         if self.boresightLoop is None:
-            cmd.warn('text="no boresight loop to abort"')
+            cmd.fail('text="no boresight loop to abort"')
+            return
 
+        self.actor.visitor.releaseVisit(self.boresightLoop.visit.visitId)
         self.boresightLoop = None
-        self.actor.visitor.releaseVisit()
 
         cmd.finish('text="boresight loop aborted"')
