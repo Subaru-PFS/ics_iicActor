@@ -9,7 +9,7 @@ class MoveToPfsDesign(FpsSequence):
 
     def __init__(self, designId, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        self.fpsCommand(designId=designId, timeLim=MoveToPfsDesign.timeLim)
+        self.moveToPfsDesign(designId=designId, timeLim=MoveToPfsDesign.timeLim)
 
 
 class MovePhiToAngle(FpsSequence):
