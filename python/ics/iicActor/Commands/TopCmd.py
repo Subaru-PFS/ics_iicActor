@@ -16,7 +16,8 @@ class TopCmd(object):
         self.vocab = [
             ('ping', '', self.ping),
             ('status', '', self.status),
-            ('observe', '<designId>', self.genPfsDesignId)
+            ('observe', '<designId>', self.genPfsDesignId),
+            ('finishField', '', self.finishField)
         ]
 
         # Define typed command arguments for the above commands.
@@ -41,3 +42,11 @@ class TopCmd(object):
         cmdKeys = cmd.cmd.keywords
         pfsDesignId = cmdKeys['designId'].values[0]
         cmd.finish('designId=0x%016x' % pfsDesignId)
+
+    def finishField(self, cmd):
+        """Report camera status and actor version. """
+        cmdKeys = cmd.cmd.keywords
+        self.actor.visitor.resetVisit0()
+        cmd.inform('text="visit0 has been reset"')
+
+        cmd.finish()
