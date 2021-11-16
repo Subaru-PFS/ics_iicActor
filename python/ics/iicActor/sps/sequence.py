@@ -13,6 +13,13 @@ class SpsSequence(Sequence):
     def __init__(self, *args, doWindow=False, **kwargs):
         Sequence.__init__(self, *args, **kwargs)
 
+    def insertSequence(self):
+        """ """
+        Sequence.insertSequence(self)
+
+        if self.iicActor.visitor.validVisit0:
+            opDB.insert('field_set', visit_set_id=self.visit_set_id, visit0=self.iicActor.visitor.visit0.visitId)
+
     def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, window=False, **identKeys):
         """ Append duplicate * sps expose to sequence """
         exptime = [exptime] if not isinstance(exptime, list) else exptime
@@ -47,10 +54,6 @@ class SpsSequence(Sequence):
                     pass
 
         return int(float(timeLim)) + 60 + offset
-
-    def insertVisitSet(self, visit):
-        """ Store sequence in database """
-        opDB.insert('visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
 
 
 class Loop(SpsSequence):

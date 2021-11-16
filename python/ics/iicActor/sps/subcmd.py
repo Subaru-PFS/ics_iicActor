@@ -1,5 +1,6 @@
 from ics.iicActor.utils.subcmd import VisitedCmd, SubCmd
 from ics.utils.cmd import cmdVarToKeys
+from ics.utils.opdb import opDB
 
 
 class SpsExpose(VisitedCmd):
@@ -31,7 +32,7 @@ class SpsExpose(VisitedCmd):
         VisitedCmd.releaseVisit(self)
 
         if self.visitConsumed(cmdVar):
-            self.sequence.insertVisitSet(visit=self.visit)
+            opDB.insert('visit_set', pfs_visit_id=self.visit, visit_set_id=self.sequence.visit_set_id)
 
     def abort(self, cmd):
         """ Abort current exposure """
