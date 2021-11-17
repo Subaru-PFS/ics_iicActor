@@ -1,7 +1,6 @@
 from ics.iicActor.sps.subcmd import SpsExpose, DcbCmd, LampsCmd
 from ics.iicActor.utils.sequencing import Sequence
 from ics.iicActor.utils.subcmd import SubCmd
-from ics.utils.opdb import opDB
 
 
 class SpsSequence(Sequence):
@@ -10,7 +9,7 @@ class SpsSequence(Sequence):
     shutterRequired = True
     doCheckFocus = False
 
-    def __init__(self, *args, doWindow=False, **kwargs):
+    def __init__(self, *args, **kwargs):
         Sequence.__init__(self, *args, **kwargs)
 
     def insertSequence(self):
@@ -18,7 +17,7 @@ class SpsSequence(Sequence):
         Sequence.insertSequence(self)
 
         if self.iicActor.visitor.validVisit0:
-            opDB.insert('field_set', visit_set_id=self.visit_set_id, visit0=self.iicActor.visitor.visit0.visitId)
+            self.iicActor.visitor.visit0.insertFieldSet(self.visit_set_id)
 
     def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, window=False, **identKeys):
         """ Append duplicate * sps expose to sequence """

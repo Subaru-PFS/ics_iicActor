@@ -1,5 +1,4 @@
 from ics.iicActor.utils.subcmd import VisitedCmd
-from ics.utils.opdb import opDB
 from ics.utils.cmd import cmdVarToKeys
 
 
@@ -41,4 +40,4 @@ class MoveToPfsDesignCmd(VisitedCmd):
             self.iicActor.visitor.resetVisit0()
 
         if self.iicActor.visitor.validVisit0:
-            opDB.insert('field_set', visit_set_id=self.sequence.visit_set_id, visit0=self.iicActor.visitor.visit0.visitId)
+            self.iicActor.visitor.visit0.insertFieldSet(self.sequence.visit_set_id)
