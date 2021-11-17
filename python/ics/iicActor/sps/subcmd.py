@@ -1,12 +1,13 @@
-from ics.iicActor.utils.lib import stripQuotes
-from ics.iicActor.utils.subcmd import SubCmd
+from ics.iicActor.utils.subcmd import VisitedCmd, SubCmd
+from ics.utils.cmd import cmdVarToKeys
+from ics.utils.opdb import opDB
 
 
-class SpsExpose(SubCmd):
+class SpsExpose(VisitedCmd):
     """ Placeholder to handle sps expose command specificities"""
 
     def __init__(self, actor, cmdStr, timeLim=120, **kwargs):
-        SubCmd.__init__(self, actor, cmdStr, timeLim=timeLim, visit='{visit}', **kwargs)
+        VisitedCmd.__init__(self, actor, cmdStr, timeLim=timeLim, **kwargs)
 
     @classmethod
     def specify(cls, exptype, exptime, timeOffset=120, **kwargs):
@@ -14,45 +15,24 @@ class SpsExpose(SubCmd):
         exptime = exptime if exptime else None
         return cls('sps', f'expose {exptype}', timeLim=timeLim, exptime=exptime, **kwargs)
 
-    def build(self, cmd):
-        """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visit """
-        return dict(actor=self.actor, cmdStr=self.cmdStr.format(visit=self.visit),
-                    forUserCmd=None, timeLim=self.timeLim)
-
-    def warn(self, cmd):
-        """ report from sps exposure warning """
-        if self.cmdVar is None:
-            return
-
-        for reply in self.cmdVar.replyList:
-            if reply.header.code == 'W' and not self.cmdVar.didFail:
-                cmd.warn(reply.keywords.canonical(delimiter=';'))
-
-    def callAndUpdate(self, cmd):
-        """Get visit, expose, release visit."""
-        try:
-            self.visit = self.getVisit()
-        except Exception as e:
-            self.didFail = 1
-            self.lastReply = stripQuotes(str(e))
-            self.genOutput(cmd=cmd)
-            return None
-
-        cmdVar = SubCmd.callAndUpdate(self, cmd)
-        self.releaseVisit()
-        return cmdVar
-
-    def getVisit(self):
+    def visitConsumed(self, cmdVar):
         """ Get visit from ics.iicActor.visit.Visit """
-        ourVisit = self.sequence.job.visitor.newVisit('sps')
-        return ourVisit.visitId
+        cmdKeys = cmdVarToKeys(cmdVar)
 
-    def releaseVisit(self):
+        try:
+            visit, __, mask = cmdKeys['fileIds'].values
+            consumed = True
+        except:
+            consumed = False
+
+        return consumed
+
+    def releaseVisit(self, cmdVar):
         """ Release visit """
-        self.sequence.job.visitor.releaseVisit()
+        VisitedCmd.releaseVisit(self)
 
-        if not self.didFail:
-            self.sequence.insertVisitSet(visit=self.visit)
+        if self.visitConsumed(cmdVar):
+            opDB.insert('visit_set', pfs_visit_id=self.visit, visit_set_id=self.sequence.visit_set_id)
 
     def abort(self, cmd):
         """ Abort current exposure """

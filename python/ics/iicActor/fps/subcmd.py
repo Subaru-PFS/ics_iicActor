@@ -1,56 +1,44 @@
-from ics.iicActor.utils.lib import stripQuotes
-from ics.iicActor.utils.subcmd import SubCmd
+from ics.iicActor.utils.subcmd import VisitedCmd
+from ics.utils.opdb import opDB
+from ics.utils.cmd import cmdVarToKeys
 
 
-class FpsCmd(SubCmd):
+class FpsCmd(VisitedCmd):
     """ Placeholder to handle dcb command specificities"""
 
     def __init__(self, cmdStr, timeLim=120, **kwargs):
-        SubCmd.__init__(self, 'fps', cmdStr, timeLim=timeLim, **kwargs, visit='{visit}')
+        VisitedCmd.__init__(self, 'fps', cmdStr, timeLim=timeLim, **kwargs)
 
-    def build(self, cmd):
-        """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visit """
-        return dict(actor=self.actor, cmdStr=self.cmdStr.format(visit=self.visit), forUserCmd=None, timeLim=self.timeLim)
 
-    def warn(self, cmd):
-        """ report from cmd warning """
-        if self.cmdVar is None:
-            return
+class MoveToPfsDesignCmd(VisitedCmd):
+    """ Placeholder to handle dcb command specificities"""
 
-        for reply in self.cmdVar.replyList:
-            if reply.header.code == 'W' and not self.cmdVar.didFail:
-                cmd.warn(reply.keywords.canonical(delimiter=';'))
-
-    def callAndUpdate(self, cmd):
-        """Get visit, expose, release visit."""
-        try:
-            self.visit = self.getVisit()
-        except Exception as e:
-            self.didFail = 1
-            self.lastReply = stripQuotes(str(e))
-            self.genOutput(cmd=cmd)
-            return None
-
-        cmdVar = SubCmd.callAndUpdate(self, cmd)
-        self.releaseVisit()
-        return cmdVar
+    def __init__(self, designId, timeLim=120, **kwargs):
+        VisitedCmd.__init__(self, 'fps', f'moveToPfsDesign designId={designId}', timeLim=timeLim, **kwargs)
+        self.designId = designId
 
     def getVisit(self):
         """ Get visit from ics.iicActor.visit.Visit """
-        ourVisit = self.sequence.job.visitor.newVisit('fps')
+        ourVisit = self.iicActor.visitor.declareNewField(designId=self.designId)
         return ourVisit.visitId
 
-    def releaseVisit(self):
+    def pfsConfigIsValid(self, cmdVar):
+        """ Get visit from ics.iicActor.visit.Visit """
+        cmdKeys = cmdVarToKeys(cmdVar)
+
+        try:
+            pfsConfigId = cmdKeys['pfsConfigId'].values[0]
+        except:
+            pfsConfigId = False
+
+        return pfsConfigId
+
+    def releaseVisit(self, cmdVar):
         """ Release visit """
-        self.sequence.job.visitor.releaseVisit()
+        VisitedCmd.releaseVisit(self)
 
-        if not self.didFail:
-            self.sequence.insertVisitSet(visit=self.visit)
+        if not self.pfsConfigIsValid(cmdVar):
+            self.iicActor.visitor.resetVisit0()
 
-    def abort(self, cmd):
-        """ Abort current exposure """
-        pass
-
-    def finish(self, cmd):
-        """ Finish current exposure """
-        pass
+        if self.iicActor.visitor.validVisit0:
+            opDB.insert('field_set', visit_set_id=self.sequence.visit_set_id, visit0=self.iicActor.visitor.visit0.visitId)

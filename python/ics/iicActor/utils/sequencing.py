@@ -2,9 +2,9 @@ import time
 from functools import partial
 
 from ics.iicActor.utils.lib import stripQuotes, stripField, wait
+from ics.utils.opdb import opDB
 from iicActor.utils.subcmd import SubCmd
 from opscore.utility.qstr import qstr
-from ics.utils.opdb import opDB
 
 
 class Sequence(list):
@@ -78,6 +78,10 @@ class Sequence(list):
     @property
     def visit_set_id(self):
         return self.job.visitSetId
+
+    @property
+    def iicActor(self):
+        return self.job.actor
 
     def assign(self, cmd, job):
         """ get last visit_set_id from opDB """
@@ -204,10 +208,6 @@ class Sequence(list):
         opDB.insert('iic_sequence',
                     visit_set_id=self.visit_set_id, sequence_type=self.seqtype, name=self.name,
                     comments=self.comments, cmd_str=self.rawCmd)
-
-    def insertVisitSet(self, visit):
-        """ Store sequence in database """
-        opDB.insert('visit_set', pfs_visit_id=visit, visit_set_id=self.visit_set_id)
 
     def finalize(self, cmd):
         """ Store sequence in database """

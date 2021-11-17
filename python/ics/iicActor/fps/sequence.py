@@ -1,4 +1,4 @@
-from ics.iicActor.fps.subcmd import FpsCmd
+from ics.iicActor.fps.subcmd import FpsCmd, MoveToPfsDesignCmd
 from ics.iicActor.utils.sequencing import Sequence
 
 
@@ -11,3 +11,7 @@ class FpsSequence(Sequence):
     def fpsCommand(self, **kwargs):
         """ Append duplicate * sps expose to sequence """
         self.append(FpsCmd(self.seqtype, **kwargs))
+
+    def moveToPfsDesign(self, **kwargs):
+        """ Append duplicate * sps expose to sequence """
+        self.append(MoveToPfsDesignCmd(**kwargs))
