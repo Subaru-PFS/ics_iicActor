@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 import actorcore.ICC
-from ics.utils import visit
 from ics.iicActor.utils.resourceManager import ResourceManager
-from ics.utils.sps.spectroIds import getSite
+from ics.utils import visit
 from ics.utils.instdata import InstData
+from ics.utils.sps.spectroIds import getSite
+
 
 class IicActor(actorcore.ICC.ICC):
     def __init__(self, name,
