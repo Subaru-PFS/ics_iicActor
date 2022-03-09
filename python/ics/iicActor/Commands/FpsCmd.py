@@ -1,11 +1,10 @@
 from importlib import reload
 
 import ics.iicActor.fps.sequenceList as fpsSequence
-from ics.utils import visit
 import ics.iicActor.utils.lib as iicUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
-
+from ics.utils import visit
 
 reload(fpsSequence)
 reload(iicUtils)
@@ -105,7 +104,20 @@ class FpsCmd(object):
         return self.actor.resourceManager
 
     def moveToPfsDesign(self, cmd):
-        """Run an MCS+FPS loop, without moving cobras. """
+        """
+        `iic moveToPfsDesign designId=??? [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Move cobras to provided pfsDesignId.
+
+        Parameters
+        ---------
+        designId : `int`
+           specified designId .
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        """
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
@@ -118,7 +130,22 @@ class FpsCmd(object):
         job.fire(cmd)
 
     def movePhiToAngle(self, cmd):
-        """Run an MCS+FPS loop, without moving cobras. """
+        """
+        `iic movePhiToAngle angle=N iteration=N [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Move Phi arm to angle.
+
+        Parameters
+        ---------
+        angle : `int`
+           specified angle .
+        iteration : `int`
+           Number of iteration.
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        """
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
@@ -131,7 +158,18 @@ class FpsCmd(object):
         job.fire(cmd)
 
     def moveToHome(self, cmd):
-        """Run an MCS+FPS loop, without moving cobras. """
+        """
+        `iic moveToHome phi|theta|all [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Move cobras (phi or theta or all) to home.
+
+        Parameters
+        ---------
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        """
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
@@ -145,7 +183,18 @@ class FpsCmd(object):
         job.fire(cmd)
 
     def moveToSafePosition(self, cmd):
-        """Run an MCS+FPS loop, without moving cobras. """
+        """
+        `iic moveToSafePosition [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Move cobras to safe position.
+
+        Parameters
+        ---------
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        """
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
         job = self.resourceManager.request(cmd, fpsSequence.MoveToSafePosition)
@@ -154,7 +203,18 @@ class FpsCmd(object):
         job.fire(cmd)
 
     def gotoVerticalFromPhi60(self, cmd):
-        """Run an MCS+FPS loop, without moving cobras. """
+        """
+        `iic gotoVerticalFromPhi60 [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Go to vertical from phi 60deg.
+
+        Parameters
+        ---------
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        """
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
         job = self.resourceManager.request(cmd, fpsSequence.GotoVerticalFromPhi60)
         job.instantiate(cmd, **seqKwargs)
@@ -162,7 +222,24 @@ class FpsCmd(object):
         job.fire(cmd)
 
     def makeMotorMap(self, cmd):
-        """Run an MCS+FPS loop, without moving cobras. """
+        """
+        `iic makeMotorMap phi|theta stepsize=N repeat=N [@slowOnly] [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Make motorMap (phi or theta).
+
+        Parameters
+        ---------
+        stepsize : `int`
+           Step size.
+        repeat : `int`
+           Number of repeat.
+        slowOnly : `bool`
+           only slow mode.
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        """
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
@@ -178,7 +255,18 @@ class FpsCmd(object):
         job.fire(cmd)
 
     def makeOntimeMap(self, cmd):
-        """Run an MCS+FPS loop, without moving cobras. """
+        """
+        `iic makeOntimeMap phi|theta [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Make an on-time map (phi or theta).
+
+        Parameters
+        ---------
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        """
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
@@ -191,7 +279,20 @@ class FpsCmd(object):
         job.fire(cmd)
 
     def angleConvergenceTest(self, cmd):
-        """Run an MCS+FPS loop, without moving cobras. """
+        """
+        `iic angleConvergenceTest phi|theta angleTargets=N [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Perform an angle convergence test (phi or theta).
+
+        Parameters
+        ---------
+        angleTargets : `int`
+           angle targets.
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        """
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
@@ -205,7 +306,21 @@ class FpsCmd(object):
         job.fire(cmd)
 
     def targetConvergenceTest(self, cmd):
-        """Run an MCS+FPS loop, without moving cobras. """
+        """
+        `iic targetConvergenceTest ontime|speed totalTargets=N maxsteps=N [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Perform a target convergence test (ontime or speed).
+
+        Parameters
+        ---------
+        totalTargets : `int`
+           Total targets.
+        maxsteps : `int`
+           Maximum number of steps.
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments."""
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
@@ -220,7 +335,18 @@ class FpsCmd(object):
         job.fire(cmd)
 
     def motorOntimeSearch(self, cmd):
-        """Run an MCS+FPS loop, without moving cobras. """
+        """
+        `iic motorOntimeSearch phi|theta [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Perform a motor on-time search sequence (phi or theta).
+
+        Parameters
+        ---------
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        """
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
@@ -233,7 +359,17 @@ class FpsCmd(object):
         job.fire(cmd)
 
     def fpsLoop(self, cmd):
-        """Run an MCS+FPS loop, without moving cobras. """
+        """
+        `iic fpsLoop [expTime=FF.F] [cnt=N]`
+
+        Run an MCS+FPS loop, without moving cobras.
+
+        Parameters
+        ---------
+        expTime : `float`
+            MCS Exposure time.
+        cnt: `int`
+            Number of FPS images."""
 
         cmdKeys = cmd.cmd.keywords
         expTime = cmdKeys['expTime'].values[0] \
@@ -268,7 +404,18 @@ class FpsCmd(object):
         cmd.finish()
 
     def startBoresightAcquisition(self, cmd):
-        """Start a boresight acquisition loop. """
+        """
+        `iic startBoresightAcquisition [expTime=FF.F] [nExposures=N]`
+
+        Start a boresight acquisition loop.
+
+        Parameters
+        ---------
+        expTime : `float`
+            MCS Exposure time.
+        nExposures: `int`
+            Number of exposure.
+        """
 
         cmdKeys = cmd.cmd.keywords
         expTime = cmdKeys['expTime'].values[0] \
@@ -292,7 +439,11 @@ class FpsCmd(object):
         cmd.finish('text="Initialized boresight loop"')
 
     def addBoresightPosition(self, cmd):
-        """Acquire data for a new boresight position. """
+        """
+        `iic addBoresightPosition`
+
+        Acquire data for a new boresight position.
+        """
 
         if self.boresightLoop is None:
             cmd.fail('text="no boresight loop to add to"')
@@ -316,7 +467,11 @@ class FpsCmd(object):
         cmd.finish()
 
     def reduceBoresightData(self, cmd):
-        """Close out the current boresight acquisition loop and process the data. """
+        """
+        `iic reduceBoresightData`
+
+        Close out the current boresight acquisition loop and process the data.
+        """
 
         if self.boresightLoop is None:
             cmd.fail('text="no boresight loop to reduce"')
@@ -346,7 +501,11 @@ class FpsCmd(object):
         cmd.finish('')
 
     def abortBoresightAcquisition(self, cmd):
-        """Abort a boresight acquisition loop. """
+        """
+        `iic abortBoresightAcquisition`
+
+        Abort a boresight acquisition loop.
+        """
 
         if self.boresightLoop is None:
             cmd.fail('text="no boresight loop to abort"')
