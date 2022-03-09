@@ -19,7 +19,7 @@ class SequenceCmd(object):
             ('sequenceStatus', '[<id>]', self.sequenceStatus),
             ('sps', '@abortExposure [<id>]', self.abortExposure),
             ('sps', '@abort [<id>]', self.abortExposure),
-            ('sps', '@finishExposure [<id>] [@noSunssBias]', self.finishExposure),
+            ('sps', '@finishExposure [<id>]', self.finishExposure),
             ('annotate', '@(bad|ok) [<notes>] [<visit>] [<visitSet>] [<cam>] [<arm>] [<sm>]', self.annotate)
         ]
 
@@ -39,6 +39,16 @@ class SequenceCmd(object):
         return self.actor.resourceManager
 
     def sequenceStatus(self, cmd):
+        """
+        `iic sequenceStatus [id=N]`
+
+        get IIC sequence status
+
+        Parameters
+        ---------
+        id : `int`
+           optional sequenceId.
+        """
         cmdKeys = cmd.cmd.keywords
         visitSetId = cmdKeys['id'].values[0] if 'id' in cmdKeys else None
 
@@ -46,6 +56,16 @@ class SequenceCmd(object):
         cmd.finish()
 
     def abortExposure(self, cmd):
+        """
+        `iic sps @abort [id=N]`
+
+        abort current sps exposure.
+
+        Parameters
+        ---------
+        id : `int`
+           optional sequenceId.
+        """
         cmdKeys = cmd.cmd.keywords
         identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else 'sps'
 
@@ -59,6 +79,16 @@ class SequenceCmd(object):
         cmd.finish()
 
     def finishExposure(self, cmd):
+        """
+        `iic sps @finishExposure [id=N]`
+
+        finish current sps exposure.
+
+        Parameters
+        ---------
+        id : `int`
+           optional sequenceId.
+        """
         cmdKeys = cmd.cmd.keywords
         identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else 'sps'
         noSunssBias = 'noSunssBias' in cmdKeys
@@ -73,6 +103,26 @@ class SequenceCmd(object):
         cmd.finish()
 
     def annotate(self, cmd):
+        """
+        `iic annotate bad|ok [notes=???] [visit=N] [visitSet=N] [cam=???] [arm=???] [sm=???]`
+
+        annotate given visit or visitSet.
+
+        Parameters
+        ---------
+        notes : `str`
+            list of command to be describe the sequence.
+        visit : `int`
+           visitId to annotate.
+        visitSet : `int`
+           visitSetId to annotate
+        cam : list of `str`
+           specify which camera is/are involved
+        arm : list of `str`
+           specify which arm is/are involved
+        sm : list of `int`
+           specify which spectrograph module is/are involved
+        """
         def select(column, values):
             return ' or '.join([f"{column}=='{value}'" for value in values])
 
