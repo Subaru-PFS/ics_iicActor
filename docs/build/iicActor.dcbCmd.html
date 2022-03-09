@@ -1,0 +1,361 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>iicActor.dcb commands &#8212; ics_iicActor 0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="iicActor.fps commands" href="iicActor.fpsCmd.html" />
+    <link rel="prev" title="iicActor.sps commands" href="iicActor.spsCmd.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="iicactor-dcb-commands">
+<h1>iicActor.dcb commands<a class="headerlink" href="#iicactor-dcb-commands" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+<p>This page list of all IIC SPS DCB related commands.</p>
+<p>Each command should be contain a description and their input arguments listed.</p>
+<span class="target" id="module-iicActor.Commands.DcbCmd"></span><dl class="py class">
+<dt id="iicActor.Commands.DcbCmd.DcbCmd">
+<em class="property">class </em><code class="sig-prename descclassname">iicActor.Commands.DcbCmd.</code><code class="sig-name descname">DcbCmd</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">actor</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.DcbCmd.DcbCmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="iicActor.Commands.DcbCmd.DcbCmd.custom">
+<code class="sig-name descname">custom</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.DcbCmd.DcbCmd.custom" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic custom [name=”SSS”] [comments=”SSS”] [head=???] [tail=???]</cite></p>
+<p>Customized sequence of commands.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+<li><p><strong>head</strong> (list of <cite>str</cite>) – list of command to be describe the sequence.</p></li>
+<li><p><strong>tail</strong> (list of <cite>str</cite>) – list of command to be launched after the sequence.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.DcbCmd.DcbCmd.defocusedArcs">
+<code class="sig-name descname">defocusedArcs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.DcbCmd.DcbCmd.defocusedArcs" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic defocus arc exptime=??? position=??? [switchOn=???] [switchOff=???] [warmingTime=FF.F] [force] [cam=???]
+[arm=???] [sm=???] [duplicate=N] [name=”SSS”] [comments=”SSS”] [&#64;doTest] [head=???] [tail=???]</cite></p>
+<p>Take Arc dataset through focus using fca hexapod, exposure time is scaled such as psf max flux ~= constant
+Sequence is referenced in opdb as iic_sequence.seqtype=defocusedArcs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>exptime</strong> (<cite>float</cite>) – shutter exposure time.</p></li>
+<li><p><strong>position</strong> (<cite>float</cite>, <cite>float</cite>, <cite>int</cite>) – fca hexapod position constructor, same logic as np.linspace(start, stop, num).</p></li>
+<li><p><strong>switchOn</strong> (<em>list of str`</em>) – list of dcb lamp to turn on before the exposure(s).</p></li>
+<li><p><strong>switchOff</strong> (<em>list of str`</em>) – list of dcb lamp to turn off after the exposure(s).</p></li>
+<li><p><strong>warmingTime</strong> (<cite>float</cite>) – optional lamp warming time.</p></li>
+<li><p><strong>force</strong> (<cite>bool</cite>) – skip any lamp warmup logic.</p></li>
+<li><p><strong>cam</strong> (list of <cite>str</cite>) – List of camera to expose, default=all</p></li>
+<li><p><strong>arm</strong> (list of <cite>str</cite>) – List of arm to expose, default=all</p></li>
+<li><p><strong>sm</strong> (list of <cite>int</cite>) – List of spectrograph module to expose, default=all</p></li>
+<li><p><strong>duplicate</strong> (<cite>int</cite>) – Number of exposure, default=1</p></li>
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+<li><p><strong>doTest</strong> (<cite>bool</cite>) – image/exposure type will be labelled as test, default=arc.</p></li>
+<li><p><strong>head</strong> (list of <cite>str</cite>) – list of command to be launched before the sequence.</p></li>
+<li><p><strong>tail</strong> (list of <cite>str</cite>) – list of command to be launched after the sequence.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.DcbCmd.DcbCmd.detThroughFocus">
+<code class="sig-name descname">detThroughFocus</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.DcbCmd.DcbCmd.detThroughFocus" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic detector throughfocus exptime=??? position=??? [tilt=???] [switchOn=???] [switchOff=???]
+[warmingTime=FF.F] [force] [cam=???] [arm=???] [sm=???] [duplicate=N] [name=”SSS”] [comments=”SSS”]
+[&#64;doTest] [head=???] [tail=???]</cite></p>
+<p>Take Arc dataset through focus using Focal Plane Array focus motors.
+Sequence is referenced in opdb as iic_sequence.seqtype=detThroughFocus.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>exptime</strong> (<cite>float</cite>) – shutter exposure time.</p></li>
+<li><p><strong>position</strong> (<cite>float</cite>, <cite>float</cite>, <cite>int</cite>) – fpa position constructor, same logic as np.linspace(start, stop, num).</p></li>
+<li><p><strong>tilt</strong> (<cite>float</cite>, <cite>float</cite>, <cite>float</cite>) – fpa A,B,C motor tilt position.</p></li>
+<li><p><strong>switchOn</strong> (<em>list of str`</em>) – list of dcb lamp to turn on before the exposure(s).</p></li>
+<li><p><strong>switchOff</strong> (<em>list of str`</em>) – list of dcb lamp to turn off after the exposure(s).</p></li>
+<li><p><strong>warmingTime</strong> (<cite>float</cite>) – optional lamp warming time.</p></li>
+<li><p><strong>force</strong> (<cite>bool</cite>) – skip any lamp warmup logic.</p></li>
+<li><p><strong>cam</strong> (list of <cite>str</cite>) – List of camera to expose, default=all</p></li>
+<li><p><strong>arm</strong> (list of <cite>str</cite>) – List of arm to expose, default=all</p></li>
+<li><p><strong>sm</strong> (list of <cite>int</cite>) – List of spectrograph module to expose, default=all</p></li>
+<li><p><strong>duplicate</strong> (<cite>int</cite>) – Number of exposure, default=1</p></li>
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+<li><p><strong>head</strong> (list of <cite>str</cite>) – list of command to be launched before the sequence.</p></li>
+<li><p><strong>tail</strong> (list of <cite>str</cite>) – list of command to be launched after the sequence.</p></li>
+<li><p><strong>doTest</strong> (<cite>bool</cite>) – image/exposure type will be labelled as test, default=arc.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.DcbCmd.DcbCmd.ditheredArcs">
+<code class="sig-name descname">ditheredArcs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.DcbCmd.DcbCmd.ditheredArcs" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic dither arc exptime=??? pixels=FF.F [doMinus] [switchOn=???] [switchOff=???] [warmingTime=FF.F] [force]
+[cam=???] [arm=???] [sm=???] [duplicate=N] [name=”SSS”] [comments=”SSS”] [&#64;doTest] [head=???] [tail=???]</cite></p>
+<p>Take a set of dithered Arc with a given pixel step.
+default step is set to 0.5 pixels -&gt; 4 positions(dither_x, dither_y) = [(0,0), (0.5,0), (0, 0.5), (0.5, 0.5)].
+Sequence is referenced in opdb as iic_sequence.seqtype=ditheredArcs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>exptime</strong> (<cite>float</cite>) – shutter exposure time.</p></li>
+<li><p><strong>pixels</strong> (<cite>float</cite>) – dithering step in pixels.</p></li>
+<li><p><strong>doMinus</strong> (<cite>bool</cite>) – if True, add negative dither step in the position grid.</p></li>
+<li><p><strong>switchOn</strong> (<em>list of str`</em>) – list of dcb lamp to turn on before the exposure(s).</p></li>
+<li><p><strong>switchOff</strong> (<em>list of str`</em>) – list of dcb lamp to turn off after the exposure(s).</p></li>
+<li><p><strong>warmingTime</strong> (<cite>float</cite>) – optional lamp warming time.</p></li>
+<li><p><strong>force</strong> (<cite>bool</cite>) – skip any lamp warmup logic.</p></li>
+<li><p><strong>cam</strong> (list of <cite>str</cite>) – List of camera to expose, default=all</p></li>
+<li><p><strong>arm</strong> (list of <cite>str</cite>) – List of arm to expose, default=all</p></li>
+<li><p><strong>sm</strong> (list of <cite>int</cite>) – List of spectrograph module to expose, default=all</p></li>
+<li><p><strong>duplicate</strong> (<cite>int</cite>) – Number of exposure, default=1</p></li>
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+<li><p><strong>doTest</strong> (<cite>bool</cite>) – image/exposure type will be labelled as test, default=arc.</p></li>
+<li><p><strong>head</strong> (list of <cite>str</cite>) – list of command to be launched before the sequence.</p></li>
+<li><p><strong>tail</strong> (list of <cite>str</cite>) – list of command to be launched after the sequence.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.DcbCmd.DcbCmd.ditheredFlats">
+<code class="sig-name descname">ditheredFlats</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.DcbCmd.DcbCmd.ditheredFlats" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic ditheredFlats exptime=??? [pixels=FF.F] [nPositions=N] [warmingTime=FF.F] [force] [noLampCtl] [switchOff]
+[cam=???] [arm=???] [sm=???] [duplicate=N] [name=”SSS”] [comments=”SSS”] [&#64;doTest] [head=???] [tail=???]</cite></p>
+<p>Take a set of dithered fiberTrace with a given pixel step (default=0.3).
+Sequence is referenced in opdb as iic_sequence.seqtype=ditheredFlats.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>exptime</strong> (<cite>float</cite>) – shutter exposure time.</p></li>
+<li><p><strong>pixels</strong> (<cite>float</cite>) – dithering step in pixels.</p></li>
+<li><p><strong>nPositions</strong> (<cite>int</cite>) – number of dithered positions on each side of home (nTotalPosition=nPositions * 2 + 1).</p></li>
+<li><p><strong>warmingTime</strong> (<cite>float</cite>) – optional continuum lamp warming time.</p></li>
+<li><p><strong>force</strong> (<cite>bool</cite>) – skip any lamp warmup logic.</p></li>
+<li><p><strong>noLampCtl</strong> (<cite>bool</cite>) – ignore continuum lamp control.</p></li>
+<li><p><strong>switchOff</strong> (<cite>bool</cite>) – switch continuum lamp at the end.</p></li>
+<li><p><strong>cam</strong> (list of <cite>str</cite>) – List of camera to expose, default=all.</p></li>
+<li><p><strong>arm</strong> (list of <cite>str</cite>) – List of arm to expose, default=all.</p></li>
+<li><p><strong>sm</strong> (list of <cite>int</cite>) – List of spectrograph module to expose, default=all.</p></li>
+<li><p><strong>duplicate</strong> (<cite>int</cite>) – Number of exposure, default=1.</p></li>
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+<li><p><strong>doTest</strong> (<cite>bool</cite>) – image/exposure type will be labelled as test, default=flat.</p></li>
+<li><p><strong>head</strong> (list of <cite>str</cite>) – list of command to be launched before the sequence.</p></li>
+<li><p><strong>tail</strong> (list of <cite>str</cite>) – list of command to be launched after the sequence.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.DcbCmd.DcbCmd.doArc">
+<code class="sig-name descname">doArc</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.DcbCmd.DcbCmd.doArc" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic expose arc exptime=??? [switchOn=???] [switchOff=???] [warmingTime=FF.F] [force] [cam=???] [arm=???]
+[sm=???] [duplicate=N] [name=”SSS”] [comments=”SSS”] [&#64;doTest] [head=???] [tail=???]</cite></p>
+<p>Take a set of arc exposure.
+Sequence is referenced in opdb as iic_sequence.seqtype=arcs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>exptime</strong> (<cite>float</cite>) – shutter exposure time.</p></li>
+<li><p><strong>switchOn</strong> (<em>list of str`</em>) – list of dcb lamp to turn on before the exposure(s).</p></li>
+<li><p><strong>switchOff</strong> (<em>list of str`</em>) – list of dcb lamp to turn off after the exposure(s).</p></li>
+<li><p><strong>warmingTime</strong> (<cite>float</cite>) – optional lamp warming time.</p></li>
+<li><p><strong>force</strong> (<cite>bool</cite>) – skip any lamp warmup logic.</p></li>
+<li><p><strong>cam</strong> (list of <cite>str</cite>) – List of camera to expose, default=all</p></li>
+<li><p><strong>arm</strong> (list of <cite>str</cite>) – List of arm to expose, default=all</p></li>
+<li><p><strong>sm</strong> (list of <cite>int</cite>) – List of spectrograph module to expose, default=all</p></li>
+<li><p><strong>duplicate</strong> (<cite>int</cite>) – Number of exposure, default=1</p></li>
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+<li><p><strong>doTest</strong> (<cite>bool</cite>) – image/exposure type will be labelled as test, default=arc</p></li>
+<li><p><strong>head</strong> (list of <cite>str</cite>) – list of command to be launched before the sequence.</p></li>
+<li><p><strong>tail</strong> (list of <cite>str</cite>) – list of command to be launched after the sequence.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.DcbCmd.DcbCmd.doFlat">
+<code class="sig-name descname">doFlat</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.DcbCmd.DcbCmd.doFlat" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic expose flat exptime=??? [warmingTime=FF.F] [force] [noLampCtl] [switchOff] [cam=???] [arm=???] [sm=???]
+[duplicate=N] [name=”SSS”] [comments=”SSS”] [&#64;doTest] [head=???] [tail=???]</cite></p>
+<p>Take a set of flat exposure.
+Sequence is referenced in opdb as iic_sequence.seqtype=flats.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>exptime</strong> (<cite>float</cite>) – shutter exposure time.</p></li>
+<li><p><strong>warmingTime</strong> (<cite>float</cite>) – optional continuum lamp warming time.</p></li>
+<li><p><strong>force</strong> (<cite>bool</cite>) – skip any lamp warmup logic.</p></li>
+<li><p><strong>noLampCtl</strong> (<cite>bool</cite>) – ignore continuum lamp control.</p></li>
+<li><p><strong>switchOff</strong> (<cite>bool</cite>) – switch continuum lamp at the end.</p></li>
+<li><p><strong>cam</strong> (list of <cite>str</cite>) – List of camera to expose, default=all</p></li>
+<li><p><strong>arm</strong> (list of <cite>str</cite>) – List of arm to expose, default=all</p></li>
+<li><p><strong>sm</strong> (list of <cite>int</cite>) – List of spectrograph module to expose, default=all</p></li>
+<li><p><strong>duplicate</strong> (<cite>int</cite>) – Number of exposure, default=1</p></li>
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+<li><p><strong>doTest</strong> (<cite>bool</cite>) – image/exposure type will be labelled as test, default=flat</p></li>
+<li><p><strong>head</strong> (list of <cite>str</cite>) – list of command to be launched before the sequence.</p></li>
+<li><p><strong>tail</strong> (list of <cite>str</cite>) – list of command to be launched after the sequence.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.DcbCmd.DcbCmd.resourceManager">
+<em class="property">property </em><code class="sig-name descname">resourceManager</code><a class="headerlink" href="#iicActor.Commands.DcbCmd.DcbCmd.resourceManager" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.DcbCmd.DcbCmd.slitThroughFocus">
+<code class="sig-name descname">slitThroughFocus</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.DcbCmd.DcbCmd.slitThroughFocus" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic slit throughfocus exptime=??? position=??? [switchOn=???] [switchOff=???] [warmingTime=FF.F] [force]
+[cam=???] [arm=???] [sm=???] [duplicate=N] [name=”SSS”] [comments=”SSS”] [&#64;doTest] [head=???] [tail=???]</cite></p>
+<p>Take Arc dataset through focus using FCA hexapod.
+Sequence is referenced in opdb as iic_sequence.seqtype=slitThroughFocus.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>exptime</strong> (<cite>float</cite>) – shutter exposure time.</p></li>
+<li><p><strong>position</strong> (<cite>float</cite>, <cite>float</cite>, <cite>int</cite>) – fca position constructor, same logic as np.linspace(start, stop, num).</p></li>
+<li><p><strong>switchOn</strong> (<em>list of str`</em>) – list of dcb lamp to turn on before the exposure(s).</p></li>
+<li><p><strong>switchOff</strong> (<em>list of str`</em>) – list of dcb lamp to turn off after the exposure(s).</p></li>
+<li><p><strong>warmingTime</strong> (<cite>float</cite>) – optional lamp warming time.</p></li>
+<li><p><strong>force</strong> (<cite>bool</cite>) – skip any lamp warmup logic.</p></li>
+<li><p><strong>cam</strong> (list of <cite>str</cite>) – List of camera to expose, default=all</p></li>
+<li><p><strong>arm</strong> (list of <cite>str</cite>) – List of arm to expose, default=all</p></li>
+<li><p><strong>sm</strong> (list of <cite>int</cite>) – List of spectrograph module to expose, default=all</p></li>
+<li><p><strong>duplicate</strong> (<cite>int</cite>) – Number of exposure, default=1</p></li>
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+<li><p><strong>head</strong> (list of <cite>str</cite>) – list of command to be launched before the sequence.</p></li>
+<li><p><strong>tail</strong> (list of <cite>str</cite>) – list of command to be launched after the sequence.</p></li>
+<li><p><strong>doTest</strong> (<cite>bool</cite>) – image/exposure type will be labelled as test, default=arc.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">ics_iicActor</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="iicActor.spsCmd.html">iicActor.sps commands</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">iicActor.dcb commands</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="iicActor.fpsCmd.html">iicActor.fps commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="iicActor.sequenceCmd.html">iicActor.sequence commands</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="iicActor.spsCmd.html" title="previous chapter">iicActor.sps commands</a></li>
+      <li>Next: <a href="iicActor.fpsCmd.html" title="next chapter">iicActor.fps commands</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, alf.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/iicActor.dcbCmd.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
