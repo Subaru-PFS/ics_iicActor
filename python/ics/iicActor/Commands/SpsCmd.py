@@ -690,7 +690,7 @@ class SpsCmd(object):
         pixels : `float`
             dithering step in pixels.
         doMinus : `bool`
-           if True, add negative dither step in the position combination.
+           if True, add negative dither step in the position grid.
         cam : list of `str`
            List of camera to expose, default=all
         arm : list of `str`

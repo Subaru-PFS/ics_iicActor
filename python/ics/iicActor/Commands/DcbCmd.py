@@ -46,16 +46,15 @@ class DcbCmd(object):
         # associated methods when matched. The callbacks will be
         # passed a single argument, the parsed and typed command.
         #
-        seqArgs = '[<name>] [<comments>] [<head>] [<tail>] [@doTest]'
+        seqArgs = '[<name>] [<comments>] [@doTest] [<head>] [<tail>]'
         identArgs = '[<cam>] [<arm>] [<sm>]'
         commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
-        dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [<attenuator>] [force]'
+        dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [force]'
 
         self.vocab = [
-            ('ditheredFlats', f'<exptime> [<pixels>] [<nPositions>] [switchOff] {dcbArgs} {commonArgs}',
-             self.ditheredFlats),
+            ('ditheredFlats', f'<exptime> [<pixels>] [<nPositions>] [<warmingTime>] [force] [noLampCtl] [switchOff] {commonArgs}', self.ditheredFlats),
             ('expose', f'arc <exptime> {dcbArgs} {commonArgs}', self.doArc),
-            ('expose', f'flat <exptime> [noLampCtl] [switchOff] {dcbArgs} {commonArgs}', self.doFlat),
+            ('expose', f'flat <exptime> [<warmingTime>] [force] [noLampCtl] [switchOff] {commonArgs}', self.doFlat),
 
             ('slit', f'throughfocus <exptime> <position> {dcbArgs} {commonArgs}', self.slitThroughFocus),
             ('detector', f'throughfocus <exptime> <position> [<tilt>] {dcbArgs} {commonArgs}', self.detThroughFocus),
@@ -81,7 +80,6 @@ class DcbCmd(object):
                                                  help='which dcb lamp to switch on.'),
                                         keys.Key('switchOff', types.String() * (1, None),
                                                  help='which dcb lamp to switch off.'),
-                                        keys.Key('attenuator', types.Int(), help='Attenuator value.'),
                                         keys.Key('position', types.Float() * (1, 3),
                                                  help='slit/motor position for throughfocus same args as np.linspace'),
                                         keys.Key('tilt', types.Float() * (1, 3), help='motor tilt (a, b, c)'),
@@ -97,7 +95,48 @@ class DcbCmd(object):
         return self.actor.resourceManager
 
     def ditheredFlats(self, cmd):
-        """dithered flat(fiberTrace) with given exptime. Used to construct masterFlat """
+        """
+        `iic ditheredFlats exptime=??? [pixels=FF.F] [nPositions=N] [warmingTime=FF.F] [force] [noLampCtl] [switchOff]
+        [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
+
+        Take a set of dithered fiberTrace with a given pixel step (default=0.3).
+        Sequence is referenced in opdb as iic_sequence.seqtype=ditheredFlats.
+
+        Parameters
+        ---------
+        exptime : `float`
+            shutter exposure time.
+        pixels : `float`
+            dithering step in pixels.
+        nPositions : `int`
+            number of dithered positions on each side of home (nTotalPosition=nPositions * 2 + 1).
+        warmingTime : `float`
+            optional continuum lamp warming time.
+        force : `bool`
+            skip any lamp warmup logic.
+        noLampCtl : `bool`
+            ignore continuum lamp control.
+        switchOff : `bool`
+            switch continuum lamp at the end.
+        cam : list of `str`
+           List of camera to expose, default=all.
+        arm : list of `str`
+           List of arm to expose, default=all.
+        sm : list of `int`
+           List of spectrograph module to expose, default=all.
+        duplicate : `int`
+           Number of exposure, default=1.
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=flat.
+        head : list of `str`
+            list of command to be launched before the sequence.
+        tail : list of `str`
+            list of command to be launched after the sequence.
+        """
         cmdKeys = cmd.cmd.keywords
 
         dcbOn, dcbOff = dcbKwargs(cmdKeys, forceHalogen=True)
@@ -118,7 +157,44 @@ class DcbCmd(object):
         job.fire(cmd)
 
     def doArc(self, cmd):
-        """sps science arcs. """
+        """
+        `iic expose arc exptime=??? [switchOn=???] [switchOff=???] [warmingTime=FF.F] [force] [cam=???] [arm=???]
+        [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
+
+        Take a set of arc exposure.
+        Sequence is referenced in opdb as iic_sequence.seqtype=arcs.
+
+        Parameters
+        ---------
+        exptime : `float`
+            shutter exposure time.
+        switchOn : list of str`
+           list of dcb lamp to turn on before the exposure(s).
+        switchOff : list of str`
+           list of dcb lamp to turn off after the exposure(s).
+        warmingTime : `float`
+            optional lamp warming time.
+        force : `bool`
+            skip any lamp warmup logic.
+        cam : list of `str`
+           List of camera to expose, default=all
+        arm : list of `str`
+           List of arm to expose, default=all
+        sm : list of `int`
+           List of spectrograph module to expose, default=all
+        duplicate : `int`
+           Number of exposure, default=1
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=arc
+        head : list of `str`
+            list of command to be launched before the sequence.
+        tail : list of `str`
+            list of command to be launched after the sequence.
+        """
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
@@ -132,12 +208,48 @@ class DcbCmd(object):
         job.fire(cmd)
 
     def doFlat(self, cmd):
-        """sps bias(es). """
+        """
+        `iic expose flat exptime=??? [warmingTime=FF.F] [force] [noLampCtl] [switchOff] [cam=???] [arm=???] [sm=???]
+        [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
+
+        Take a set of flat exposure.
+        Sequence is referenced in opdb as iic_sequence.seqtype=flats.
+
+        Parameters
+        ---------
+        exptime : `float`
+            shutter exposure time.
+        warmingTime : `float`
+            optional continuum lamp warming time.
+        force : `bool`
+            skip any lamp warmup logic.
+        noLampCtl : `bool`
+            ignore continuum lamp control.
+        switchOff : `bool`
+            switch continuum lamp at the end.
+        cam : list of `str`
+           List of camera to expose, default=all
+        arm : list of `str`
+           List of arm to expose, default=all
+        sm : list of `int`
+           List of spectrograph module to expose, default=all
+        duplicate : `int`
+           Number of exposure, default=1
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=flat
+        head : list of `str`
+            list of command to be launched before the sequence.
+        tail : list of `str`
+            list of command to be launched after the sequence.
+        """
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
-        forceHalogen = 'halogen' not in cmdKeys
-        dcbOn, dcbOff = dcbKwargs(cmdKeys, forceHalogen=forceHalogen)
+        dcbOn, dcbOff = dcbKwargs(cmdKeys, forceHalogen=True)
         exptime = cmdKeys['exptime'].values
         window = cmdKeys['window'].values if 'window' in cmdKeys else False
 
@@ -149,7 +261,47 @@ class DcbCmd(object):
         job.fire(cmd)
 
     def slitThroughFocus(self, cmd):
-        """sps slit through focus with given exptime. """
+        """
+        `iic slit throughfocus exptime=??? position=??? [switchOn=???] [switchOff=???] [warmingTime=FF.F] [force]
+        [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
+
+        Take Arc dataset through focus using FCA hexapod.
+        Sequence is referenced in opdb as iic_sequence.seqtype=slitThroughFocus.
+
+        Parameters
+        ---------
+        exptime : `float`
+            shutter exposure time.
+        position: `float`, `float`, `int`
+            fca position constructor, same logic as np.linspace(start, stop, num).
+        switchOn : list of str`
+           list of dcb lamp to turn on before the exposure(s).
+        switchOff : list of str`
+           list of dcb lamp to turn off after the exposure(s).
+        warmingTime : `float`
+            optional lamp warming time.
+        force : `bool`
+            skip any lamp warmup logic.
+        cam : list of `str`
+           List of camera to expose, default=all
+        arm : list of `str`
+           List of arm to expose, default=all
+        sm : list of `int`
+           List of spectrograph module to expose, default=all
+        duplicate : `int`
+           Number of exposure, default=1
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        head : list of `str`
+            list of command to be launched before the sequence.
+        tail : list of `str`
+            list of command to be launched after the sequence.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=arc.
+        """
+
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
 
@@ -166,7 +318,49 @@ class DcbCmd(object):
         job.fire(cmd)
 
     def detThroughFocus(self, cmd):
-        """sps detector motors through focus with given exptime. """
+        """
+        `iic detector throughfocus exptime=??? position=??? [tilt=???] [switchOn=???] [switchOff=???]
+        [warmingTime=FF.F] [force] [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"]
+        [@doTest] [head=???] [tail=???]`
+
+        Take Arc dataset through focus using Focal Plane Array focus motors.
+        Sequence is referenced in opdb as iic_sequence.seqtype=detThroughFocus.
+
+        Parameters
+        ---------
+        exptime : `float`
+            shutter exposure time.
+        position: `float`, `float`, `int`
+            fpa position constructor, same logic as np.linspace(start, stop, num).
+        tilt: `float`, `float`, `float`
+            fpa A,B,C motor tilt position.
+        switchOn : list of str`
+           list of dcb lamp to turn on before the exposure(s).
+        switchOff : list of str`
+           list of dcb lamp to turn off after the exposure(s).
+        warmingTime : `float`
+            optional lamp warming time.
+        force : `bool`
+            skip any lamp warmup logic.
+        cam : list of `str`
+           List of camera to expose, default=all
+        arm : list of `str`
+           List of arm to expose, default=all
+        sm : list of `int`
+           List of spectrograph module to expose, default=all
+        duplicate : `int`
+           Number of exposure, default=1
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        head : list of `str`
+            list of command to be launched before the sequence.
+        tail : list of `str`
+            list of command to be launched after the sequence.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=arc.
+        """
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
 
@@ -185,7 +379,49 @@ class DcbCmd(object):
         job.fire(cmd)
 
     def ditheredArcs(self, cmd):
-        """dithered Arc(s) with given exptime. """
+        """
+        `iic dither arc exptime=??? pixels=FF.F [doMinus] [switchOn=???] [switchOff=???] [warmingTime=FF.F] [force]
+        [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
+
+        Take a set of dithered Arc with a given pixel step.
+        default step is set to 0.5 pixels -> 4 positions(dither_x, dither_y) = [(0,0), (0.5,0), (0, 0.5), (0.5, 0.5)].
+        Sequence is referenced in opdb as iic_sequence.seqtype=ditheredArcs.
+
+        Parameters
+        ---------
+        exptime : `float`
+            shutter exposure time.
+        pixels : `float`
+            dithering step in pixels.
+        doMinus : `bool`
+           if True, add negative dither step in the position grid.
+        switchOn : list of str`
+           list of dcb lamp to turn on before the exposure(s).
+        switchOff : list of str`
+           list of dcb lamp to turn off after the exposure(s).
+        warmingTime : `float`
+            optional lamp warming time.
+        force : `bool`
+            skip any lamp warmup logic.
+        cam : list of `str`
+           List of camera to expose, default=all
+        arm : list of `str`
+           List of arm to expose, default=all
+        sm : list of `int`
+           List of spectrograph module to expose, default=all
+        duplicate : `int`
+           Number of exposure, default=1
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=arc.
+        head : list of `str`
+            list of command to be launched before the sequence.
+        tail : list of `str`
+            list of command to be launched after the sequence.
+        """
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
 
@@ -202,7 +438,46 @@ class DcbCmd(object):
         job.fire(cmd)
 
     def defocusedArcs(self, cmd):
-        """defocused Arc(s) with given exptime. """
+        """
+        `iic defocus arc exptime=??? position=??? [switchOn=???] [switchOff=???] [warmingTime=FF.F] [force] [cam=???]
+        [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
+
+        Take Arc dataset through focus using fca hexapod, exposure time is scaled such as psf max flux ~= constant
+        Sequence is referenced in opdb as iic_sequence.seqtype=defocusedArcs.
+
+        Parameters
+        ---------
+        exptime : `float`
+            shutter exposure time.
+        position: `float`, `float`, `int`
+            fca hexapod position constructor, same logic as np.linspace(start, stop, num).
+        switchOn : list of str`
+           list of dcb lamp to turn on before the exposure(s).
+        switchOff : list of str`
+           list of dcb lamp to turn off after the exposure(s).
+        warmingTime : `float`
+            optional lamp warming time.
+        force : `bool`
+            skip any lamp warmup logic.
+        cam : list of `str`
+           List of camera to expose, default=all
+        arm : list of `str`
+           List of arm to expose, default=all
+        sm : list of `int`
+           List of spectrograph module to expose, default=all
+        duplicate : `int`
+           Number of exposure, default=1
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=arc.
+        head : list of `str`
+            list of command to be launched before the sequence.
+        tail : list of `str`
+            list of command to be launched after the sequence.
+        """
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
         dcbOn, dcbOff = dcbKwargs(cmdKeys)
@@ -218,7 +493,22 @@ class DcbCmd(object):
         job.fire(cmd)
 
     def custom(self, cmd):
-        """dithered Arc(s) with given exptime. """
+        """
+        `iic custom [name=\"SSS\"] [comments=\"SSS\"] [head=???] [tail=???]`
+
+        Customized sequence of commands.
+
+        Parameters
+        ---------
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        head : list of `str`
+            list of command to be describe the sequence.
+        tail : list of `str`
+            list of command to be launched after the sequence.
+        """
         seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
 
         job = self.resourceManager.request(cmd, spsSequence.Custom)
