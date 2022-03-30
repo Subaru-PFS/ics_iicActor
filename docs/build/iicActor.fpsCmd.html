@@ -1,0 +1,366 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>iicActor.fps commands &#8212; ics_iicActor 0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="iicActor.sequence commands" href="iicActor.sequenceCmd.html" />
+    <link rel="prev" title="iicActor.dcb commands" href="iicActor.dcbCmd.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="iicactor-fps-commands">
+<h1>iicActor.fps commands<a class="headerlink" href="#iicactor-fps-commands" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+<p>This page list of all IIC FPS related commands.</p>
+<p>Each command should be contain a description and their input arguments listed.</p>
+<span class="target" id="module-iicActor.Commands.FpsCmd"></span><dl class="py class">
+<dt id="iicActor.Commands.FpsCmd.BoresightLoop">
+<em class="property">class </em><code class="sig-prename descclassname">iicActor.Commands.FpsCmd.</code><code class="sig-name descname">BoresightLoop</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">visit</span></em>, <em class="sig-param"><span class="n">expTime</span></em>, <em class="sig-param"><span class="n">nExposures</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.BoresightLoop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>The state required to run a boresight measurement loop.</p>
+<p>Basically, the Gen2 command knows about the telescope motion, and
+interleaves POPT2 rotations with requests to us to expose. At the
+end we are commanded to read the data and generate a new boresight.</p>
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.BoresightLoop.endFrame">
+<em class="property">property </em><code class="sig-name descname">endFrame</code><a class="headerlink" href="#iicActor.Commands.FpsCmd.BoresightLoop.endFrame" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.BoresightLoop.nextFrameId">
+<code class="sig-name descname">nextFrameId</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.BoresightLoop.nextFrameId" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.BoresightLoop.startFrame">
+<em class="property">property </em><code class="sig-name descname">startFrame</code><a class="headerlink" href="#iicActor.Commands.FpsCmd.BoresightLoop.startFrame" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd">
+<em class="property">class </em><code class="sig-prename descclassname">iicActor.Commands.FpsCmd.</code><code class="sig-name descname">FpsCmd</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">actor</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.abortBoresightAcquisition">
+<code class="sig-name descname">abortBoresightAcquisition</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.abortBoresightAcquisition" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic abortBoresightAcquisition</cite></p>
+<p>Abort a boresight acquisition loop.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.addBoresightPosition">
+<code class="sig-name descname">addBoresightPosition</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.addBoresightPosition" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic addBoresightPosition</cite></p>
+<p>Acquire data for a new boresight position.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.angleConvergenceTest">
+<code class="sig-name descname">angleConvergenceTest</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.angleConvergenceTest" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic angleConvergenceTest phi|theta angleTargets=N [name=”SSS”] [comments=”SSS”]</cite></p>
+<p>Perform an angle convergence test (phi or theta).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angleTargets</strong> (<cite>int</cite>) – angle targets.</p></li>
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.fpsLoop">
+<code class="sig-name descname">fpsLoop</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.fpsLoop" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic fpsLoop [expTime=FF.F] [cnt=N]</cite></p>
+<p>Run an MCS+FPS loop, without moving cobras.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>expTime</strong> (<cite>float</cite>) – MCS Exposure time.</p></li>
+<li><p><strong>cnt</strong> (<cite>int</cite>) – Number of FPS images.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.gotoVerticalFromPhi60">
+<code class="sig-name descname">gotoVerticalFromPhi60</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.gotoVerticalFromPhi60" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic gotoVerticalFromPhi60 [name=”SSS”] [comments=”SSS”]</cite></p>
+<p>Go to vertical from phi 60deg.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.makeMotorMap">
+<code class="sig-name descname">makeMotorMap</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.makeMotorMap" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic makeMotorMap phi|theta stepsize=N repeat=N [&#64;slowOnly] [name=”SSS”] [comments=”SSS”]</cite></p>
+<p>Make motorMap (phi or theta).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>stepsize</strong> (<cite>int</cite>) – Step size.</p></li>
+<li><p><strong>repeat</strong> (<cite>int</cite>) – Number of repeat.</p></li>
+<li><p><strong>slowOnly</strong> (<cite>bool</cite>) – only slow mode.</p></li>
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.makeOntimeMap">
+<code class="sig-name descname">makeOntimeMap</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.makeOntimeMap" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic makeOntimeMap phi|theta [name=”SSS”] [comments=”SSS”]</cite></p>
+<p>Make an on-time map (phi or theta).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.motorOntimeSearch">
+<code class="sig-name descname">motorOntimeSearch</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.motorOntimeSearch" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic motorOntimeSearch phi|theta [name=”SSS”] [comments=”SSS”]</cite></p>
+<p>Perform a motor on-time search sequence (phi or theta).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.movePhiToAngle">
+<code class="sig-name descname">movePhiToAngle</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.movePhiToAngle" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic movePhiToAngle angle=N iteration=N [name=”SSS”] [comments=”SSS”]</cite></p>
+<p>Move Phi arm to angle.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angle</strong> (<cite>int</cite>) – specified angle .</p></li>
+<li><p><strong>iteration</strong> (<cite>int</cite>) – Number of iteration.</p></li>
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.moveToHome">
+<code class="sig-name descname">moveToHome</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.moveToHome" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic moveToHome phi|theta|all [name=”SSS”] [comments=”SSS”]</cite></p>
+<p>Move cobras (phi or theta or all) to home.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.moveToPfsDesign">
+<code class="sig-name descname">moveToPfsDesign</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.moveToPfsDesign" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic moveToPfsDesign designId=??? [name=”SSS”] [comments=”SSS”]</cite></p>
+<p>Move cobras to provided pfsDesignId.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>designId</strong> (<cite>int</cite>) – specified designId .</p></li>
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.moveToSafePosition">
+<code class="sig-name descname">moveToSafePosition</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.moveToSafePosition" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic moveToSafePosition [name=”SSS”] [comments=”SSS”]</cite></p>
+<p>Move cobras to safe position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.reduceBoresightData">
+<code class="sig-name descname">reduceBoresightData</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.reduceBoresightData" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic reduceBoresightData</cite></p>
+<p>Close out the current boresight acquisition loop and process the data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.resourceManager">
+<em class="property">property </em><code class="sig-name descname">resourceManager</code><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.resourceManager" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.startBoresightAcquisition">
+<code class="sig-name descname">startBoresightAcquisition</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.startBoresightAcquisition" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic startBoresightAcquisition [expTime=FF.F] [nExposures=N]</cite></p>
+<p>Start a boresight acquisition loop.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>expTime</strong> (<cite>float</cite>) – MCS Exposure time.</p></li>
+<li><p><strong>nExposures</strong> (<cite>int</cite>) – Number of exposure.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.FpsCmd.FpsCmd.targetConvergenceTest">
+<code class="sig-name descname">targetConvergenceTest</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.FpsCmd.FpsCmd.targetConvergenceTest" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic targetConvergenceTest ontime|speed totalTargets=N maxsteps=N [name=”SSS”] [comments=”SSS”]</cite></p>
+<p>Perform a target convergence test (ontime or speed).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>totalTargets</strong> (<cite>int</cite>) – Total targets.</p></li>
+<li><p><strong>maxsteps</strong> (<cite>int</cite>) – Maximum number of steps.</p></li>
+<li><p><strong>name</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.name.</p></li>
+<li><p><strong>comments</strong> (<cite>str</cite>) – To be inserted in opdb:iic_sequence.comments.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">ics_iicActor</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="iicActor.spsCmd.html">iicActor.sps commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="iicActor.dcbCmd.html">iicActor.dcb commands</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">iicActor.fps commands</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="iicActor.sequenceCmd.html">iicActor.sequence commands</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="iicActor.dcbCmd.html" title="previous chapter">iicActor.dcb commands</a></li>
+      <li>Next: <a href="iicActor.sequenceCmd.html" title="next chapter">iicActor.sequence commands</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, alf.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/iicActor.fpsCmd.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

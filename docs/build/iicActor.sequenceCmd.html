@@ -1,0 +1,184 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>iicActor.sequence commands &#8212; ics_iicActor 0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="iicActor.fps commands" href="iicActor.fpsCmd.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="iicactor-sequence-commands">
+<h1>iicActor.sequence commands<a class="headerlink" href="#iicactor-sequence-commands" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+<p>This page list of all IIC sequencing related commands.</p>
+<p>Each command should be contain a description and their input arguments listed.</p>
+<span class="target" id="module-iicActor.Commands.SequenceCmd"></span><dl class="py class">
+<dt id="iicActor.Commands.SequenceCmd.SequenceCmd">
+<em class="property">class </em><code class="sig-prename descclassname">iicActor.Commands.SequenceCmd.</code><code class="sig-name descname">SequenceCmd</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">actor</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.SequenceCmd.SequenceCmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="iicActor.Commands.SequenceCmd.SequenceCmd.abortExposure">
+<code class="sig-name descname">abortExposure</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.SequenceCmd.SequenceCmd.abortExposure" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic sps &#64;abort [id=N]</cite></p>
+<p>abort current sps exposure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>id</strong> (<cite>int</cite>) – optional sequenceId.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.SequenceCmd.SequenceCmd.annotate">
+<code class="sig-name descname">annotate</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.SequenceCmd.SequenceCmd.annotate" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic annotate bad|ok [notes=???] [visit=N] [visitSet=N] [cam=???] [arm=???] [sm=???]</cite></p>
+<p>annotate given visit or visitSet.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>notes</strong> (<cite>str</cite>) – list of command to be describe the sequence.</p></li>
+<li><p><strong>visit</strong> (<cite>int</cite>) – visitId to annotate.</p></li>
+<li><p><strong>visitSet</strong> (<cite>int</cite>) – visitSetId to annotate</p></li>
+<li><p><strong>cam</strong> (list of <cite>str</cite>) – specify which camera is/are involved</p></li>
+<li><p><strong>arm</strong> (list of <cite>str</cite>) – specify which arm is/are involved</p></li>
+<li><p><strong>sm</strong> (list of <cite>int</cite>) – specify which spectrograph module is/are involved</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.SequenceCmd.SequenceCmd.finishExposure">
+<code class="sig-name descname">finishExposure</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.SequenceCmd.SequenceCmd.finishExposure" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic sps &#64;finishExposure [id=N]</cite></p>
+<p>finish current sps exposure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>id</strong> (<cite>int</cite>) – optional sequenceId.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.SequenceCmd.SequenceCmd.resourceManager">
+<em class="property">property </em><code class="sig-name descname">resourceManager</code><a class="headerlink" href="#iicActor.Commands.SequenceCmd.SequenceCmd.resourceManager" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="iicActor.Commands.SequenceCmd.SequenceCmd.sequenceStatus">
+<code class="sig-name descname">sequenceStatus</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmd</span></em><span class="sig-paren">)</span><a class="headerlink" href="#iicActor.Commands.SequenceCmd.SequenceCmd.sequenceStatus" title="Permalink to this definition">¶</a></dt>
+<dd><p><cite>iic sequenceStatus [id=N]</cite></p>
+<p>get IIC sequence status</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>id</strong> (<cite>int</cite>) – optional sequenceId.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">ics_iicActor</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="iicActor.spsCmd.html">iicActor.sps commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="iicActor.dcbCmd.html">iicActor.dcb commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="iicActor.fpsCmd.html">iicActor.fps commands</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">iicActor.sequence commands</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="iicActor.fpsCmd.html" title="previous chapter">iicActor.fps commands</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, alf.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/iicActor.sequenceCmd.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
