@@ -62,7 +62,7 @@ class SpsCmd(object):
             ('bias', f'{commonArgs} [<head>] [<tail>]', self.doBias),
             ('dark', f'<exptime> {commonArgs} [<head>] [<tail>]', self.doDark),
             ('expose', f'arc {timedLampsArgs} {commonArgs} [<head>] [<tail>]', self.doArc),
-            ('expose', f'flat <halogen> {commonArgs} [<head>] [<tail>]', self.doFlat),
+            ('expose', f'flat <halogen> [<window>] {commonArgs} [<head>] [<tail>]', self.doFlat),
 
             ('dither', f'arc {timedLampsArgs} <pixels> [doMinus] {commonArgs} [<head>] [<tail>]', self.ditheredArcs),
             ('defocus', f'arc {timedLampsArgs} <position> {commonArgs} [<head>] [<tail>]', self.defocusedArcs),
@@ -619,7 +619,7 @@ class SpsCmd(object):
 
     def doFlat(self, cmd):
         """
-        `iic expose flat halogen=FF.F [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"]
+        `iic expose flat halogen=FF.F [window=???] [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"]
         [@doTest] [head=???] [tail=???]`
 
         Take a set of flat exposure.
@@ -629,6 +629,8 @@ class SpsCmd(object):
         ---------
         halogen : `float`
             number of second to trigger continuum lamp.
+        window : `int`,`int`
+            first row, total number of rows.
         cam : list of `str`
            List of camera to expose, default=all
         arm : list of `str`

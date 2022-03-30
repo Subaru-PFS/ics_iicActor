@@ -168,9 +168,9 @@ class DcbCmd(object):
         ---------
         exptime : `float`
             shutter exposure time.
-        switchOn : list of str`
+        switchOn : list of `str`
            list of dcb lamp to turn on before the exposure(s).
-        switchOff : list of str`
+        switchOff : list of `str`
            list of dcb lamp to turn off after the exposure(s).
         warmingTime : `float`
             optional lamp warming time.
@@ -274,9 +274,9 @@ class DcbCmd(object):
             shutter exposure time.
         position: `float`, `float`, `int`
             fca position constructor, same logic as np.linspace(start, stop, num).
-        switchOn : list of str`
+        switchOn : list of `str`
            list of dcb lamp to turn on before the exposure(s).
-        switchOff : list of str`
+        switchOff : list of `str`
            list of dcb lamp to turn off after the exposure(s).
         warmingTime : `float`
             optional lamp warming time.
@@ -334,9 +334,9 @@ class DcbCmd(object):
             fpa position constructor, same logic as np.linspace(start, stop, num).
         tilt: `float`, `float`, `float`
             fpa A,B,C motor tilt position.
-        switchOn : list of str`
+        switchOn : list of `str`
            list of dcb lamp to turn on before the exposure(s).
-        switchOff : list of str`
+        switchOff : list of `str`
            list of dcb lamp to turn off after the exposure(s).
         warmingTime : `float`
             optional lamp warming time.
@@ -395,9 +395,9 @@ class DcbCmd(object):
             dithering step in pixels.
         doMinus : `bool`
            if True, add negative dither step in the position grid.
-        switchOn : list of str`
+        switchOn : list of `str`
            list of dcb lamp to turn on before the exposure(s).
-        switchOff : list of str`
+        switchOff : list of `str`
            list of dcb lamp to turn off after the exposure(s).
         warmingTime : `float`
             optional lamp warming time.
@@ -451,9 +451,9 @@ class DcbCmd(object):
             shutter exposure time.
         position: `float`, `float`, `int`
             fca hexapod position constructor, same logic as np.linspace(start, stop, num).
-        switchOn : list of str`
+        switchOn : list of `str`
            list of dcb lamp to turn on before the exposure(s).
-        switchOff : list of str`
+        switchOff : list of `str`
            list of dcb lamp to turn off after the exposure(s).
         warmingTime : `float`
             optional lamp warming time.

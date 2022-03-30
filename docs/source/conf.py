@@ -19,10 +19,10 @@
 
 project = 'ics_iicActor'
 copyright = '2022, alf'
-author = 'alf'
+author = 'Arnaud Le Fur'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = '1.4.5'
 
 
 # -- General configuration ---------------------------------------------------
