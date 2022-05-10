@@ -1,5 +1,6 @@
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from pfs.datamodel import PfsDesign
 
 
 class TopCmd(object):
@@ -16,7 +17,7 @@ class TopCmd(object):
         self.vocab = [
             ('ping', '', self.ping),
             ('status', '', self.status),
-            ('observe', '<designId>', self.genPfsDesignId),
+            ('declareCurrentPfsDesign', '<designId>', self.declareCurrentPfsDesign),
             ('finishField', '', self.finishField)
         ]
 
@@ -37,16 +38,24 @@ class TopCmd(object):
         self.actor.sendVersionKey(cmd)
         cmd.finish()
 
-    def genPfsDesignId(self, cmd):
+    def declareCurrentPfsDesign(self, cmd):
         """Report camera status and actor version. """
         cmdKeys = cmd.cmd.keywords
         pfsDesignId = cmdKeys['designId'].values[0]
-        cmd.finish('designId=0x%016x' % pfsDesignId)
+        # opening pfsDesignFile
+        pfsDesign = PfsDesign.read(pfsDesignId, dirName=self.actor.actorConfig['pfsDesign']['root'])
+        # declaring new field
+        visit0 = self.actor.visitor.declareNewField(designId=pfsDesignId)
+        # generating keyword for gen2
+        cmd.finish('pfsDesign=0x%016x,%d,%.6f,%.6f,%.6f,%s' % (pfsDesignId,
+                                                               visit0.visitId,
+                                                               pfsDesign.raBoresight,
+                                                               pfsDesign.decBoresight,
+                                                               pfsDesign.posAng,
+                                                               pfsDesign.designName))
 
     def finishField(self, cmd):
         """Report camera status and actor version. """
-        cmdKeys = cmd.cmd.keywords
-        self.actor.visitor.resetVisit0()
-        cmd.inform('text="visit0 has been reset"')
+        self.actor.visitor.finishField()
 
         cmd.finish()
