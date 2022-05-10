@@ -1,3 +1,4 @@
+import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from pfs.datamodel import PfsDesign
@@ -56,6 +57,13 @@ class TopCmd(object):
 
     def finishField(self, cmd):
         """Report camera status and actor version. """
+        # invalidating previous pfsDesign keyword
         self.actor.visitor.finishField()
 
-        cmd.finish()
+        cmd.finish('pfsDesign=0x%016x,%d,%.6f,%.6f,%.6f,%s' % (0,
+                                                               0,
+                                                               np.NaN,
+                                                               np.NaN,
+                                                               np.NaN,
+                                                               ''))
+
