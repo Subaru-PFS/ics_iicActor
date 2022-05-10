@@ -225,7 +225,7 @@ class SpsCmd(object):
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, timedSpsSequence.DitheredFlats)
-        job.instantiate(cmd, exptime=exptime, positions=positions, dcbOn=None, dcbOff=None, duplicate=duplicate,
+        job.instantiate(cmd, exptime=exptime, positions=positions, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate,
                         **seqKwargs)
         job.fire(cmd)
 
@@ -275,7 +275,7 @@ class SpsCmd(object):
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, timedSpsSequence.ScienceArc)
-        job.instantiate(cmd, exptime=exptime, dcbOn=None, dcbOff=None, duplicate=duplicate, **seqKwargs)
+        job.instantiate(cmd, exptime=exptime, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate, **seqKwargs)
         job.fire(cmd)
 
     def scienceTrace(self, cmd):
@@ -318,7 +318,7 @@ class SpsCmd(object):
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, timedSpsSequence.ScienceTrace)
-        job.instantiate(cmd, exptime=exptime, dcbOn=None, dcbOff=None, duplicate=duplicate, window=window, **seqKwargs)
+        job.instantiate(cmd, exptime=exptime, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate, window=window, **seqKwargs)
         job.fire(cmd)
 
     def scienceObject(self, cmd):
@@ -614,7 +614,7 @@ class SpsCmd(object):
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, timedSpsSequence.Arcs)
-        job.instantiate(cmd, exptime=exptime, dcbOn=None, dcbOff=None, duplicate=duplicate, **seqKwargs)
+        job.instantiate(cmd, exptime=exptime, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate, **seqKwargs)
         job.fire(cmd)
 
     def doFlat(self, cmd):
@@ -659,7 +659,7 @@ class SpsCmd(object):
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, timedSpsSequence.Flats)
-        job.instantiate(cmd, exptime=exptime, dcbOn=None, dcbOff=None, duplicate=duplicate, window=window,
+        job.instantiate(cmd, exptime=exptime, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate, window=window,
                         **seqKwargs)
         job.fire(cmd)
 
@@ -721,7 +721,7 @@ class SpsCmd(object):
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, timedSpsSequence.DitheredArcs)
-        job.instantiate(cmd, exptime=exptime, pixels=pixels, doMinus=doMinus, dcbOn=None, dcbOff=None,
+        job.instantiate(cmd, exptime=exptime, pixels=pixels, doMinus=doMinus, dcbOn=dict(), dcbOff=dict(),
                         duplicate=duplicate, **seqKwargs)
         job.fire(cmd)
 
@@ -780,7 +780,7 @@ class SpsCmd(object):
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, timedSpsSequence.DefocusedArcs)
-        job.instantiate(cmd, exp_time_0=exptime, positions=positions, dcbOn=None, dcbOff=None, duplicate=duplicate,
+        job.instantiate(cmd, exp_time_0=exptime, positions=positions, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate,
                         **seqKwargs)
         job.fire(cmd)
 
