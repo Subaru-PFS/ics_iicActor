@@ -56,6 +56,9 @@ class TopCmd(object):
         else:
             cmd.warn('text="pfsDesign(0x%016x) already inserted in opdb..."' % pfsDesign.pfsDesignId)
 
+        # setting grating to design.
+        self.actor.callCommand('setGratingToDesign')
+
         # generating keyword for gen2
         designName = 'unnamed' if not pfsDesign.designName else pfsDesign.designName
         cmd.finish('pfsDesign=0x%016x,%d,%.6f,%.6f,%.6f,%s' % (pfsDesign.pfsDesignId,

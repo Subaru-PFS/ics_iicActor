@@ -12,13 +12,6 @@ class SpsSequence(Sequence):
     def __init__(self, *args, **kwargs):
         Sequence.__init__(self, *args, **kwargs)
 
-    def insertSequence(self):
-        """ """
-        Sequence.insertSequence(self)
-
-        if self.iicActor.visitor.validVisit0:
-            self.iicActor.visitor.visit0.insertFieldSet(self.visit_set_id)
-
     def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, window=False, **identKeys):
         """ Append duplicate * sps expose to sequence """
         exptime = [exptime] if not isinstance(exptime, list) else exptime

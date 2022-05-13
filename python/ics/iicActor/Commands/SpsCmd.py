@@ -69,6 +69,7 @@ class SpsCmd(object):
             ('test', f'hexapodStability {timedLampsArgs} [<position>] {commonArgs}', self.hexapodStability),
 
             ('sps', 'rdaMove (low|med) [<sm>]', self.rdaMove),
+            ('setGratingToDesign', '', self.setGratingToDesign),
 
         ]
 
@@ -318,7 +319,8 @@ class SpsCmd(object):
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, timedSpsSequence.ScienceTrace)
-        job.instantiate(cmd, exptime=exptime, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate, window=window, **seqKwargs)
+        job.instantiate(cmd, exptime=exptime, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate, window=window,
+                        **seqKwargs)
         job.fire(cmd)
 
     def scienceObject(self, cmd):
@@ -856,6 +858,30 @@ class SpsCmd(object):
             seqObj = engineering.RdaMed
         else:
             raise ValueError('incorrect target position')
+
+        job = self.resourceManager.request(cmd, seqObj)
+        job.instantiate(cmd)
+        job.fire(cmd)
+
+    def setGratingToDesign(self, cmd):
+        """
+        `iic setGratingToDesign`
+
+        Move Red disperser assembly to PfsDesign position (low or med).
+        """
+        if self.actor.visitor.activeField:
+            position = self.actor.visitor.activeField.getGratingPosition()
+        else:
+            cmd.fail('text="no current pfsDesign..."')
+            return
+
+        if position == 'low':
+            seqObj = engineering.RdaLow
+        elif position == 'med':
+            seqObj = engineering.RdaMed
+        else:
+            cmd.finish('text="no position requested, finishing here..."')
+            return
 
         job = self.resourceManager.request(cmd, seqObj)
         job.instantiate(cmd)

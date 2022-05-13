@@ -71,10 +71,9 @@ class RdaJob(IICJob):
     def specNames(self):
         return list(map(str, [specModule.specNum for specModule in self.specModules]))
 
-    def instantiate(self, cmd, *args, **kwargs):
-        """ Instantiate seqObj with given args, kwargs. """
-        self.seq = self.seqObj(specNames=self.specNames, *args, **kwargs)
-        self.seq.assign(cmd, self)
+    def createSequenceObject(self, *args, **kwargs):
+        """create sequence object with given argument"""
+        return self.seqObj(specNames=self.specNames, *args, **kwargs)
 
     def sanityCheck(self, cmd):
         for specModule in self.specModules:
