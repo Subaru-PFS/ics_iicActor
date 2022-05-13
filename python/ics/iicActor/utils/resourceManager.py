@@ -4,6 +4,8 @@ from ics.iicActor.fps.job import FpsJob
 from ics.iicActor.fps.sequence import FpsSequence
 from ics.iicActor.sps.job import SpectroJob, RdaJob
 from ics.iicActor.sps.sequence import SpsSequence
+from ics.iicActor.ag.job import AgJob
+from ics.iicActor.ag.sequence import AgSequence
 from ics.utils.opdb import opDB
 from ics.utils.sps.config import SpsConfig
 from iicActor.utils.lib import genIdentKeys
@@ -49,6 +51,9 @@ class ResourceManager(object):
 
         elif issubclass(seqObj, FpsSequence):
             job = FpsJob(self.actor, seqObj, visitSetId)
+
+        elif issubclass(seqObj, AgSequence):
+            job = AgJob(self.actor, seqObj, visitSetId)
 
         elif issubclass(seqObj, spsEngineering.RdaMove):
             identKeys = genIdentKeys(cmd.cmd.keywords)
