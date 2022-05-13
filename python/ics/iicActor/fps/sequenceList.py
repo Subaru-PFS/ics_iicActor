@@ -7,9 +7,9 @@ class MoveToPfsDesign(FpsSequence):
     timeLim = 900
     dependencies = ['mcs']
 
-    def __init__(self, designId, doTest=False, **kwargs):
+    def __init__(self, designId, visitId, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        self.moveToPfsDesign(designId=designId, timeLim=MoveToPfsDesign.timeLim)
+        self.add(actor='fps', cmdStr='moveToPfsDesign', designId=designId, visit=visitId, timeLim=MoveToPfsDesign.timeLim)
 
 
 class MovePhiToAngle(FpsSequence):

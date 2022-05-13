@@ -59,7 +59,7 @@ class FpsCmd(object):
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
             # ('mcsLoop', '[<expTime>] [<cnt>] [@noCentroids]', self.mcsLoop),
 
-            ('moveToPfsDesign', f'<designId> {seqArgs}', self.moveToPfsDesign),
+            ('moveToPfsDesign', f'[<designId>] {seqArgs}', self.moveToPfsDesign),
             ('movePhiToAngle', f'<angle> <iteration> {seqArgs}', self.movePhiToAngle),
             ('moveToHome', f'@(phi|theta|all) {seqArgs}', self.moveToHome),
             ('moveToSafePosition', f'{seqArgs}', self.moveToSafePosition),
@@ -121,11 +121,17 @@ class FpsCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
-        designId = cmdKeys['designId'].values[0]
+
+        if 'designId' in cmdKeys:
+            designId = cmdKeys['designId'].values[0]
+            visit = self.actor.visitor.getVisit('fps')
+        else:
+            designId, visit = self.actor.visitor.getField('fps')
+
         cmd.inform('designId=0x%016x' % designId)
 
         job = self.resourceManager.request(cmd, fpsSequence.MoveToPfsDesign)
-        job.instantiate(cmd, designId=designId, **seqKwargs)
+        job.instantiate(cmd, visitId=visit.visitId, designId=designId, **seqKwargs)
 
         job.fire(cmd)
 
@@ -461,8 +467,10 @@ class FpsCmd(object):
                     raise RuntimeError("IIC failed to take a MCS exposure")
             except RuntimeError:
                 cmd.fail('text="ICC failed to take an MCS exposure')
+                return
             except Exception as e:
                 cmd.fail('text="ICC failed to take an MCS exposure: %s"' % (e))
+                return
 
         cmd.finish()
 
