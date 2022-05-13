@@ -198,10 +198,12 @@ class Sequence(list):
         self.doAbort = True
         self.current.abort(cmd=cmd)
 
-    def finish(self, cmd, **kwargs):
+    def finish(self, cmd, now=False, **kwargs):
         """ Finish current sequence """
         self.doFinish = True
-        self.current.finish(cmd=cmd)
+        # then finish exposure immediately
+        if now:
+            self.current.finish(cmd=cmd)
 
     def insertSequence(self):
         """ Store sequence in database """

@@ -19,7 +19,7 @@ class SequenceCmd(object):
             ('sequenceStatus', '[<id>]', self.sequenceStatus),
             ('sps', '@abortExposure [<id>]', self.abortExposure),
             ('sps', '@abort [<id>]', self.abortExposure),
-            ('sps', '@finishExposure [<id>]', self.finishExposure),
+            ('sps', '@finishExposure [@(now)] [<id>]', self.finishExposure),
             ('annotate', '@(bad|ok) [<notes>] [<visit>] [<visitSet>] [<cam>] [<arm>] [<sm>]', self.annotate)
         ]
 
@@ -80,7 +80,7 @@ class SequenceCmd(object):
 
     def finishExposure(self, cmd):
         """
-        `iic sps @finishExposure [id=N]`
+        `iic sps @finishExposure [now] [id=N]`
 
         finish current sps exposure.
 
@@ -92,13 +92,14 @@ class SequenceCmd(object):
         cmdKeys = cmd.cmd.keywords
         identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else 'sps'
         noSunssBias = 'noSunssBias' in cmdKeys
+        now = 'now' in cmdKeys
 
         job = self.resourceManager.identify(identifier=identifier)
         if job.isDone:
             raise RuntimeError('job already finished')
 
         cmd.inform(f'text="finalizing exposure from sequence(id:{job.visitSetId})..."')
-        job.finish(cmd, noSunssBias=noSunssBias)
+        job.finish(cmd, now=now, noSunssBias=noSunssBias)
 
         cmd.finish()
 
