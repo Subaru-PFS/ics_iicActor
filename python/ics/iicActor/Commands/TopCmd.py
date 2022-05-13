@@ -1,7 +1,8 @@
 import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
-from pfs.datamodel import PfsDesign
+import pfs.utils.ingestPfsDesign as ingestPfsDesign
+from ics.utils.opdb import opDB
 
 
 class TopCmd(object):
@@ -43,17 +44,26 @@ class TopCmd(object):
         """Report camera status and actor version. """
         cmdKeys = cmd.cmd.keywords
         pfsDesignId = cmdKeys['designId'].values[0]
-        # opening pfsDesignFile
-        pfsDesign = PfsDesign.read(pfsDesignId, dirName=self.actor.actorConfig['pfsDesign']['root'])
+
         # declaring new field
-        visit0 = self.actor.visitor.declareNewField(designId=pfsDesignId)
+        pfsDesign, visit0 = self.actor.visitor.declareNewField(pfsDesignId)
+
+        # inserting into opdb
+        newDesign = not opDB.fetchone(
+            f'select pfs_design_id from pfs_design where pfs_design_id={pfsDesign.pfsDesignId}')
+        if newDesign:
+            ingestPfsDesign.ingestPfsDesign(pfsDesign, to_be_observed_at='now')
+        else:
+            cmd.warn('text="pfsDesign(0x%016x) already inserted in opdb..."' % pfsDesign.pfsDesignId)
+
         # generating keyword for gen2
-        cmd.finish('pfsDesign=0x%016x,%d,%.6f,%.6f,%.6f,%s' % (pfsDesignId,
+        designName = 'unnamed' if not pfsDesign.designName else pfsDesign.designName
+        cmd.finish('pfsDesign=0x%016x,%d,%.6f,%.6f,%.6f,%s' % (pfsDesign.pfsDesignId,
                                                                visit0.visitId,
                                                                pfsDesign.raBoresight,
                                                                pfsDesign.decBoresight,
                                                                pfsDesign.posAng,
-                                                               pfsDesign.designName))
+                                                               designName))
 
     def finishField(self, cmd):
         """Report camera status and actor version. """
@@ -65,5 +75,4 @@ class TopCmd(object):
                                                                np.NaN,
                                                                np.NaN,
                                                                np.NaN,
-                                                               ''))
-
+                                                               'none'))
