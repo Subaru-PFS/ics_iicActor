@@ -22,9 +22,10 @@ class AgCmd(object):
         #
         seqArgs = '[<name>] [<comments>]'
         self.vocab = [
-            ('acquireField', f'[<designId>] [<exptime>] [<guide>] [<magnitude>] {seqArgs}', self.acquireField),
+            ('acquireField',
+             f'[<designId>] [<exptime>] [<guide>] [<magnitude>] [<dryRun>] {seqArgs}', self.acquireField),
             ('autoguideStart',
-             f'[<designId>] [<exptime>] [<fromSky>] [<cadence>] [<focus>] [<center>] [<magnitude>] {seqArgs}',
+             f'[<designId>] [<exptime>] [<fromSky>] [<cadence>] [<focus>] [<center>] [<magnitude>] [@(dryRun)] {seqArgs}',
              self.autoguideStart),
             ('autoguideStop', '', self.autoguideStop),
         ]
@@ -33,15 +34,16 @@ class AgCmd(object):
         self.keys = keys.KeysDictionary("iic_iic", (1, 1),
                                         keys.Key('name', types.String(), help='iic_sequence name'),
                                         keys.Key('comments', types.String(), help='iic_sequence comments'),
-                                        keys.Key("exptime", types.Float()),
+                                        keys.Key("designId", types.Long(),
+                                                 help="pfsDesignId for the field, which defines the fiber positions"),
+                                        keys.Key("exptime", types.Float(),  help='exptime in ms'),
                                         keys.Key("guide", types.String()),
                                         keys.Key("magnitude", types.Float()),
                                         keys.Key("fromSky", types.String()),
                                         keys.Key("cadence", types.Float()),
                                         keys.Key("focus", types.String()),
                                         keys.Key("center", types.Float() * (1, 3)),
-                                        keys.Key("designId", types.Long(),
-                                                 help="pfsDesignId for the field,which defines the fiber positions"),
+                                        keys.Key("dryRun", types.String()),
                                         )
 
     @property
@@ -57,11 +59,13 @@ class AgCmd(object):
         Parameters
         ---------
         exptime : `float`
-           optional exposure time.
+           optional exposure time(ms).
         guide : `str`
            yes|no.
         magnitude : `float`
            magnitude limit.
+        dryRun : `str`
+           yes|no.
         name : `str`
            To be inserted in opdb:iic_sequence.name.
         comments : `str`
@@ -79,12 +83,13 @@ class AgCmd(object):
         exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else None
         guide = cmdKeys['guide'].values[0] if 'guide' in cmdKeys else None
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
+        dryRun = cmdKeys['dryRun'].values[0] if 'dryRun' in cmdKeys else None
 
         # requesting resources, erk..
         job = self.resourceManager.request(cmd, agSequence.AcquireField)
 
         job.instantiate(cmd, designId=designId, visitId=visit.visitId, exptime=exptime, guide=guide,
-                        magnitude=magnitude, **seqKwargs)
+                        magnitude=magnitude, dryRun=dryRun, **seqKwargs)
 
         job.fire(cmd)
 
@@ -97,7 +102,7 @@ class AgCmd(object):
         Parameters
         ---------
         exptime : `float`
-           optional exposure time.
+           optional exposure time(ms).
         fromSky : `str`
            yes|no
         cadence : `float`
@@ -108,6 +113,8 @@ class AgCmd(object):
            ra,dec,pa
         magnitude : `float`
            magnitude limit.
+        dryRun : `str`
+           yes|no.
         name : `str`
            To be inserted in opdb:iic_sequence.name.
         comments : `str`
@@ -122,6 +129,7 @@ class AgCmd(object):
         focus = cmdKeys['focus'].values[0] if 'focus' in cmdKeys else None
         center = cmdKeys['center'].values if 'center' in cmdKeys else None
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
+        dryRun = cmdKeys['dryRun'].values[0] if 'dryRun' in cmdKeys else None
 
         if 'designId' in cmdKeys:
             designId = cmdKeys['designId'].values[0]
@@ -132,7 +140,7 @@ class AgCmd(object):
         # requesting resources, erk..
         job = self.resourceManager.request(cmd, agSequence.AutoguideStart)
         job.instantiate(cmd, designId=designId, visitId=visit.visitId, exptime=exptime, fromSky=fromSky,
-                        cadence=cadence, focus=focus, center=center, magnitude=magnitude, **seqKwargs)
+                        cadence=cadence, focus=focus, center=center, magnitude=magnitude, dryRun=dryRun, **seqKwargs)
 
         job.fire(cmd)
 
