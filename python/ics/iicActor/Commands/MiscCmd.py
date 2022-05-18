@@ -1,7 +1,9 @@
 from importlib import reload
-
+import pandas as pd
+import os
 import ics.iicActor.misc.sequenceList as miscSequence
 import ics.iicActor.utils.lib as iicUtils
+import ics.utils.opdb as opdb
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 
@@ -23,7 +25,7 @@ class MiscCmd(object):
         identArgs = '[<cam>] [<arm>] [<sm>]'
 
         self.vocab = [
-            ('dotroaches', f'[@(keepMoving)] [<stepSize>] [<count>] [<exptime>] [<expose>] {identArgs} {seqArgs}',
+            ('dotRoach', f'[@(keepMoving)] [<stepSize>] [<count>] [<exptime>] [<dotRoachConfig>] {identArgs} {seqArgs}',
              self.dotRoaching),
 
         ]
@@ -40,7 +42,8 @@ class MiscCmd(object):
                                         keys.Key('stepSize', types.Int(), help='optional visit_set_id.'),
                                         keys.Key('count', types.Int(), help='optional visit_id.'),
                                         keys.Key('exptime', types.Float(), help='optional visit_set_id.'),
-                                        keys.Key('expose', types.String() * (1,), help='filename containing which fibers to expose.'),
+                                        keys.Key('dotRoachConfig', types.String() * (1,),
+                                                 help='filename containing which fibers to expose.'),
                                         )
 
     @property
@@ -54,7 +57,7 @@ class MiscCmd(object):
         cmd.inform('text="starting dot-roaching script..."')
 
         # load config from instdata
-        config = self.actor.actorConfig['dotroaches']
+        config = self.actor.actorConfig['dotRoach']
         if 'stepSize' in cmdKeys:
             config.update(stepSize=cmdKeys['stepSize'].values[0])
         if 'count' in cmdKeys:
@@ -62,10 +65,31 @@ class MiscCmd(object):
         if 'exptime' in cmdKeys:
             config['windowedFlat'].update(exptime=cmdKeys['exptime'].values[0])
 
-        keepMoving = 'keepMoving' in cmdKeys
-        expose = cmdKeys['expose'].values[0] if 'expose' in cmdKeys else 'none'
+        configRoot = config.pop('configRoot')
 
-        job = self.resourceManager.request(cmd, miscSequence.DotRoaches)
-        job.instantiate(cmd, keepMoving=keepMoving, expose=expose, **config, **seqKwargs)
+        keepMoving = 'keepMoving' in cmdKeys
+        dotRoachConfig = cmdKeys['dotRoachConfig'].values[0] if 'dotRoachConfig' in cmdKeys else 'SM1_000'
+        dotRoachConfig = os.path.join(configRoot, f'{dotRoachConfig}.csv')
+        # testing if dotRoachConfig exists.
+        try:
+            df = pd.read_csv(dotRoachConfig, index_col=0)
+        except:
+            cmd.fail(f'text="failed to open dotRoachConfig file :{dotRoachConfig}!')
+            return
+
+        # retrieving designId from opdb
+        try:
+            [designId, ] = opdb.opDB.fetchone(
+                "select pfs_design_id from pfs_design where design_name='nearDot' order by designed_at desc limit 1")
+        except:
+            raise RuntimeError('could not retrieve near-dot designId from opdb')
+
+        # declaring new field
+        pfsDesign, visit = self.actor.visitor.declareNewField(designId)
+
+        job = self.resourceManager.request(cmd, miscSequence.DotRoach)
+        job.instantiate(cmd, designId=designId, visitId=visit.visitId, keepMoving=keepMoving,
+                        dotRoachConfig=dotRoachConfig, **config,
+                        **seqKwargs)
 
         job.fire(cmd)
