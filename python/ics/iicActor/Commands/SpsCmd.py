@@ -45,16 +45,16 @@ class SpsCmd(object):
         identArgs = '[<cam>] [<arm>] [<sm>]'
         commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
         timedLampsArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>] [@doShutterTiming]'
-
+        windowingArgs = '[<window>] [<blueWindow>] [<redWindow>]'
         self.vocab = [
             ('masterBiases', f'{commonArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {commonArgs}', self.masterDarks),
             ('ditheredFlats', f'<halogen> [@doShutterTiming] [<pixels>] [<nPositions>] {commonArgs}',
              self.ditheredFlats),
             ('scienceArc', f'{timedLampsArgs} {commonArgs}', self.scienceArc),
-            ('scienceTrace', f'<halogen> [@doShutterTiming]  [<window>] {commonArgs}', self.scienceTrace),
-            ('scienceObject', f'<exptime> [<window>] {commonArgs}', self.scienceObject),
-            ('domeFlat', f'<exptime> [<window>] {commonArgs}', self.domeFlat),
+            ('scienceTrace', f'<halogen> [@doShutterTiming] {windowingArgs} {commonArgs}', self.scienceTrace),
+            ('scienceObject', f'<exptime> {windowingArgs} {commonArgs}', self.scienceObject),
+            ('domeFlat', f'<exptime> {windowingArgs} {commonArgs}', self.domeFlat),
             ('domeArc', f'<exptime> {commonArgs}', self.domeArc),
             ('sps', f'@startExposures <exptime> {identArgs} [<name>] [<comments>] [@doBias] [@doTest]',
              self.startExposures),
@@ -98,6 +98,10 @@ class SpsCmd(object):
                                         keys.Key('hgcd', types.Float(), help='HgCd lamp on time'),
                                         keys.Key('xenon', types.Float(), help='Xenon lamp on time'),
                                         keys.Key("window", types.Int() * (1, 2),
+                                                 help='first row, total number of rows to read'),
+                                        keys.Key("blueWindow", types.Int() * (1, 2),
+                                                 help='first row, total number of rows to read'),
+                                        keys.Key("redWindow", types.Int() * (1, 2),
                                                  help='first row, total number of rows to read'),
 
                                         )
@@ -281,8 +285,8 @@ class SpsCmd(object):
 
     def scienceTrace(self, cmd):
         """
-        `iic scienceTrace halogen=FF.F [@doShutterTiming] [window=???] [cam=???] [arm=???] [sm=???] [duplicate=N]
-        [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+        `iic scienceTrace halogen=FF.F [@doShutterTiming] [window=???] [blueWindow=???] [redWindow=???] [cam=???]
+        [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Check focus and take a set of fiberTrace.
         Sequence is referenced in opdb as iic_sequence.seqtype=scienceTrace.
@@ -296,6 +300,10 @@ class SpsCmd(object):
            if True, use the shutters to control exposure time, ie fire the lamps before opening the shutters.
         window : `int`,`int`
             first row, total number of rows.
+        blueWindow : `int`,`int`
+            first row, total number of rows. (blue arm)
+        redWindow : `int`,`int`
+            first row, total number of rows. (red arm)
         cam : list of `str`
            List of camera to expose, default=all
         arm : list of `str`
@@ -316,17 +324,20 @@ class SpsCmd(object):
         seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=False)
         exptime = timedLampsKwargs(cmdKeys)
         window = cmdKeys['window'].values if 'window' in cmdKeys else False
+        blueWindow = cmdKeys['blueWindow'].values if 'blueWindow' in cmdKeys else False
+        redWindow = cmdKeys['redWindow'].values if 'redWindow' in cmdKeys else False
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, timedSpsSequence.ScienceTrace)
         job.instantiate(cmd, exptime=exptime, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate, window=window,
+                        blueWindow=blueWindow, redWindow=redWindow,
                         **seqKwargs)
         job.fire(cmd)
 
     def scienceObject(self, cmd):
         """
-        `iic scienceObject exptime=??? [window=???] [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"]
-        [comments=\"SSS\"] [@doTest]`
+        `iic scienceObject exptime=??? [window=???] [blueWindow=???] [redWindow=???] [cam=???] [arm=???] [sm=???]
+        [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Check focus and take a set of object exposure.
         Sequence is referenced in opdb as iic_sequence.seqtype=scienceObject.
@@ -338,6 +349,10 @@ class SpsCmd(object):
             exposure time.
         window : `int`,`int`
             first row, total number of rows.
+        blueWindow : `int`,`int`
+            first row, total number of rows. (blue arm)
+        redWindow : `int`,`int`
+            first row, total number of rows. (red arm)
         cam : list of `str`
            List of camera to expose, default=all
         arm : list of `str`
@@ -359,16 +374,19 @@ class SpsCmd(object):
         exptime = cmdKeys['exptime'].values
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
         window = cmdKeys['window'].values if 'window' in cmdKeys else False
+        blueWindow = cmdKeys['blueWindow'].values if 'blueWindow' in cmdKeys else False
+        redWindow = cmdKeys['redWindow'].values if 'redWindow' in cmdKeys else False
 
         job = self.resourceManager.request(cmd, spsSequence.Object)
-        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, window=window, **seqKwargs)
+        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, window=window, blueWindow=blueWindow,
+                        redWindow=redWindow, **seqKwargs)
 
         job.fire(cmd)
 
     def domeFlat(self, cmd):
         """
-        `iic domeFlat exptime=??? [window=???] [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"]
-        [comments=\"SSS\"] [@doTest]"`
+        `iic domeFlat exptime=??? [window=???] [blueWindow=???] [redWindow=???] [cam=???] [arm=???] [sm=???]
+         [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Check focus and take a set of fiberTrace, this sequence rely on an external illuminator (HSC lamps).
         Sequence is referenced in opdb as iic_sequence.seqtype=domeFlat.
@@ -380,6 +398,10 @@ class SpsCmd(object):
             exposure time.
         window : `int`,`int`
             first row, total number of rows.
+        blueWindow : `int`,`int`
+            first row, total number of rows. (blue arm)
+        redWindow : `int`,`int`
+            first row, total number of rows. (red arm)
         cam : list of `str`
            List of camera to expose, default=all
         arm : list of `str`
@@ -401,9 +423,12 @@ class SpsCmd(object):
         exptime = cmdKeys['exptime'].values
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
         window = cmdKeys['window'].values if 'window' in cmdKeys else False
+        blueWindow = cmdKeys['blueWindow'].values if 'blueWindow' in cmdKeys else False
+        redWindow = cmdKeys['redWindow'].values if 'redWindow' in cmdKeys else False
 
         job = self.resourceManager.request(cmd, spsSequence.DomeFlat)
-        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, window=window, **seqKwargs)
+        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, window=window, blueWindow=blueWindow,
+                        redWindow=redWindow, **seqKwargs)
 
         job.fire(cmd)
 

@@ -12,13 +12,15 @@ class SpsSequence(Sequence):
     def __init__(self, *args, **kwargs):
         Sequence.__init__(self, *args, **kwargs)
 
-    def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, window=False, **identKeys):
+    def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, window=False, blueWindow=False, redWindow=False,
+               **identKeys):
         """ Append duplicate * sps expose to sequence """
         exptime = [exptime] if not isinstance(exptime, list) else exptime
 
         for expTime in exptime:
             for i in range(duplicate):
-                self.append(SpsExpose.specify(exptype, expTime, doTest=doTest, window=window, **identKeys))
+                self.append(SpsExpose.specify(exptype, expTime, doTest=doTest, window=window, blueWindow=blueWindow,
+                                              redWindow=redWindow, **identKeys))
 
     def guessType(self, actor, cmdStr):
         """ Guess SubCmd type """
