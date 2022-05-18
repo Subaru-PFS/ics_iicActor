@@ -27,14 +27,14 @@ class DotRoach(timedLampsSequence):
         # turning drp processing on
         self.add(actor='drp', cmdStr='startDotLoop', keepMoving=keepMoving, dotRoachConfig=dotRoachConfig)
 
-        exptime = dict(halogen=windowedFlat['exptime'], shutterTiming=False)
+        exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
         redWindow = windowedFlat['redWindow']
         blueWindow = windowedFlat['blueWindow']
 
         for i in range(count):
             self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest,
-                        redWindow=(redWindow['row0'], redWindow['nrows']),
-                        blueWindow=(blueWindow['row0'], blueWindow['nrows']))
+                        redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
+                        blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
 
             self.add(actor='drp', cmdStr='processDotData')
             self.add(actor='fps',
