@@ -48,11 +48,16 @@ class TopCmd(object):
         # declaring new field
         pfsDesign, visit0 = self.actor.visitor.declareNewField(pfsDesignId)
 
+        cmd.inform('designId=Ox%016x' % pfsDesign.pfsDesignId)
+
         # inserting into opdb
         newDesign = not opDB.fetchone(
             f'select pfs_design_id from pfs_design where pfs_design_id={pfsDesign.pfsDesignId}')
         if newDesign:
-            ingestPfsDesign.ingestPfsDesign(pfsDesign, to_be_observed_at='now')
+            try:
+                ingestPfsDesign.ingestPfsDesign(pfsDesign, to_be_observed_at='now')
+            except:
+                cmd.warn('text="ingestPfsDesign failed, ignoring for now..."')
         else:
             cmd.warn('text="pfsDesign(0x%016x) already inserted in opdb..."' % pfsDesign.pfsDesignId)
 
