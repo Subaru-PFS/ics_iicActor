@@ -29,8 +29,8 @@ class DotRoach(timedLampsSequence):
         # turning off the illuminators
         self.add(actor='sps', cmdStr='bia off')
 
-        # first take one bias to niet things up.
-        SpsSequence.expose(self, exptype='bias', cams=cams, doTest=doTest)
+        # use sps erase command to niet things up.
+        self.add(actor='sps', cmdStr='erase', cams=cams)
 
         # turning drp processing on
         self.add(actor='drp', cmdStr='startDotLoop', dataRoot=dataRoot, dotRoachConfig=dotRoachConfig,
