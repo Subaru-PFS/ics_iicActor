@@ -1,11 +1,12 @@
-from importlib import reload
-import pandas as pd
 import os
+from importlib import reload
+
 import ics.iicActor.misc.sequenceList as miscSequence
 import ics.iicActor.utils.lib as iicUtils
 import ics.utils.opdb as opdb
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+import pandas as pd
 
 reload(iicUtils)
 
@@ -25,7 +26,8 @@ class MiscCmd(object):
         identArgs = '[<cam>] [<arm>] [<sm>]'
 
         self.vocab = [
-            ('dotRoach', f'[@(keepMoving)] [<stepSize>] [<count>] [<exptime>] [<dotRoachConfig>] {identArgs} {seqArgs}',
+            ('dotRoach',
+             f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<dotRoachConfig>] [@(keepMoving)] {identArgs} {seqArgs}',
              self.dotRoaching),
 
         ]
@@ -58,14 +60,19 @@ class MiscCmd(object):
 
         # load config from instdata
         config = self.actor.actorConfig['dotRoach']
+
         if 'stepSize' in cmdKeys:
             config.update(stepSize=cmdKeys['stepSize'].values[0])
         if 'count' in cmdKeys:
             config.update(count=cmdKeys['count'].values[0])
         if 'exptime' in cmdKeys:
             config['windowedFlat'].update(exptime=cmdKeys['exptime'].values[0])
+        if 'phi' in cmdKeys:
+            config.update(motor='phi')
+        if 'theta' in cmdKeys:
+            config.update(motor='theta')
 
-        configRoot = config.pop('configRoot')
+        configRoot = os.path.join(config['rootDir'], 'config')
 
         keepMoving = 'keepMoving' in cmdKeys
         dotRoachConfig = cmdKeys['dotRoachConfig'].values[0] if 'dotRoachConfig' in cmdKeys else 'SM1_000'
@@ -74,13 +81,15 @@ class MiscCmd(object):
         try:
             df = pd.read_csv(dotRoachConfig, index_col=0)
         except:
-            cmd.fail(f'text="failed to open dotRoachConfig file :{dotRoachConfig}!')
+            cmd.fail(f'text="failed to open dotRoachConfig file :{dotRoachConfig}!"')
             return
 
         # retrieving designId from opdb
+        designName = f"nearDot_{config['motor']}"
+
         try:
             [designId, ] = opdb.opDB.fetchone(
-                "select pfs_design_id from pfs_design where design_name='nearDot' order by designed_at desc limit 1")
+                f"select pfs_design_id from pfs_design where design_name='{designName}' order by designed_at desc limit 1")
         except:
             raise RuntimeError('could not retrieve near-dot designId from opdb')
 
@@ -88,8 +97,7 @@ class MiscCmd(object):
         pfsDesign, visit = self.actor.visitor.declareNewField(designId)
 
         job = self.resourceManager.request(cmd, miscSequence.DotRoach)
-        job.instantiate(cmd, designId=designId, visitId=visit.visitId, keepMoving=keepMoving,
-                        dotRoachConfig=dotRoachConfig, **config,
-                        **seqKwargs)
+        job.instantiate(cmd, designId=designId, visitId=visit.visitId, dotRoachConfig=dotRoachConfig,
+                        keepMoving=keepMoving, **config, **seqKwargs)
 
         job.fire(cmd)
