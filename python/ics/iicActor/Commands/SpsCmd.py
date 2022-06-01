@@ -58,6 +58,7 @@ class SpsCmd(object):
             ('domeArc', f'<exptime> {commonArgs}', self.domeArc),
             ('sps', f'@startExposures <exptime> {identArgs} [<name>] [<comments>] [@doBias] [@doTest]',
              self.startExposures),
+            ('sps', f'@erase {commonArgs}', self.erase),
 
             ('bias', f'{commonArgs} [<head>] [<tail>]', self.doBias),
             ('dark', f'<exptime> {commonArgs} [<head>] [<tail>]', self.doDark),
@@ -508,6 +509,37 @@ class SpsCmd(object):
 
         cmd.finish()
         job.fire(cmd=self.actor.bcast)
+
+    def erase(self, cmd):
+        """
+        `iic sps erase [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Erase sps detectors, meant mainly to use before windowed exposures.
+
+        Parameters
+        ---------
+        cam : list of `str`
+           List of camera to erase, default=all
+        arm : list of `str`
+           List of arm to erase, default=all
+        sm : list of `int`
+           List of spectrograph module to erase, default=all
+        duplicate : `int`
+           Number of repeat, default=1
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        """
+        cmdKeys = cmd.cmd.keywords
+
+        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=False)
+        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
+
+        job = self.resourceManager.request(cmd, spsSequence.Erase)
+        job.instantiate(cmd, duplicate=duplicate, **seqKwargs)
+
+        job.fire(cmd)
 
     def doBias(self, cmd):
         """
