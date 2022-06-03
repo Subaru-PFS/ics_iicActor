@@ -7,7 +7,8 @@ class Object(SpsSequence):
     seqtype = 'scienceObject'
     doCheckFocus = True
 
-    def __init__(self, exptime, duplicate, cams, doTest=False, window=False, blueWindow=False, redWindow=False, **kwargs):
+    def __init__(self, exptime, duplicate, cams, doTest=False, window=False, blueWindow=False, redWindow=False,
+                 **kwargs):
         SpsSequence.__init__(self, **kwargs)
         isWindowed = window or blueWindow or redWindow
         self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
@@ -64,7 +65,8 @@ class DomeFlat(SpsSequence):
     seqtype = 'domeFlat'
     doCheckFocus = True
 
-    def __init__(self, exptime, duplicate, cams, doTest=False, window=False,  blueWindow=False, redWindow=False, **kwargs):
+    def __init__(self, exptime, duplicate, cams, doTest=False, window=False, blueWindow=False, redWindow=False,
+                 **kwargs):
         SpsSequence.__init__(self, **kwargs)
         isWindowed = window or blueWindow or redWindow
         self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
@@ -81,6 +83,16 @@ class DomeArc(SpsSequence):
     def __init__(self, exptime, duplicate, cams, doTest=False, **kwargs):
         SpsSequence.__init__(self, **kwargs)
         self.expose(exptype='arc', exptime=exptime, cams=cams, duplicate=duplicate, doTest=doTest)
+
+
+class Erase(SpsSequence):
+    """ Sps erase. """
+    seqtype = 'spsErase'
+
+    def __init__(self, duplicate, cams, doTest=False, **kwargs):
+        SpsSequence.__init__(self, **kwargs)
+        for i in range(duplicate):
+            self.add(actor='sps', cmdStr='erase', cams=cams)
 
 
 class Biases(SpsSequence):
@@ -123,7 +135,8 @@ class Flats(SpsSequence):
     """ Flat / fiberTrace sequence """
     seqtype = 'flats'
 
-    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, doTest=False, window=False,  blueWindow=False, redWindow=False, **kwargs):
+    def __init__(self, exptime, duplicate, cams, dcbOn, dcbOff, doTest=False, window=False, blueWindow=False,
+                 redWindow=False, **kwargs):
         SpsSequence.__init__(self, **kwargs)
         isWindowed = window or blueWindow or redWindow
         self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
