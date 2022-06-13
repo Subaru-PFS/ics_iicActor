@@ -20,12 +20,14 @@ class TopCmd(object):
             ('ping', '', self.ping),
             ('status', '', self.status),
             ('declareCurrentPfsDesign', '<designId>', self.declareCurrentPfsDesign),
-            ('finishField', '', self.finishField)
+            ('finishField', '', self.finishField),
+            ('visit0', '@(freeze|unfreeze) <caller>', self.setVisit0)
         ]
 
         # Define typed command arguments for the above commands.
         self.keys = keys.KeysDictionary("iic_iic", (1, 1),
-                                        keys.Key('designId', types.Long(), help='selected pfsDesignId')
+                                        keys.Key('designId', types.Long(), help='selected pfsDesignId'),
+                                        keys.Key('caller', types.String(), help='visit caller')
                                         )
 
     def ping(self, cmd):
@@ -56,8 +58,8 @@ class TopCmd(object):
         if newDesign:
             try:
                 ingestPfsDesign.ingestPfsDesign(pfsDesign, to_be_observed_at='now')
-            except:
-                cmd.warn('text="ingestPfsDesign failed, ignoring for now..."')
+            except Exception as e:
+                cmd.warn(f'text="ingestPfsDesign failed with {str(e)}, ignoring for now..."')
         else:
             cmd.warn('text="pfsDesign(0x%016x) already inserted in opdb..."' % pfsDesign.pfsDesignId)
 
@@ -67,7 +69,7 @@ class TopCmd(object):
         # generating keyword for gen2
         designName = 'unnamed' if not pfsDesign.designName else pfsDesign.designName
         cmd.finish('pfsDesign=0x%016x,%d,%.6f,%.6f,%.6f,%s' % (pfsDesign.pfsDesignId,
-                                                               visit0.visitId,
+                                                               visit0,
                                                                pfsDesign.raBoresight,
                                                                pfsDesign.decBoresight,
                                                                pfsDesign.posAng,
@@ -84,3 +86,18 @@ class TopCmd(object):
                                                                np.NaN,
                                                                np.NaN,
                                                                'none'))
+
+    def setVisit0(self, cmd):
+        """Add more control over how visit0 is handled."""
+        cmdKeys = cmd.cmd.keywords
+
+        caller = cmdKeys['caller'].values[0]
+        doFreeze = 'unfreeze' not in cmdKeys
+
+        # get matching visit.
+        visit = self.actor.visitor.getField().getVisit(caller)
+
+        cmd.inform(f'text="freezing({doFreeze} visit0({visit.visitId}) for {caller}')
+        visit.setFrozen(doFreeze)
+
+        cmd.finish()
