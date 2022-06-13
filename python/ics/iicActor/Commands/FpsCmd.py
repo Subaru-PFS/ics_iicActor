@@ -4,7 +4,7 @@ import ics.iicActor.fps.sequenceList as fpsSequence
 import ics.iicActor.utils.lib as iicUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
-from ics.utils import visit
+from ics.utils.threading import singleShot
 
 reload(fpsSequence)
 reload(iicUtils)
@@ -24,16 +24,19 @@ class BoresightLoop(object):
         self.expTime = expTime
         self.nExposures = nExposures
 
+    def __del__(self):
+        self.visit.stop()
+
     @property
     def startFrame(self):
         return self.visit.visitId * 100
 
     @property
     def endFrame(self):
-        return self.visit.visitId * 100 + self.visit.fpsFrameId() - 1
+        return self.visit.visitId * 100 + self.visit.frameId() - 1
 
     def nextFrameId(self):
-        return self.visit.frameForFPS()
+        return self.visit.nextFrameId()
 
 
 class FpsCmd(object):
@@ -103,6 +106,7 @@ class FpsCmd(object):
     def resourceManager(self):
         return self.actor.resourceManager
 
+    @singleShot
     def moveToPfsDesign(self, cmd):
         """
         `iic moveToPfsDesign designId=??? [name=\"SSS\"] [comments=\"SSS\"]`
@@ -119,21 +123,19 @@ class FpsCmd(object):
            To be inserted in opdb:iic_sequence.comments.
         """
         cmdKeys = cmd.cmd.keywords
-
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
-        if 'designId' in cmdKeys:
-            designId = cmdKeys['designId'].values[0]
-            visit = self.actor.visitor.getVisit('fps')
-        else:
-            designId, visit = self.actor.visitor.getField('fps')
-
+        # get provided designId or get current one.
+        designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.actor.visitor.getCurrentDesignId()
         cmd.inform('designId=0x%016x' % designId)
 
         job = self.resourceManager.request(cmd, fpsSequence.MoveToPfsDesign)
-        job.instantiate(cmd, visitId=visit.visitId, designId=designId, **seqKwargs)
 
-        job.fire(cmd)
+        with self.actor.visitor.getVisit(caller='fps') as visit:
+            job.instantiate(cmd, visitId=visit.visitId, designId=designId, **seqKwargs)
+            job.seq.process(cmd)
+
+        cmd.finish()
 
     def movePhiToAngle(self, cmd):
         """
@@ -389,23 +391,15 @@ class FpsCmd(object):
             cmd.fail('text="cannot request more than 100 FPS images at once"')
             return
 
-        try:
-            ourVisit = self.actor.visitor.getVisit('fps', 'fpsLoop')
-        except visit.VisitActiveError:
-            cmd.fail('text="IIC already has an active visit: %s"' % (self.actor.visitor.activeVisit))
-            raise
-
-        fpsVisit = ourVisit.visitId
-        timeLim = 30 + (15 + expTime) * cnt
-        cmd.inform(f'text="setting timeout for nexp={cnt} exptime={expTime} to {timeLim}"')
-        try:
+        with self.actor.visitor.getVisit('fps', 'fpsLoop') as ourVisit:
+            fpsVisit = ourVisit.visitId
+            timeLim = 30 + (15 + expTime) * cnt
+            cmd.inform(f'text="setting timeout for nexp={cnt} exptime={expTime} to {timeLim}"')
             ret = self.actor.cmdr.call(actor='fps',
                                        cmdStr=f'testLoop cnt={cnt} expTime={expTime:0.2f} visit={fpsVisit}',
                                        timeLim=timeLim)
             if ret.didFail:
                 raise RuntimeError("FPS failed to run a testLoop!")
-        finally:
-            self.actor.visitor.releaseVisit(fpsVisit)
 
         cmd.finish()
 
@@ -503,7 +497,6 @@ class FpsCmd(object):
             cmd.fail('text="failed to reduce boresight, closed loop: %s"' % (str(e)))
             return
         finally:
-            self.actor.visitor.releaseVisit(self.boresightLoop.visit.visitId)
             self.boresightLoop = None
 
         cmd.finish('')
@@ -519,7 +512,6 @@ class FpsCmd(object):
             cmd.fail('text="no boresight loop to abort"')
             return
 
-        self.actor.visitor.releaseVisit(self.boresightLoop.visit.visitId)
         self.boresightLoop = None
 
         cmd.finish('text="boresight loop aborted"')

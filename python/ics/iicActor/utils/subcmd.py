@@ -1,4 +1,5 @@
 from ics.iicActor.utils.lib import stripQuotes
+import pfscore.gen2 as gen2
 
 
 class SubCmd(object):
@@ -129,23 +130,24 @@ class VisitedCmd(SubCmd):
 
     def callAndUpdate(self, cmd):
         """Get visit, expose, release visit."""
-        try:
-            self.visit = self.getVisit()
-        except Exception as e:
-            self.didFail = 1
-            self.lastReply = f'{type(e).__name__}({stripQuotes(str(e))})'
-            self.genOutput(cmd=cmd)
-            return None
+        cmdVar = None
 
-        cmdVar = SubCmd.callAndUpdate(self, cmd)
-        self.releaseVisit(cmdVar)
+        try:
+            cmdVar = self.handleVisitAndCall(cmd)
+            self.insertDB(cmdVar)
+        except gen2.FetchVisitFromGen2 as e:
+            self.didFail = 1
+            self.lastReply = str(e)
+            self.genOutput(cmd=cmd)
+
         return cmdVar
 
-    def getVisit(self):
-        """ Get visit from ics.iicActor.visit.Visit """
-        ourVisit = self.iicActor.visitor.getVisit(consumer=self.actor)
-        return ourVisit.visitId
+    def handleVisitAndCall(self, cmd):
+        """"""
+        with self.iicActor.visitor.getVisit(caller=self.actor) as ourVisit:
+            self.visit = ourVisit.visitId
+            return SubCmd.callAndUpdate(self, cmd)
 
-    def releaseVisit(self, cmdVar=None):
-        """ Release visit """
-        self.iicActor.visitor.releaseVisit(self.visit, consumer=self.actor)
+    def insertDB(self, cmdVar):
+        """"""
+        pass

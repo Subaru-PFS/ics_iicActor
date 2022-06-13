@@ -15,23 +15,20 @@ class SpsExpose(VisitedCmd):
         exptime = exptime if exptime else None
         return cls('sps', f'expose {exptype}', timeLim=timeLim, exptime=exptime, **kwargs)
 
-    def visitConsumed(self, cmdVar):
-        """ Get visit from ics.iicActor.visit.Visit """
-        cmdKeys = cmdVarToKeys(cmdVar)
+    def insertDB(self, cmdVar):
+        """Insert in opDB."""
 
-        try:
-            visit, __, mask = cmdKeys['fileIds'].values
-            consumed = True
-        except:
-            consumed = False
+        def visitConsumed():
+            """ Get visit from ics.iicActor.visit.Visit """
+            cmdKeys = cmdVarToKeys(cmdVar)
+            try:
+                visit, __, mask = cmdKeys['fileIds'].values
+            except:
+                mask = "0x0"
 
-        return consumed
+            return int(mask, 16) > 0
 
-    def releaseVisit(self, cmdVar):
-        """ Release visit """
-        VisitedCmd.releaseVisit(self)
-
-        if self.visitConsumed(cmdVar):
+        if visitConsumed():
             opDB.insert('visit_set', pfs_visit_id=self.visit, visit_set_id=self.sequence.visit_set_id)
 
     def abort(self, cmd):

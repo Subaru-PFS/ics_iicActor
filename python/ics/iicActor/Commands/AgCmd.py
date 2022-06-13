@@ -4,6 +4,7 @@ import ics.iicActor.ag.sequenceList as agSequence
 import ics.iicActor.utils.lib as iicUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from ics.utils.threading import singleShot
 
 reload(agSequence)
 reload(iicUtils)
@@ -36,7 +37,7 @@ class AgCmd(object):
                                         keys.Key('comments', types.String(), help='iic_sequence comments'),
                                         keys.Key("designId", types.Long(),
                                                  help="pfsDesignId for the field, which defines the fiber positions"),
-                                        keys.Key("exptime", types.Float(),  help='exptime in ms'),
+                                        keys.Key("exptime", types.Float(), help='exptime in ms'),
                                         keys.Key("guide", types.String()),
                                         keys.Key("magnitude", types.Float()),
                                         keys.Key("fromSky", types.String()),
@@ -50,6 +51,7 @@ class AgCmd(object):
     def resourceManager(self):
         return self.actor.resourceManager
 
+    @singleShot
     def acquireField(self, cmd):
         """
         `iic acquireField [exptime=???] [guide=???] [magnitude=???] [name=\"SSS\"] [comments=\"SSS\"]`
@@ -74,25 +76,25 @@ class AgCmd(object):
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
-        if 'designId' in cmdKeys:
-            designId = cmdKeys['designId'].values[0]
-            visit = self.actor.visitor.getVisit('ag')
-        else:
-            designId, visit = self.actor.visitor.getField('ag')
-
         exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else None
         guide = cmdKeys['guide'].values[0] if 'guide' in cmdKeys else None
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
         dryRun = cmdKeys['dryRun'].values[0] if 'dryRun' in cmdKeys else None
 
+        # get provided designId or get current one.
+        designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.actor.visitor.getCurrentDesignId()
+
         # requesting resources, erk..
         job = self.resourceManager.request(cmd, agSequence.AcquireField)
 
-        job.instantiate(cmd, designId=designId, visitId=visit.visitId, exptime=exptime, guide=guide,
-                        magnitude=magnitude, dryRun=dryRun, **seqKwargs)
+        with self.actor.visitor.getVisit(caller='ag') as visit:
+            job.instantiate(cmd, designId=designId, visitId=visit.visitId, exptime=exptime, guide=guide,
+                            magnitude=magnitude, dryRun=dryRun, **seqKwargs)
+            job.seq.process(cmd)
 
-        job.fire(cmd)
+        cmd.finish()
 
+    @singleShot
     def autoguideStart(self, cmd):
         """
         `iic autoguideStart [exptime=???] [fromSky=???] [cadence=???] [focus=???] [center=???] [magnitude=???] [name=\"SSS\"] [comments=\"SSS\"]`
@@ -131,18 +133,18 @@ class AgCmd(object):
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
         dryRun = cmdKeys['dryRun'].values[0] if 'dryRun' in cmdKeys else None
 
-        if 'designId' in cmdKeys:
-            designId = cmdKeys['designId'].values[0]
-            visit = self.actor.visitor.getVisit('ag')
-        else:
-            designId, visit = self.actor.visitor.getField('ag')
+        # get provided designId or get current one.
+        designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.actor.visitor.getCurrentDesignId()
 
         # requesting resources, erk..
         job = self.resourceManager.request(cmd, agSequence.AutoguideStart)
-        job.instantiate(cmd, designId=designId, visitId=visit.visitId, exptime=exptime, fromSky=fromSky,
-                        cadence=cadence, focus=focus, center=center, magnitude=magnitude, dryRun=dryRun, **seqKwargs)
+        with self.actor.visitor.getVisit(caller='ag') as visit:
+            job.instantiate(cmd, designId=designId, visitId=visit.visitId, exptime=exptime, fromSky=fromSky,
+                            cadence=cadence, focus=focus, center=center, magnitude=magnitude, dryRun=dryRun,
+                            **seqKwargs)
+            job.seq.process(cmd)
 
-        job.fire(cmd)
+        cmd.finish()
 
     def autoguideStop(self, cmd):
         """
