@@ -17,8 +17,8 @@ class SequenceCmd(object):
         #
         self.vocab = [
             ('sequenceStatus', '[<id>]', self.sequenceStatus),
+            ('sequence', '@abort [<id>]', self.abortSequence),
             ('sps', '@abortExposure [<id>]', self.abortExposure),
-            ('sps', '@abort [<id>]', self.abortExposure),
             ('sps', '@finishExposure [@(now)] [<id>]', self.finishExposure),
             ('annotate', '@(bad|ok) [<notes>] [<visit>] [<visitSet>] [<cam>] [<arm>] [<sm>]', self.annotate)
         ]
@@ -53,6 +53,29 @@ class SequenceCmd(object):
         visitSetId = cmdKeys['id'].values[0] if 'id' in cmdKeys else None
 
         self.actor.resourceManager.genStatus(cmd, visitSetId=visitSetId)
+        cmd.finish()
+
+    def abortSequence(self, cmd):
+        """
+        `iic sequence abort id=N`
+
+        abort iic sequence.
+
+        Parameters
+        ---------
+        id : `int`
+           optional sequenceId.
+        """
+        cmdKeys = cmd.cmd.keywords
+        identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else None
+
+        job = self.resourceManager.identify(identifier=identifier)
+        if job.isDone:
+            raise RuntimeError('job already finished')
+
+        cmd.inform(f'text="aborting exposure from sequence(id:{job.visitSetId})..."')
+        job.abort(cmd)
+
         cmd.finish()
 
     def abortExposure(self, cmd):

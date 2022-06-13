@@ -1,11 +1,11 @@
 import ics.iicActor.sps.engineering as spsEngineering
 from astropy import time as astroTime
+from ics.iicActor.ag.job import AgJob
+from ics.iicActor.ag.sequence import AgSequence
 from ics.iicActor.fps.job import FpsJob
 from ics.iicActor.fps.sequence import FpsSequence
 from ics.iicActor.sps.job import SpectroJob, RdaJob
 from ics.iicActor.sps.sequence import SpsSequence
-from ics.iicActor.ag.job import AgJob
-from ics.iicActor.ag.sequence import AgSequence
 from ics.utils.opdb import opDB
 from ics.utils.sps.config import SpsConfig
 from iicActor.utils.lib import genIdentKeys
@@ -105,6 +105,12 @@ class ResourceManager(object):
     def identify(self, identifier):
         """ identify job from identifier(sps, dcb ...), look for job with light source first. """
         ret = None
+
+        if identifier is None:
+            try:
+                [ret] = [job for job in self.jobs.values() if not job.isDone]
+            except:
+                pass
 
         if isinstance(identifier, int):
             visitSetId = identifier
