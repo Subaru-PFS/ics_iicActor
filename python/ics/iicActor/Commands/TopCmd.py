@@ -1,8 +1,11 @@
+from importlib import reload
+
+import iicActor.utils.pfsDesign as pfsDesignUtils
 import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
-import pfs.utils.ingestPfsDesign as ingestPfsDesign
-from ics.utils.opdb import opDB
+
+reload(pfsDesignUtils)
 
 
 class TopCmd(object):
@@ -44,24 +47,7 @@ class TopCmd(object):
 
     def declareCurrentPfsDesign(self, cmd):
         """Report camera status and actor version. """
-        cmdKeys = cmd.cmd.keywords
-        pfsDesignId = cmdKeys['designId'].values[0]
-
-        # declaring new field
-        pfsDesign, visit0 = self.actor.visitor.declareNewField(pfsDesignId)
-
-        cmd.inform('designId=Ox%016x' % pfsDesign.pfsDesignId)
-
-        # inserting into opdb
-        newDesign = not opDB.fetchone(
-            f'select pfs_design_id from pfs_design where pfs_design_id={pfsDesign.pfsDesignId}')
-        if newDesign:
-            try:
-                ingestPfsDesign.ingestPfsDesign(pfsDesign, to_be_observed_at='now')
-            except Exception as e:
-                cmd.warn(f'text="ingestPfsDesign failed with {str(e)}, ignoring for now..."')
-        else:
-            cmd.warn('text="pfsDesign(0x%016x) already inserted in opdb..."' % pfsDesign.pfsDesignId)
+        pfsDesign, visit0 = pfsDesignUtils.PfsDesignHandler.declareCurrentPfsDesign(cmd, self.actor.visitor)
 
         # setting grating to design.
         self.actor.callCommand('setGratingToDesign')
