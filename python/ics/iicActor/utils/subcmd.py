@@ -20,7 +20,7 @@ class SubCmd(object):
 
     @property
     def isLast(self):
-        return self.sequence.subCmds[-1] == self
+        return self.sequence.isMainSequence and self.sequence.subCmds[-1] == self
 
     @property
     def visited(self):

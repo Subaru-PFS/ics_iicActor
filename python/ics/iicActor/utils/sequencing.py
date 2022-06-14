@@ -11,12 +11,14 @@ class Sequence(list):
     """ Placeholder to handle sequence of subcommand """
     seqtype = 'sequence'
 
-    def __init__(self, name='', comments='', head=None, tail=None):
+    def __init__(self, name='', comments='', head=None, tail=None, isMainSequence=True):
         super().__init__()
         self.name = name
         self.comments = comments
         self.head = CmdList(self, head)
         self.tail = CmdList(self, tail)
+        self.isMainSequence = isMainSequence
+
         self.isDone = False
         self.doAbort = False
         self.doFinish = False
