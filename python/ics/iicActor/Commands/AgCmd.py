@@ -24,9 +24,9 @@ class AgCmd(object):
         seqArgs = '[<name>] [<comments>]'
         self.vocab = [
             ('acquireField',
-             f'[<designId>] [<exptime>] [<guide>] [<magnitude>] [<dryRun>] {seqArgs}', self.acquireField),
+             f'[<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] {seqArgs}', self.acquireField),
             ('autoguideStart',
-             f'[<designId>] [<exptime>] [<fromSky>] [<cadence>] [<focus>] [<center>] [<magnitude>] [@(dryRun)] {seqArgs}',
+             f'[<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] [@(dryRun)] {seqArgs}',
              self.autoguideStart),
             ('autoguideStop', '', self.autoguideStop),
         ]
@@ -38,13 +38,9 @@ class AgCmd(object):
                                         keys.Key("designId", types.Long(),
                                                  help="pfsDesignId for the field, which defines the fiber positions"),
                                         keys.Key("exptime", types.Float(), help='exptime in ms'),
-                                        keys.Key("guide", types.String()),
                                         keys.Key("magnitude", types.Float()),
-                                        keys.Key("fromSky", types.String()),
                                         keys.Key("cadence", types.Float()),
-                                        keys.Key("focus", types.String()),
                                         keys.Key("center", types.Float() * (1, 3)),
-                                        keys.Key("dryRun", types.String()),
                                         )
 
     @property
@@ -54,20 +50,22 @@ class AgCmd(object):
     @singleShot
     def acquireField(self, cmd):
         """
-        `iic acquireField [exptime=???] [guide=???] [magnitude=???] [name=\"SSS\"] [comments=\"SSS\"]`
+        `iic acquireField [designId=???] [exptime=???] [magnitude=???] [@guideOff] [@dryRun] [name=\"SSS\"] [comments=\"SSS\"]`
 
         Ag acquire field
 
         Parameters
         ---------
+        designId : `int`
+           optional pfsDesignId.
         exptime : `float`
-           optional exposure time(ms).
-        guide : `str`
-           yes|no.
+           optional exposure time(ms), default(2000).
         magnitude : `float`
-           magnitude limit.
-        dryRun : `str`
-           yes|no.
+           magnitude limit, default(20).
+        guideOff : `bool`
+            deactivate telescope autoguiding to acquire a field.
+        dryRun : `bool`
+           dryRun command.
         name : `str`
            To be inserted in opdb:iic_sequence.name.
         comments : `str`
@@ -77,9 +75,9 @@ class AgCmd(object):
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
         exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else None
-        guide = cmdKeys['guide'].values[0] if 'guide' in cmdKeys else None
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
-        dryRun = cmdKeys['dryRun'].values[0] if 'dryRun' in cmdKeys else None
+        guide = 'no' if 'guideOff' in cmdKeys else None
+        dryRun = 'yes' if 'dryRun' in cmdKeys else None
 
         # get provided designId or get current one.
         designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.actor.visitor.getCurrentDesignId()
@@ -97,26 +95,26 @@ class AgCmd(object):
     @singleShot
     def autoguideStart(self, cmd):
         """
-        `iic autoguideStart [exptime=???] [fromSky=???] [cadence=???] [focus=???] [center=???] [magnitude=???] [name=\"SSS\"] [comments=\"SSS\"]`
+        `iic autoguideStart [exptime=???] [cadence=???] [center=???] [magnitude=???] [@guideOff] [@dryRun] [name=\"SSS\"] [comments=\"SSS\"]`
 
         Ag autoguide start.
 
         Parameters
         ---------
+        designId : `int`
+           optional pfsDesignId.
         exptime : `float`
            optional exposure time(ms).
-        fromSky : `str`
-           yes|no
         cadence : `float`
-           cadense(ms)
-        focus : `str`
-           yes|no
+           autoguiding cadense(ms), default(0).
         center : 3*`float`
            ra,dec,pa
         magnitude : `float`
-           magnitude limit.
-        dryRun : `str`
-           yes|no.
+           magnitude limit, default(20).
+        fromSky : `bool`
+           specifies whether (any) detected stellar objects from an initial exposure are used as a guide instead.
+        dryRun : `bool`
+           dryRun command.
         name : `str`
            To be inserted in opdb:iic_sequence.name.
         comments : `str`
@@ -126,12 +124,11 @@ class AgCmd(object):
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
         exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else None
-        fromSky = cmdKeys['fromSky'].values[0] if 'fromSky' in cmdKeys else None
         cadence = cmdKeys['cadence'].values[0] if 'cadence' in cmdKeys else None
-        focus = cmdKeys['focus'].values[0] if 'focus' in cmdKeys else None
         center = cmdKeys['center'].values if 'center' in cmdKeys else None
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
-        dryRun = cmdKeys['dryRun'].values[0] if 'dryRun' in cmdKeys else None
+        fromSky = 'yes' if 'fromSky' in cmdKeys else None
+        dryRun = 'yes' if 'dryRun' in cmdKeys else None
 
         # get provided designId or get current one.
         designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.actor.visitor.getCurrentDesignId()
@@ -140,7 +137,7 @@ class AgCmd(object):
         job = self.resourceManager.request(cmd, agSequence.AutoguideStart)
         with self.actor.visitor.getVisit(caller='ag') as visit:
             job.instantiate(cmd, designId=designId, visitId=visit.visitId, exptime=exptime, fromSky=fromSky,
-                            cadence=cadence, focus=focus, center=center, magnitude=magnitude, dryRun=dryRun,
+                            cadence=cadence, center=center, magnitude=magnitude, dryRun=dryRun,
                             **seqKwargs)
             job.seq.process(cmd)
 
