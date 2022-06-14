@@ -59,3 +59,35 @@ class DotRoach(timedLampsSequence):
 
         # turning drp processing off
         self.tail.add(actor='drp', cmdStr='stopDotRoach')
+
+
+class DotCrossing(FpsSequence):
+    """ fps MoveToPfsDesign command. """
+    seqtype = 'dotCrossing'
+    dependencies = ['mcs']
+
+    def __init__(self, visit, stepSize, count, exptime, doTest=False, **kwargs):
+        FpsSequence.__init__(self, **kwargs)
+
+        # turning on the illuminators
+        self.add(actor='sps', cmdStr='bia on')
+        self.add(actor='mcs', cmdStr='expose object',
+                 exptime=exptime, frameId=visit.nextFrameId(), doFibreId=True)
+
+        for iterNum in range(count):
+            self.add(actor='fps', cmdStr=f'cobraMoveSteps {self.motor}', stepsize=stepSize)
+            self.add(actor='mcs', cmdStr='expose object',
+                     exptime=exptime, frameId=visit.nextFrameId(), doFibreId=True)
+
+        # turning off the illuminators
+        self.tail.add(actor='sps', cmdStr='bia off')
+
+
+class PhiCrossing(DotCrossing):
+    motor = 'phi'
+    seqtype = 'phiCrossing'
+
+
+class ThetaCrossing(DotCrossing):
+    motor = 'theta'
+    seqtype = 'thetaCrossing'

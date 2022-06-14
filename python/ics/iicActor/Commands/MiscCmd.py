@@ -30,6 +30,8 @@ class MiscCmd(object):
 
         self.vocab = [
             ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] {identArgs} {seqArgs}', self.dotRoaching),
+            ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] {seqArgs}', self.dotCrossing),
+            ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] {seqArgs}', self.dotCrossing),
         ]
 
         # Define typed command arguments for the above commands.
@@ -120,5 +122,52 @@ class MiscCmd(object):
         job2.instantiate(cmd, visitId=visit.visitId, maskFile=maskFile, keepMoving=keepMoving, **dotRoachConfig,
                          **seqKwargs)
         job2.seq.process(cmd)
+
+        cmd.finish()
+
+    @singleShot
+    def dotCrossing(self, cmd):
+        cmdKeys = cmd.cmd.keywords
+        seqKwargs = iicUtils.genSequenceKwargs(cmd)
+
+        # retrieving which crossing
+        if cmd.cmd.name == 'phiCrossing':
+            motor = 'phi'
+            DotCrossing = miscSequence.PhiCrossing
+        else:
+            motor = 'theta'
+            DotCrossing = miscSequence.ThetaCrossing
+
+        mcsCamera = 'mcs'
+
+        cmd.inform(f'text="starting {motor}-crossing using {mcsCamera} camera..."')
+
+        # load config from instdata
+        dotCrossingConfig = self.actor.actorConfig['dotCrossing']
+        nearDotConvergenceConfig = self.actor.actorConfig['nearDotConvergence']
+
+        if 'stepSize' in cmdKeys:
+            dotCrossingConfig.update(stepSize=cmdKeys['stepSize'].values[0])
+        if 'count' in cmdKeys:
+            dotCrossingConfig.update(count=cmdKeys['count'].values[0])
+        if 'exptime' in cmdKeys:
+            dotCrossingConfig['exptime'].update(exptime=cmdKeys['exptime'].values[0])
+
+        # declaring new field
+        designId = self.getNearDotDesign(mcsCamera, motor)
+        # declare current design as nearDotDesign.
+        pfsDesignUtils.PfsDesignHandler.declareCurrentPfsDesign(cmd, self.actor.visitor, designId=designId)
+
+        with self.actor.visitor.getVisit(caller='fps') as visit:
+            job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
+            job1.instantiate(cmd, designId=designId, visitId=visit.visitId,
+                             **nearDotConvergenceConfig, isMainSequence=False, **seqKwargs)
+            job1.seq.process(cmd)
+
+        with self.actor.visitor.getVisit(caller='fps') as visit:
+            # We should be nearDot at this point, so we can start the actual dotCrossing.
+            job2 = self.resourceManager.request(cmd, DotCrossing)
+            job2.instantiate(cmd, visit=visit, **dotCrossingConfig, **seqKwargs)
+            job2.seq.process(cmd)
 
         cmd.finish()
