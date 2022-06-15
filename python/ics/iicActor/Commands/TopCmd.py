@@ -23,6 +23,7 @@ class TopCmd(object):
             ('ping', '', self.ping),
             ('status', '', self.status),
             ('declareCurrentPfsDesign', '<designId>', self.declareCurrentPfsDesign),
+            ('ingestPfsDesign', '<designId> [<designedAt>] [<toBeObservedAt>]', self.ingestPfsDesign),
             ('finishField', '', self.finishField),
             ('visit0', '@(freeze|unfreeze) <caller>', self.setVisit0)
         ]
@@ -30,7 +31,9 @@ class TopCmd(object):
         # Define typed command arguments for the above commands.
         self.keys = keys.KeysDictionary("iic_iic", (1, 1),
                                         keys.Key('designId', types.Long(), help='selected pfsDesignId'),
-                                        keys.Key('caller', types.String(), help='visit caller')
+                                        keys.Key('caller', types.String(), help='visit caller'),
+                                        keys.Key('designedAt', types.String(), help=''),
+                                        keys.Key('toBeObservedAt', types.String(), help=''),
                                         )
 
     def ping(self, cmd):
@@ -47,7 +50,7 @@ class TopCmd(object):
 
     def declareCurrentPfsDesign(self, cmd):
         """Report camera status and actor version. """
-        pfsDesign, visit0 = pfsDesignUtils.PfsDesignHandler.declareCurrentPfsDesign(cmd, self.actor.visitor)
+        pfsDesign, visit0 = pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor)
 
         # setting grating to design.
         self.actor.callCommand('setGratingToDesign')
@@ -85,5 +88,21 @@ class TopCmd(object):
 
         cmd.inform(f'text="freezing({doFreeze} visit0({visit.visitId}) for {caller}')
         visit.setFrozen(doFreeze)
+
+        cmd.finish()
+
+    def ingestPfsDesign(self, cmd):
+        """Report camera status and actor version. """
+        cmdKeys = cmd.cmd.keywords
+
+        designId = cmdKeys['designId'].values[0]
+        designed_at = cmdKeys['designedAt'].values[0] if 'designedAt' in cmdKeys else None
+        to_be_observed_at = cmdKeys['toBeObservedAt'].values[0] if 'toBeObservedAt' in cmdKeys else None
+        # Reading design file.
+        pfsDesign = pfsDesignUtils.PfsDesignHandler.read(designId,
+                                                         dirName=self.actor.actorConfig['pfsDesign']['rootDir'])
+        # Ingesting into opdb.
+        pfsDesignUtils.PfsDesignHandler.ingest(cmd, pfsDesign,
+                                               designed_at=designed_at, to_be_observed_at=to_be_observed_at)
 
         cmd.finish()

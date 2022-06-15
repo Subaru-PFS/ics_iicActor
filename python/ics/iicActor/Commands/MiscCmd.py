@@ -109,7 +109,7 @@ class MiscCmd(object):
         # retrieve designId from opdb
         designId = self.getNearDotDesign(mcsCamera, dotRoachConfig['motor'])
         # declare current design as nearDotDesign.
-        pfsDesignUtils.PfsDesignHandler.declareCurrentPfsDesign(cmd, self.actor.visitor, designId=designId)
+        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
 
         with self.actor.visitor.getVisit(caller='fps') as visit:
             job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
@@ -156,7 +156,7 @@ class MiscCmd(object):
         # declaring new field
         designId = self.getNearDotDesign(mcsCamera, motor)
         # declare current design as nearDotDesign.
-        pfsDesignUtils.PfsDesignHandler.declareCurrentPfsDesign(cmd, self.actor.visitor, designId=designId)
+        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
 
         with self.actor.visitor.getVisit(caller='fps') as visit:
             job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)

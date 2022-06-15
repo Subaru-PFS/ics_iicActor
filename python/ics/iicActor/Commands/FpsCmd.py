@@ -129,7 +129,7 @@ class FpsCmd(object):
 
         # then declare new design.
         if 'designId' in cmdKeys:
-            pfsDesignUtils.PfsDesignHandler.declareCurrentPfsDesign(cmd, self.actor.visitor)
+            pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor)
 
         designId = self.actor.visitor.getCurrentDesignId()
 
