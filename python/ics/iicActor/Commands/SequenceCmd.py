@@ -18,6 +18,7 @@ class SequenceCmd(object):
         self.vocab = [
             ('sequenceStatus', '[<id>]', self.sequenceStatus),
             ('sequence', '@abort [<id>]', self.abortSequence),
+            ('sequence', '@finish [<id>]', self.finishSequence),
             ('sps', '@abortExposure [<id>]', self.abortExposure),
             ('sps', '@finishExposure [@(now)] [<id>]', self.finishExposure),
             ('annotate', '@(bad|ok) [<notes>] [<visit>] [<visitSet>] [<cam>] [<arm>] [<sm>]', self.annotate)
@@ -37,6 +38,16 @@ class SequenceCmd(object):
     @property
     def resourceManager(self):
         return self.actor.resourceManager
+
+    def findOnGoingJob(self, cmd):
+        cmdKeys = cmd.cmd.keywords
+        identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else None
+
+        job = self.resourceManager.identify(identifier=identifier)
+        if job.isDone:
+            raise RuntimeError('job already finished')
+
+        return job
 
     def sequenceStatus(self, cmd):
         """
@@ -66,15 +77,26 @@ class SequenceCmd(object):
         id : `int`
            optional sequenceId.
         """
-        cmdKeys = cmd.cmd.keywords
-        identifier = cmdKeys['id'].values[0] if 'id' in cmdKeys else None
-
-        job = self.resourceManager.identify(identifier=identifier)
-        if job.isDone:
-            raise RuntimeError('job already finished')
-
-        cmd.inform(f'text="aborting exposure from sequence(id:{job.visitSetId})..."')
+        job = self.findOnGoingJob(cmd)
+        cmd.inform(f'text="aborting sequence(id:{job.visitSetId})..."')
         job.abort(cmd)
+
+        cmd.finish()
+
+    def finishSequence(self, cmd):
+        """
+        `iic sequence finish id=N`
+
+        finish iic sequence.
+
+        Parameters
+        ---------
+        id : `int`
+           optional sequenceId.
+        """
+        job = self.findOnGoingJob(cmd)
+        cmd.inform(f'text="finishing sequence(id:{job.visitSetId})..."')
+        job.finish(cmd)
 
         cmd.finish()
 
