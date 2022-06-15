@@ -2,12 +2,14 @@ from importlib import reload
 
 import ics.iicActor.fps.sequenceList as fpsSequence
 import ics.iicActor.utils.lib as iicUtils
+import iicActor.utils.pfsDesign as pfsDesignUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.utils.threading import singleShot
 
 reload(fpsSequence)
 reload(iicUtils)
+reload(pfsDesignUtils)
 
 
 class BoresightLoop(object):
@@ -125,9 +127,11 @@ class FpsCmd(object):
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
-        # get provided designId or get current one.
-        designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.actor.visitor.getCurrentDesignId()
-        cmd.inform('designId=0x%016x' % designId)
+        # then declare new design.
+        if 'designId' in cmdKeys:
+            pfsDesignUtils.PfsDesignHandler.declareCurrentPfsDesign(cmd, self.actor.visitor)
+
+        designId = self.actor.visitor.getCurrentDesignId()
 
         job = self.resourceManager.request(cmd, fpsSequence.MoveToPfsDesign)
 
