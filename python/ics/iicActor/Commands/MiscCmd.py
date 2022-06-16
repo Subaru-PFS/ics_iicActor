@@ -30,8 +30,8 @@ class MiscCmd(object):
 
         self.vocab = [
             ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] {identArgs} {seqArgs}', self.dotRoaching),
-            ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] {seqArgs}', self.dotCrossing),
-            ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] {seqArgs}', self.dotCrossing),
+            ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
+            ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
         ]
 
         # Define typed command arguments for the above commands.
@@ -48,6 +48,7 @@ class MiscCmd(object):
                                         keys.Key('exptime', types.Float(), help='optional visit_set_id.'),
                                         keys.Key('maskFile', types.String() * (1,),
                                                  help='filename containing which fibers to expose.'),
+                                        keys.Key('designId', types.Long(), help='selected nearDot designId'),
                                         )
 
     @property
@@ -153,8 +154,8 @@ class MiscCmd(object):
         if 'exptime' in cmdKeys:
             dotCrossingConfig['exptime'].update(exptime=cmdKeys['exptime'].values[0])
 
-        # declaring new field
-        designId = self.getNearDotDesign(mcsCamera, motor)
+        # get designId from opdb or provided one.
+        designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.getNearDotDesign(mcsCamera, motor)
         # declare current design as nearDotDesign.
         pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
 
