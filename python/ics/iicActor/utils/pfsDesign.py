@@ -12,7 +12,7 @@ class PfsDesignHandler(object):
         # declaring new field
         pfsDesign, visit0 = visitor.declareNewField(designId)
         # still generating that key for header/drp for now.
-        cmd.inform('designId=Ox%016x' % designId)
+        cmd.inform('designId=0x%016x' % designId)
         # ingesting into opdb
         PfsDesignHandler.ingest(cmd, pfsDesign, to_be_observed_at="now")
         return pfsDesign, visit0
