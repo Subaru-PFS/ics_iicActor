@@ -108,26 +108,28 @@ class MiscCmd(object):
             cmd.fail(f'text="failed to open maskFile file:{maskFile} !"')
             return
 
-        # retrieve designId from opdb
-        designId = self.getNearDotDesign(mcsCamera, dotRoachConfig['motor'])
-        # declare current design as nearDotDesign.
-        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
-
-        with self.actor.visitor.getVisit(caller='fps') as visit:
-            job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
-            job1.instantiate(cmd, designId=designId, visitId=visit.visitId, maskFile=maskFile,
-                             **nearDotConvergenceConfig, isMainSequence=False, **seqKwargs)
-            try:
-                job1.seq.process(cmd)
-            finally:
-                # nearDotConvergence book-keeping.
-                job1.seq.insertVisitSet(visit.visitId)
+        # # retrieve designId from opdb
+        # designId = self.getNearDotDesign(mcsCamera, dotRoachConfig['motor'])
+        # # declare current design as nearDotDesign.
+        # pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
+        #
+        # with self.actor.visitor.getVisit(caller='fps') as visit:
+        #     job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
+        #     job1.instantiate(cmd, designId=designId, visitId=visit.visitId, maskFile=maskFile,
+        #                      **nearDotConvergenceConfig, isMainSequence=False, **seqKwargs)
+        #     try:
+        #         job1.seq.process(cmd)
+        #     finally:
+        #         # nearDotConvergence book-keeping.
+        #         job1.seq.insertVisitSet(visit.visitId)
+        #
 
         # We should be nearDot at this point, so we can start the actual dotRoaching.
-        job2 = self.resourceManager.request(cmd, miscSequence.DotRoach)
-        job2.instantiate(cmd, visitId=visit.visitId, maskFile=maskFile, keepMoving=keepMoving, **dotRoachConfig,
-                         **seqKwargs)
-        job2.seq.process(cmd)
+        with self.actor.visitor.getVisit(caller='fps') as visit:
+            job2 = self.resourceManager.request(cmd, miscSequence.DotRoach)
+            job2.instantiate(cmd, visitId=visit.visitId, maskFile=maskFile, keepMoving=keepMoving, **dotRoachConfig,
+                             **seqKwargs)
+            job2.seq.process(cmd)
 
         cmd.finish()
 
