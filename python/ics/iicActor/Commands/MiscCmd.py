@@ -152,7 +152,7 @@ class MiscCmd(object):
         if 'count' in cmdKeys:
             dotCrossingConfig.update(count=cmdKeys['count'].values[0])
         if 'exptime' in cmdKeys:
-            dotCrossingConfig['exptime'].update(exptime=cmdKeys['exptime'].values[0])
+            dotCrossingConfig.update(exptime=cmdKeys['exptime'].values[0])
 
         # get designId from opdb or provided one.
         designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.getNearDotDesign(mcsCamera, motor)
