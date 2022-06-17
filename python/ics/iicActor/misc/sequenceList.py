@@ -52,11 +52,11 @@ class DotRoach(SpsSequence):
                         redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
                         blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
 
-            #self.add(actor='drp', cmdStr='processDotRoach')
+            self.add(actor='drp', cmdStr='processDotRoach')
 
             self.add(actor='fps',
-                     cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,)
-                    # maskFile=os.path.join(maskFilesRoot, f'iter{iterNum}.csv'))
+                     cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,
+                     maskFile=os.path.join(maskFilesRoot, f'iter{iterNum}.csv'))
 
         # turning drp processing off
         self.tail.add(actor='drp', cmdStr='stopDotRoach')
