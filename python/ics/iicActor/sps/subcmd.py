@@ -1,6 +1,5 @@
 from ics.iicActor.utils.subcmd import VisitedCmd, SubCmd
 from ics.utils.cmd import cmdVarToKeys
-from ics.utils.opdb import opDB
 
 
 class SpsExpose(VisitedCmd):
@@ -15,21 +14,15 @@ class SpsExpose(VisitedCmd):
         exptime = exptime if exptime else None
         return cls('sps', f'expose {exptype}', timeLim=timeLim, exptime=exptime, **kwargs)
 
-    def insertDB(self, cmdVar):
-        """Insert in opDB."""
+    def visitConsumed(self, cmdVar):
+        """Has the visit been consumed."""
+        cmdKeys = cmdVarToKeys(cmdVar)
+        try:
+            visit, __, mask = cmdKeys['fileIds'].values
+        except:
+            mask = "0x0"
 
-        def visitConsumed():
-            """ Get visit from ics.iicActor.visit.Visit """
-            cmdKeys = cmdVarToKeys(cmdVar)
-            try:
-                visit, __, mask = cmdKeys['fileIds'].values
-            except:
-                mask = "0x0"
-
-            return int(mask, 16) > 0
-
-        if visitConsumed():
-            opDB.insert('visit_set', pfs_visit_id=self.visit, visit_set_id=self.sequence.visit_set_id)
+        return int(mask, 16) > 0
 
     def abort(self, cmd):
         """ Abort current exposure """

@@ -169,6 +169,11 @@ class MiscCmd(object):
             # We should be nearDot at this point, so we can start the actual dotCrossing.
             job2 = self.resourceManager.request(cmd, DotCrossing)
             job2.instantiate(cmd, visit=visit, **dotCrossingConfig, **seqKwargs)
-            job2.seq.process(cmd)
+            try:
+                job2.seq.process(cmd)
+            finally:
+                # useful for blackDotOptimization
+                job2.seq.insertVisitSet(visit.visitId)
+                self.actor.visitor.finishField()
 
         cmd.finish()

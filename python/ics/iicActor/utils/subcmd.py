@@ -1,5 +1,5 @@
-from ics.iicActor.utils.lib import stripQuotes
 import pfscore.gen2 as gen2
+from ics.iicActor.utils.lib import stripQuotes
 
 
 class SubCmd(object):
@@ -134,7 +134,7 @@ class VisitedCmd(SubCmd):
 
         try:
             cmdVar = self.handleVisitAndCall(cmd)
-            self.insertDB(cmdVar)
+            self.finalize(cmdVar)
         except gen2.FetchVisitFromGen2 as e:
             self.didFail = 1
             self.lastReply = str(e)
@@ -148,6 +148,10 @@ class VisitedCmd(SubCmd):
             self.visit = ourVisit.visitId
             return SubCmd.callAndUpdate(self, cmd)
 
-    def insertDB(self, cmdVar):
-        """"""
-        pass
+    def finalize(self, cmdVar):
+        """Finalize command."""
+        if self.visitConsumed(cmdVar):
+            self.sequence.insertVisitSet(self.visit)
+
+    def visitConsumed(self, cmdVar):
+        return True

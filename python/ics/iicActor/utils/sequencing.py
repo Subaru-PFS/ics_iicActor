@@ -1,3 +1,4 @@
+import logging
 import time
 from functools import partial
 
@@ -208,10 +209,18 @@ class Sequence(list):
             self.current.finish(cmd=cmd)
 
     def insertSequence(self):
-        """ Store sequence in database """
+        """Insert iic_sequence table. """
         opDB.insert('iic_sequence',
                     visit_set_id=self.visit_set_id, sequence_type=self.seqtype, name=self.name,
                     comments=self.comments, cmd_str=self.rawCmd)
+
+    def insertVisitSet(self, visitId):
+        """Insert in visit_set table."""
+        try:
+            opDB.insert('visit_set', pfs_visit_id=visitId, visit_set_id=self.visit_set_id)
+        except Exception as e:
+            logging.warning(f'visit_set insert (pfs_visit_id:{visitId} visit_set_id:{self.visit_set_id}) '
+                            f'failed with {str(e)}')
 
     def finalize(self, cmd):
         """ Store sequence in database """
