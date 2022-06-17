@@ -125,7 +125,7 @@ class MiscCmd(object):
         #
 
         # We should be nearDot at this point, so we can start the actual dotRoaching.
-        with self.actor.visitor.getVisit(caller='fps') as visit:
+        with self.actor.visitor.getVisit(caller='sps') as visit:
             job2 = self.resourceManager.request(cmd, miscSequence.DotRoach)
             job2.instantiate(cmd, visitId=visit.visitId, maskFile=maskFile, keepMoving=keepMoving, **dotRoachConfig,
                              **seqKwargs)

@@ -1,8 +1,8 @@
 import os
 
 from ics.iicActor.fps.sequence import FpsSequence
-from ics.iicActor.sps.timed import timedLampsSequence
-
+#from ics.iicActor.sps.timed import timedLampsSequence
+from ics.iicActor.sps.sequence import SpsSequence
 
 class NearDotConvergence(FpsSequence):
     seqtype = 'nearDotConvergence'
@@ -24,14 +24,14 @@ class NearDotConvergence(FpsSequence):
         self.tail.add(actor='sps', cmdStr='bia off')
 
 
-class DotRoach(timedLampsSequence):
+class DotRoach(SpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'dotRoach'
     dependencies = ['fps']
 
     def __init__(self, visitId, maskFile, keepMoving, cams, rootDir, stepSize, count, motor, windowedFlat, doTest=False,
                  **kwargs):
-        timedLampsSequence.__init__(self, **kwargs)
+        SpsSequence.__init__(self, **kwargs)
 
         dataRoot = os.path.join(rootDir, f'v{str(visitId).zfill(6)}')
         maskFilesRoot = os.path.join(dataRoot, 'maskFiles')
@@ -42,16 +42,17 @@ class DotRoach(timedLampsSequence):
         # turning drp processing on
         self.add(actor='drp', cmdStr='startDotRoach', dataRoot=dataRoot, maskFile=maskFile, keepMoving=keepMoving)
 
-        exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
+        #exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
+        exptime = float(windowedFlat['exptime'])
         redWindow = windowedFlat['redWindow']
         blueWindow = windowedFlat['blueWindow']
 
         for iterNum in range(count):
-            self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest,
+            self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
                         redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
                         blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
 
-            self.add(actor='drp', cmdStr='processDotRoach')
+            #self.add(actor='drp', cmdStr='processDotRoach')
 
             self.add(actor='fps',
                      cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,)
