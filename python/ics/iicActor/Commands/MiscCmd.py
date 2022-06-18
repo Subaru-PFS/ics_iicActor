@@ -116,7 +116,11 @@ class MiscCmd(object):
             job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
             job1.instantiate(cmd, designId=designId, visitId=visit.visitId, maskFile=maskFile,
                              **nearDotConvergenceConfig, isMainSequence=False, **seqKwargs)
-            job1.seq.process(cmd)
+            try:
+                job1.seq.process(cmd)
+            finally:
+                # nearDotConvergence book-keeping.
+                job1.seq.insertVisitSet(visit.visitId)
 
         # We should be nearDot at this point, so we can start the actual dotRoaching.
         job2 = self.resourceManager.request(cmd, miscSequence.DotRoach)
@@ -163,7 +167,11 @@ class MiscCmd(object):
             job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
             job1.instantiate(cmd, designId=designId, visitId=visit.visitId,
                              **nearDotConvergenceConfig, isMainSequence=False, **seqKwargs)
-            job1.seq.process(cmd)
+            try:
+                job1.seq.process(cmd)
+            finally:
+                # nearDotConvergence book-keeping.
+                job1.seq.insertVisitSet(visit.visitId)
 
         with self.actor.visitor.getVisit(caller='fps') as visit:
             # We should be nearDot at this point, so we can start the actual dotCrossing.
