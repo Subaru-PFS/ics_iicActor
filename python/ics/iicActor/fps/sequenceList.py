@@ -9,7 +9,15 @@ class MoveToPfsDesign(FpsSequence):
 
     def __init__(self, designId, visitId, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
-        self.add(actor='fps', cmdStr='moveToPfsDesign', designId=designId, visit=visitId, timeLim=MoveToPfsDesign.timeLim)
+        # turning illuminators on
+        self.add(actor='sps', cmdStr='bia on')
+        self.add(actor='peb', cmdStr='led on')
+        # move to pfsDesign.
+        self.add(actor='fps', cmdStr='moveToPfsDesign',
+                 designId=designId, visit=visitId, timeLim=MoveToPfsDesign.timeLim)
+        # turning illuminators off
+        self.tail.add(actor='sps', cmdStr='bia off')
+        self.tail.add(actor='peb', cmdStr='led off')
 
 
 class MovePhiToAngle(FpsSequence):
