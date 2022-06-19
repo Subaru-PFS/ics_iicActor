@@ -58,6 +58,11 @@ class DotRoach(SpsSequence):
                      cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,
                      maskFile=os.path.join(maskFilesRoot, f'iter{iterNum}.csv'))
 
+        # final move.
+        self.add(actor='fps',
+                 cmdStr=f'cobraMoveSteps {motor}', stepsize=-stepSize,
+                 maskFile=os.path.join(maskFilesRoot, f'finalMove.csv'))
+
         # turning drp processing off
         self.tail.add(actor='drp', cmdStr='stopDotRoach')
 
