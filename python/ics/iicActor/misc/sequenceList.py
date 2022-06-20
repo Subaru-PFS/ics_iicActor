@@ -1,8 +1,9 @@
 import os
 
 from ics.iicActor.fps.sequence import FpsSequence
-#from ics.iicActor.sps.timed import timedLampsSequence
+from ics.iicActor.sps.timed import timedLampsSequence
 from ics.iicActor.sps.sequence import SpsSequence
+
 
 class NearDotConvergence(FpsSequence):
     seqtype = 'nearDotConvergence'
