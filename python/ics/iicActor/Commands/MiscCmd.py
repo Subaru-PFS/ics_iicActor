@@ -29,9 +29,9 @@ class MiscCmd(object):
         identArgs = '[<cam>] [<arm>] [<sm>]'
 
         self.vocab = [
-            ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] {identArgs} {seqArgs}', self.dotRoaching),
-            ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
-            ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
+            ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [@noConverge] {identArgs} {seqArgs}', self.dotRoaching),
+            ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] [@noConverge] {seqArgs}', self.dotCrossing),
+            ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] [@noConverge] {seqArgs}', self.dotCrossing),
             ('fastRoach', '', self.fastRoaching)
         ]
 
@@ -81,6 +81,8 @@ class MiscCmd(object):
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
+        doConverge = 'noConverge' not in cmdKeys
+
         mcsCamera = 'mcs'
         cmd.inform('text="starting dot-roaching script..."')
 
@@ -108,21 +110,21 @@ class MiscCmd(object):
             cmd.fail(f'text="failed to open maskFile file:{maskFile} !"')
             return
 
-        # # retrieve designId from opdb
-        # designId = self.getNearDotDesign(mcsCamera, dotRoachConfig['motor'])
-        # # declare current design as nearDotDesign.
-        # pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
-        #
-        # with self.actor.visitor.getVisit(caller='fps') as visit:
-        #     job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
-        #     job1.instantiate(cmd, designId=designId, visitId=visit.visitId, maskFile=maskFile,
-        #                      **nearDotConvergenceConfig, isMainSequence=False, **seqKwargs)
-        #     try:
-        #         job1.seq.process(cmd)
-        #     finally:
-        #         # nearDotConvergence book-keeping.
-        #         job1.seq.insertVisitSet(visit.visitId)
-        #
+        if doConverge:
+            # get designId from opdb or provided one.
+            designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.getNearDotDesign(mcsCamera, dotRoachConfig['motor'])
+            # declare current design as nearDotDesign.
+            pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
+
+            with self.actor.visitor.getVisit(caller='fps') as visit:
+                job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
+                job1.instantiate(cmd, designId=designId, visitId=visit.visitId, maskFile=maskFile,
+                                 **nearDotConvergenceConfig, isMainSequence=False, **seqKwargs)
+                try:
+                    job1.seq.process(cmd)
+                finally:
+                    # nearDotConvergence book-keeping.
+                    job1.seq.insertVisitSet(visit.visitId)
 
         # We should be nearDot at this point, so we can start the actual dotRoaching.
         with self.actor.visitor.getVisit(caller='sps') as visit:
@@ -137,6 +139,7 @@ class MiscCmd(object):
     def dotCrossing(self, cmd):
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
+        doConverge = 'noConverge' not in cmdKeys
 
         # retrieving which crossing
         if cmd.cmd.name == 'phiCrossing':
@@ -147,7 +150,6 @@ class MiscCmd(object):
             DotCrossing = miscSequence.ThetaCrossing
 
         mcsCamera = 'mcs'
-
         cmd.inform(f'text="starting {motor}-crossing using {mcsCamera} camera..."')
 
         # load config from instdata
@@ -161,20 +163,21 @@ class MiscCmd(object):
         if 'exptime' in cmdKeys:
             dotCrossingConfig.update(exptime=cmdKeys['exptime'].values[0])
 
-        # get designId from opdb or provided one.
-        designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.getNearDotDesign(mcsCamera, motor)
-        # declare current design as nearDotDesign.
-        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
+        if doConverge:
+            # get designId from opdb or provided one.
+            designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.getNearDotDesign(mcsCamera, motor)
+            # declare current design as nearDotDesign.
+            pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
 
-        with self.actor.visitor.getVisit(caller='fps') as visit:
-            job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
-            job1.instantiate(cmd, designId=designId, visitId=visit.visitId,
-                             **nearDotConvergenceConfig, isMainSequence=False, **seqKwargs)
-            try:
-                job1.seq.process(cmd)
-            finally:
-                # nearDotConvergence book-keeping.
-                job1.seq.insertVisitSet(visit.visitId)
+            with self.actor.visitor.getVisit(caller='fps') as visit:
+                job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
+                job1.instantiate(cmd, designId=designId, visitId=visit.visitId,
+                                 **nearDotConvergenceConfig, isMainSequence=False, **seqKwargs)
+                try:
+                    job1.seq.process(cmd)
+                finally:
+                    # nearDotConvergence book-keeping.
+                    job1.seq.insertVisitSet(visit.visitId)
 
         with self.actor.visitor.getVisit(caller='fps') as visit:
             # We should be nearDot at this point, so we can start the actual dotCrossing.
