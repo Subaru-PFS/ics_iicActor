@@ -8,7 +8,7 @@ class AcquireField(AgSequence):
 
     def __init__(self, visitId, designId, exptime, guide, magnitude, dryRun, doTest=False, **kwargs):
         AgSequence.__init__(self, **kwargs)
-        self.add(actor='ag', cmdStr='acquire_field', design_id=designId, visit_id=visitId, exposure_time=exptime,
+        self.add(actor='ag', cmdStr='acquire_field', design_id=designId, visit_id=visitId, exposure_time=int(exptime),
                  guide=guide, magnitude=magnitude, dry_run=dryRun)
 
 
@@ -19,5 +19,5 @@ class AutoguideStart(AgSequence):
 
     def __init__(self, visitId, designId, exptime, fromSky, cadence, center, magnitude, dryRun, doTest=False, **kwargs):
         AgSequence.__init__(self, **kwargs)
-        self.add(actor='ag', cmdStr='autoguide start', design_id=designId, visit_id=visitId, exposure_time=exptime,
+        self.add(actor='ag', cmdStr='autoguide start', design_id=designId, visit_id=visitId, exposure_time=int(exptime),
                  from_sky=fromSky, cadence=cadence, center=center, magnitude=magnitude, dry_run=dryRun)
