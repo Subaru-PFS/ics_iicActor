@@ -12,6 +12,7 @@ class NearDotConvergence(FpsSequence):
     def __init__(self, designId, visitId, maxIteration, tolerance, maskFile=False, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
         # turning on the illuminators
+        self.add(actor='peb', cmdStr='led on')
         self.add(actor='sps', cmdStr='bia on')
 
         # move cobras to home
@@ -22,6 +23,7 @@ class NearDotConvergence(FpsSequence):
                  tolerance=tolerance, maskFile=maskFile, timeLim=300)
 
         # turning off the illuminators
+        self.tail.add(actor='peb', cmdStr='led off')
         self.tail.add(actor='sps', cmdStr='bia off')
 
 
@@ -78,6 +80,8 @@ class DotCrossing(FpsSequence):
 
         # turning on the illuminators
         self.add(actor='sps', cmdStr='bia on')
+        self.add(actor='peb', cmdStr='led on')
+
         self.add(actor='mcs', cmdStr='expose object',
                  exptime=exptime, frameId=visit.nextFrameId(), doFibreId=True)
 
@@ -88,6 +92,7 @@ class DotCrossing(FpsSequence):
 
         # turning off the illuminators
         self.tail.add(actor='sps', cmdStr='bia off')
+        self.tail.add(actor='peb', cmdStr='led off')
 
 
 class PhiCrossing(DotCrossing):
