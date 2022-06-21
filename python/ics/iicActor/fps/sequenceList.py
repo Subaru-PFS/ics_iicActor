@@ -12,6 +12,8 @@ class MoveToPfsDesign(FpsSequence):
         # turning illuminators on
         self.add(actor='sps', cmdStr='bia on')
         self.add(actor='peb', cmdStr='led on')
+        # move cobras to home, not supposed to, but meh.
+        self.add(actor='fps', cmdStr='moveToHome all', visit=visitId, timeLim=300)
         # move to pfsDesign.
         self.add(actor='fps', cmdStr='moveToPfsDesign',
                  designId=designId, visit=visitId, timeLim=MoveToPfsDesign.timeLim)
