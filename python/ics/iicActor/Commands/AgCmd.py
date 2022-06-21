@@ -37,9 +37,9 @@ class AgCmd(object):
                                         keys.Key('comments', types.String(), help='iic_sequence comments'),
                                         keys.Key("designId", types.Long(),
                                                  help="pfsDesignId for the field, which defines the fiber positions"),
-                                        keys.Key("exptime", types.Float(), help='exptime in ms'),
+                                        keys.Key("exptime", types.Int(), help='exptime in ms'),
                                         keys.Key("magnitude", types.Float()),
-                                        keys.Key("cadence", types.Float()),
+                                        keys.Key("cadence", types.Int()),
                                         keys.Key("center", types.Float() * (1, 3)),
                                         )
 
@@ -58,7 +58,7 @@ class AgCmd(object):
         ---------
         designId : `int`
            optional pfsDesignId.
-        exptime : `float`
+        exptime : `int`
            optional exposure time(ms), default(2000).
         magnitude : `float`
            magnitude limit, default(20).
@@ -103,9 +103,9 @@ class AgCmd(object):
         ---------
         designId : `int`
            optional pfsDesignId.
-        exptime : `float`
+        exptime : `int`
            optional exposure time(ms).
-        cadence : `float`
+        cadence : `int`
            autoguiding cadense(ms), default(0).
         center : 3*`float`
            ra,dec,pa
