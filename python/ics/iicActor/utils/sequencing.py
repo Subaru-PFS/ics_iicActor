@@ -248,3 +248,11 @@ class CmdList(Sequence):
         cls = self.sequence.guessType(actor, cmdStr)
         timeLim = self.sequence.guessTimeLim(cmdStr)
         self.append(cls(actor, cmdStr, timeLim=timeLim))
+
+    def guessType(self, actor, cmdStr):
+        """ Guess SubCmd type. """
+        return self.sequence.guessType(actor, cmdStr)
+
+    def guessTimeLim(self, *args, **kwargs):
+        """Guess timeLim."""
+        return self.sequence.guessTimeLim(*args, **kwargs)
