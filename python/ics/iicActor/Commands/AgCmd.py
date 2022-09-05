@@ -37,7 +37,7 @@ class AgCmd(object):
                                         keys.Key('comments', types.String(), help='iic_sequence comments'),
                                         keys.Key("designId", types.Long(),
                                                  help="pfsDesignId for the field, which defines the fiber positions"),
-                                        keys.Key("exptime", types.Int(), help='exptime in ms'),
+                                        keys.Key('exptime', types.Float() * (1,), help='exptime list (seconds)'),
                                         keys.Key("magnitude", types.Float()),
                                         keys.Key("cadence", types.Int()),
                                         keys.Key("center", types.Float() * (1, 3)),
@@ -74,7 +74,7 @@ class AgCmd(object):
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
-        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else None
+        exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
         guide = 'no' if 'guideOff' in cmdKeys else None
         dryRun = 'yes' if 'dryRun' in cmdKeys else None
@@ -123,7 +123,7 @@ class AgCmd(object):
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
-        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else None
+        exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
         cadence = cmdKeys['cadence'].values[0] if 'cadence' in cmdKeys else None
         center = cmdKeys['center'].values if 'center' in cmdKeys else None
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
