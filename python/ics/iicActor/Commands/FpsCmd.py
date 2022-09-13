@@ -64,7 +64,7 @@ class FpsCmd(object):
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
             # ('mcsLoop', '[<expTime>] [<cnt>] [@noCentroids]', self.mcsLoop),
 
-            ('moveToPfsDesign', f'[<designId>] {seqArgs}', self.moveToPfsDesign),
+            ('moveToPfsDesign', f'[<designId>] [<exptime>] {seqArgs}', self.moveToPfsDesign),
             ('movePhiToAngle', f'<angle> <iteration> {seqArgs}', self.movePhiToAngle),
             ('moveToHome', f'@(phi|theta|all) {seqArgs}', self.moveToHome),
             ('moveToSafePosition', f'{seqArgs}', self.moveToSafePosition),
@@ -83,9 +83,7 @@ class FpsCmd(object):
                                                  help="number of angles to measure at"),
                                         keys.Key("nExposures", types.Int(),
                                                  help="number of exposures to take at each position"),
-                                        keys.Key("expTime", types.Float(),
-                                                 default=1.0,
-                                                 help="Seconds for exposure"),
+                                        keys.Key('exptime', types.Float() * (1,), help='exptime list (seconds)'),
                                         keys.Key('name', types.String(), help='sps_sequence name'),
                                         keys.Key('comments', types.String(), help='sps_sequence comments'),
                                         keys.Key("cnt", types.Int(), default=1, help="times to run loop"),
@@ -127,6 +125,8 @@ class FpsCmd(object):
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
+        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else False
+
         # then declare new design.
         if 'designId' in cmdKeys:
             pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor)
@@ -136,7 +136,7 @@ class FpsCmd(object):
         job = self.resourceManager.request(cmd, fpsSequence.MoveToPfsDesign)
 
         with self.actor.visitor.getVisit(caller='fps') as visit:
-            job.instantiate(cmd, visitId=visit.visitId, designId=designId, **seqKwargs)
+            job.instantiate(cmd, visitId=visit.visitId, designId=designId, exptime=exptime, **seqKwargs)
             job.seq.process(cmd)
 
         cmd.finish()
@@ -382,8 +382,8 @@ class FpsCmd(object):
             MCS Exposure time.
         cnt: `int`
             Number of FPS images."""
-
         cmdKeys = cmd.cmd.keywords
+
         expTime = cmdKeys['expTime'].values[0] \
             if 'expTime' in cmdKeys \
             else 1.0
