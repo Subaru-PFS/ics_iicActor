@@ -142,10 +142,14 @@ class VisitedCmd(SubCmd):
 
         return cmdVar
 
+    def setVisit(self, cmd, visit):
+        """"""
+        self.visit = visit
+
     def handleVisitAndCall(self, cmd):
         """"""
         with self.iicActor.visitor.getVisit(caller=self.actor) as ourVisit:
-            self.visit = ourVisit.visitId
+            self.setVisit(cmd, ourVisit.visitId)
             return SubCmd.callAndUpdate(self, cmd)
 
     def finalize(self, cmdVar):

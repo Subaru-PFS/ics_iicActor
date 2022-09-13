@@ -14,6 +14,10 @@ class SpsExpose(VisitedCmd):
         exptime = exptime if exptime else None
         return cls('sps', f'expose {exptype}', timeLim=timeLim, exptime=exptime, **kwargs)
 
+    def setVisit(self, cmd, visitId):
+        self.visit = visitId
+        cmd.inform(f'pfsVisit={visitId}')
+
     def visitConsumed(self, cmdVar):
         """Has the visit been consumed."""
         cmdKeys = cmdVarToKeys(cmdVar)
