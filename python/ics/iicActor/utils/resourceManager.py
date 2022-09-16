@@ -164,8 +164,13 @@ class ResourceManager(object):
         for job in self.jobs.values():
             job.genStatus(cmd)
 
-    def requestGroupId(self):
+    def requestGroupId(self, doContinue=False):
         """"""
+        # just return the current one.
+        if doContinue:
+            return self.groupIds[-1]
+
+        # reserving a visit_set_id/group_id
         groupId = self.arrangeVisitSetId()
         self.groupIds.append(groupId)
         return groupId
