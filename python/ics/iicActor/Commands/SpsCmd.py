@@ -41,7 +41,7 @@ class SpsCmd(object):
         # associated methods when matched. The callbacks will be
         # passed a single argument, the parsed and typed command.
         #
-        seqArgs = '[<name>] [<comments>] [@doTest]'
+        seqArgs = '[<name>] [<comments>] [@doTest] [<groupId>]'
         identArgs = '[<cam>] [<arm>] [<sm>]'
         commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
         timedLampsArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>] [@doShutterTiming]'
@@ -104,6 +104,8 @@ class SpsCmd(object):
                                                  help='first row, total number of rows to read'),
                                         keys.Key("redWindow", types.Int() * (1, 2),
                                                  help='first row, total number of rows to read'),
+                                        keys.Key('groupId', types.Int(),
+                                                 help='optional groupId'),
 
                                         )
 
