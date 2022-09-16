@@ -33,7 +33,7 @@ class IicActor(actorcore.ICC.ICC):
             self.logger.info('Establishing first tron connection...')
             self.everConnected = True
 
-            _needModels = [self.name, 'gen2', 'fps', 'mcs', 'sps']
+            _needModels = [self.name, 'gen2', 'fps', 'mcs', 'sps', 'ag']
             self.logger.info(f'adding models: {sorted(_needModels)}')
             self.addModels(_needModels)
             self.logger.info(f'added models: {sorted(self.models.keys())}')
