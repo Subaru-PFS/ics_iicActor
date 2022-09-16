@@ -16,7 +16,14 @@ class SpsExpose(VisitedCmd):
 
     def setVisit(self, cmd, visitId):
         self.visit = visitId
-        cmd.inform(f'pfsVisit={visitId}')
+
+        try:
+            autoGuiderOn = self.iicActor.models['ag'].keyVarDict['guideReady'].getValue()
+        except ValueError:
+            return
+
+        if self.sequence.job.lightSource == 'pfi' and autoGuiderOn:
+            self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={visitId}', timeLim=10)
 
     def visitConsumed(self, cmdVar):
         """Has the visit been consumed."""
