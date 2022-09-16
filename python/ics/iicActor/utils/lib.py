@@ -28,9 +28,10 @@ def genSequenceKwargs(cmd, customMade=False):
 
     name = cmdKeys['name'].values[0] if 'name' in cmdKeys else ''
     comments = cmdKeys['comments'].values[0] if 'comments' in cmdKeys else ''
+    forceGroupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else False
     doTest = 'doTest' in cmdKeys
 
-    return dict(name=name, comments=comments, head=head, tail=tail, doTest=doTest)
+    return dict(name=name, comments=comments, head=head, tail=tail, forceGroupId=forceGroupId, doTest=doTest)
 
 
 def stripQuotes(txt):

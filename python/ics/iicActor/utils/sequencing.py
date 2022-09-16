@@ -12,13 +12,14 @@ class Sequence(list):
     """ Placeholder to handle sequence of subcommand """
     seqtype = 'sequence'
 
-    def __init__(self, name='', comments='', head=None, tail=None, isMainSequence=True):
+    def __init__(self, name='', comments='', head=None, tail=None, isMainSequence=True, forceGroupId=False):
         super().__init__()
         self.name = name
         self.comments = comments
         self.head = CmdList(self, head)
         self.tail = CmdList(self, tail)
         self.isMainSequence = isMainSequence
+        self.forceGroupId = forceGroupId
 
         self.isDone = False
         self.doAbort = False
@@ -83,6 +84,10 @@ class Sequence(list):
         return self.job.visitSetId
 
     @property
+    def group_id(self):
+        return self.visit_set_id if not self.forceGroupId else self.forceGroupId
+
+    @property
     def iicActor(self):
         return self.job.actor
 
@@ -106,7 +111,7 @@ class Sequence(list):
         return 60
 
     def genKeys(self):
-        return f'sequence={self.visit_set_id},{self.seqtype},{self.statusStr},"{self.cmdStr}","{self.name}","{self.comments}"'
+        return f'sequence={self.visit_set_id},{self.group_id},{self.seqtype},{self.statusStr},"{self.cmdStr}","{self.name}","{self.comments}"'
 
     def register(self, cmd):
         """ Register sequence and underlying subcommand"""
@@ -211,7 +216,7 @@ class Sequence(list):
     def insertSequence(self):
         """Insert iic_sequence table. """
         opDB.insert('iic_sequence',
-                    visit_set_id=self.visit_set_id, sequence_type=self.seqtype, name=self.name,
+                    visit_set_id=self.visit_set_id, group_id=self.group_id, sequence_type=self.seqtype, name=self.name,
                     comments=self.comments, cmd_str=self.rawCmd)
 
     def insertVisitSet(self, visitId):

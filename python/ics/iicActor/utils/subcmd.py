@@ -16,7 +16,7 @@ class SubCmd(object):
 
     @property
     def fullCmd(self):
-        return (f'{self.actor} {self.cmdStr}').strip()
+        return f'{self.actor} {self.cmdStr}'.strip()
 
     @property
     def isLast(self):

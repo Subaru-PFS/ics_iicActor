@@ -16,6 +16,7 @@ class ResourceManager(object):
 
     def __init__(self, actor):
         self.actor = actor
+        self.groupIds = []
         self.jobs = dict()
 
     @property
@@ -145,7 +146,7 @@ class ResourceManager(object):
     def arrangeVisitSetId(self):
         """ Multiple Jobs can happen in parallel, make sure you don't attribute same visit_set_id.  """
         lastVisitSetId = [self.fetchLastVisitSetId()]
-        newVisitSetId = max(lastVisitSetId + self.activeIds) + 1
+        newVisitSetId = max(lastVisitSetId + self.activeIds + self.groupIds) + 1
         return newVisitSetId
 
     def genStatus(self, cmd, visitSetId=None):
@@ -162,3 +163,9 @@ class ResourceManager(object):
 
         for job in self.jobs.values():
             job.genStatus(cmd)
+
+    def requestGroupId(self):
+        """"""
+        groupId = self.arrangeVisitSetId()
+        self.groupIds.append(groupId)
+        return groupId

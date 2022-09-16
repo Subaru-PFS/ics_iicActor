@@ -21,7 +21,8 @@ class SequenceCmd(object):
             ('sequence', '@finish [<id>]', self.finishSequence),
             ('sps', '@abortExposure [<id>]', self.abortExposure),
             ('sps', '@finishExposure [@(now)] [<id>]', self.finishExposure),
-            ('annotate', '@(bad|ok) [<notes>] [<visit>] [<visitSet>] [<cam>] [<arm>] [<sm>]', self.annotate)
+            ('annotate', '@(bad|ok) [<notes>] [<visit>] [<visitSet>] [<cam>] [<arm>] [<sm>]', self.annotate),
+            ('getGroupId', '', self.getGroupId)
         ]
 
         # Define typed command arguments for the above commands.
@@ -38,6 +39,10 @@ class SequenceCmd(object):
     @property
     def resourceManager(self):
         return self.actor.resourceManager
+
+    def getGroupId(self, cmd):
+        groupId = self.resourceManager.requestGroupId()
+        cmd.finish(f'groupId={groupId}')
 
     def findOnGoingJob(self, cmd):
         cmdKeys = cmd.cmd.keywords
