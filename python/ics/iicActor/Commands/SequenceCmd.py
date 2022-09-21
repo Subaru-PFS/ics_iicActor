@@ -22,7 +22,7 @@ class SequenceCmd(object):
             ('sps', '@abortExposure [<id>]', self.abortExposure),
             ('sps', '@finishExposure [@(now)] [<id>]', self.finishExposure),
             ('annotate', '@(bad|ok) [<notes>] [<visit>] [<visitSet>] [<cam>] [<arm>] [<sm>]', self.annotate),
-            ('getGroupId', '[(@continue)]', self.getGroupId)
+            ('getGroupId', '<groupName> [(@continue)]', self.getGroupId)
         ]
 
         # Define typed command arguments for the above commands.
@@ -34,6 +34,7 @@ class SequenceCmd(object):
                                         keys.Key('sm', types.Int() * (1,), help='spectrograph module(s)'),
                                         keys.Key('arm', types.String() * (1,), help='spspectrograph arm'),
                                         keys.Key('notes', types.String() * (1,), help='additional notes'),
+                                        keys.Key('groupName', types.String(), help='group identifier'),
                                         )
 
     @property
@@ -53,7 +54,9 @@ class SequenceCmd(object):
         """
         cmdKeys = cmd.cmd.keywords
         doContinue = 'continue' in cmdKeys
-        groupId = self.resourceManager.requestGroupId(doContinue=doContinue)
+        groupName = cmdKeys['groupName'].values[0]
+
+        groupId = self.resourceManager.requestGroupId(groupName, doContinue=doContinue)
         cmd.finish(f'groupId={groupId}')
 
     def findOnGoingJob(self, cmd):
