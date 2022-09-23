@@ -65,8 +65,9 @@ class FpsCmd(object):
             # ('mcsLoop', '[<expTime>] [<cnt>] [@noCentroids]', self.mcsLoop),
 
             ('moveToPfsDesign', f'[<designId>] [<exptime>] {seqArgs}', self.moveToPfsDesign),
+            ('moveToHome', f'@(phi|theta|all)  [<exptime>] {seqArgs}', self.moveToHome),
+
             ('movePhiToAngle', f'<angle> <iteration> {seqArgs}', self.movePhiToAngle),
-            ('moveToHome', f'@(phi|theta|all) {seqArgs}', self.moveToHome),
             ('moveToSafePosition', f'{seqArgs}', self.moveToSafePosition),
             ('gotoVerticalFromPhi60', f'{seqArgs}', self.gotoVerticalFromPhi60),
             ('makeMotorMap', f'@(phi|theta) <stepsize> <repeat> [@slowOnly] {seqArgs}', self.makeMotorMap),
@@ -141,6 +142,39 @@ class FpsCmd(object):
 
         cmd.finish()
 
+    def moveToHome(self, cmd):
+        """
+        `iic moveToHome phi|theta|all [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Move cobras (phi or theta or all) to home.
+
+        Parameters
+        ---------
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        """
+        cmdKeys = cmd.cmd.keywords
+        seqKwargs = iicUtils.genSequenceKwargs(cmd)
+
+        phi = 'phi' in cmdKeys
+        theta = 'theta' in cmdKeys
+        all = 'all' in cmdKeys
+        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else False
+
+        # Declare cobra home design as current.
+        homeDesignId = self.actor.actorConfig['pfsDesign']['cobraHome']
+        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=homeDesignId)
+
+        job = self.resourceManager.request(cmd, fpsSequence.MoveToHome)
+
+        with self.actor.visitor.getVisit(caller='fps') as visit:
+            job.instantiate(cmd,  phi=phi, theta=theta, all=all, visitId=visit.visitId,  exptime=exptime, **seqKwargs)
+            job.seq.process(cmd)
+
+        cmd.finish()
+
     def movePhiToAngle(self, cmd):
         """
         `iic movePhiToAngle angle=N iteration=N [name=\"SSS\"] [comments=\"SSS\"]`
@@ -166,31 +200,6 @@ class FpsCmd(object):
 
         job = self.resourceManager.request(cmd, fpsSequence.MovePhiToAngle)
         job.instantiate(cmd, angle=angle, iteration=iteration, **seqKwargs)
-
-        job.fire(cmd)
-
-    def moveToHome(self, cmd):
-        """
-        `iic moveToHome phi|theta|all [name=\"SSS\"] [comments=\"SSS\"]`
-
-        Move cobras (phi or theta or all) to home.
-
-        Parameters
-        ---------
-        name : `str`
-           To be inserted in opdb:iic_sequence.name.
-        comments : `str`
-           To be inserted in opdb:iic_sequence.comments.
-        """
-        cmdKeys = cmd.cmd.keywords
-
-        seqKwargs = iicUtils.genSequenceKwargs(cmd)
-        phi = 'phi' in cmdKeys
-        theta = 'theta' in cmdKeys
-        all = 'all' in cmdKeys
-
-        job = self.resourceManager.request(cmd, fpsSequence.MoveToHome)
-        job.instantiate(cmd, phi=phi, theta=theta, all=all, **seqKwargs)
 
         job.fire(cmd)
 

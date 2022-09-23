@@ -22,6 +22,25 @@ class MoveToPfsDesign(FpsSequence):
         self.tail.add(actor='peb', cmdStr='led off')
 
 
+class MoveToHome(FpsSequence):
+    """ fps MoveToHome command."""
+    seqtype = 'moveToHome'
+    timeLim = 900
+    dependencies = ['mcs']
+
+    def __init__(self, phi, theta, all, visitId, exptime, doTest=False, **kwargs):
+        FpsSequence.__init__(self, **kwargs)
+        # turning illuminators on
+        self.add(actor='sps', cmdStr='bia on')
+        self.add(actor='peb', cmdStr='led on')
+        # move cobras to home, not supposed to, but meh.
+        self.add(actor='fps', cmdStr='moveToHome all', visit=visitId, timeLim=300)
+        # move to pfsDesign.
+        # turning illuminators off
+        self.tail.add(actor='sps', cmdStr='bia off')
+        self.tail.add(actor='peb', cmdStr='led off')
+
+
 class MovePhiToAngle(FpsSequence):
     """ fps MovePhiToAngle command. """
     seqtype = 'movePhiToAngle'
@@ -32,17 +51,6 @@ class MovePhiToAngle(FpsSequence):
         FpsSequence.__init__(self, **kwargs)
         timeLim = iteration * MovePhiToAngle.timePerIteration
         self.fpsCommand(angle=angle, iteration=iteration, timeLim=timeLim)
-
-
-class MoveToHome(FpsSequence):
-    """ fps MoveToHome command."""
-    seqtype = 'moveToHome'
-    timeLim = 900
-    dependencies = ['mcs']
-
-    def __init__(self, phi, theta, all, doTest=False, **kwargs):
-        FpsSequence.__init__(self, **kwargs)
-        self.fpsCommand(phi=phi, theta=theta, all=all, timeLim=MoveToHome.timeLim)
 
 
 class MoveToSafePosition(FpsSequence):
