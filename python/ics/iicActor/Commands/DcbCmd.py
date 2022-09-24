@@ -52,7 +52,7 @@ class DcbCmd(object):
         dcbArgs = f'[<switchOn>] [<switchOff>] [<warmingTime>] [force]'
 
         self.vocab = [
-            ('ditheredFlats', f'<exptime> [<pixels>] [<nPositions>] [<warmingTime>] [force] [noLampCtl] [switchOff] {commonArgs}', self.ditheredFlats),
+            ('ditheredFlats', f'<exptime> [<pixels>] [<warmingTime>] [force] [noLampCtl] [switchOff] {commonArgs}', self.ditheredFlats),
             ('expose', f'arc <exptime> {dcbArgs} {commonArgs}', self.doArc),
             ('expose', f'flat <exptime> [<warmingTime>] [force] [noLampCtl] [switchOff] {commonArgs}', self.doFlat),
 
@@ -83,9 +83,9 @@ class DcbCmd(object):
                                         keys.Key('position', types.Float() * (1, 3),
                                                  help='slit/motor position for throughfocus same args as np.linspace'),
                                         keys.Key('tilt', types.Float() * (1, 3), help='motor tilt (a, b, c)'),
-                                        keys.Key('nPositions', types.Int(),
-                                                 help='Number of position for dithered flats (default : 20)'),
-                                        keys.Key('pixels', types.Float(), help='dithering step in pixels'),
+                                        keys.Key('pixels', types.Float() * (1, 3),
+                                                 help='pixels array(start, stop, step) '
+                                                      'for ditheredFlats default(-6,6,0.3)'),
                                         keys.Key('warmingTime', types.Float(), help='customizable warming time'),
 
                                         )
@@ -96,7 +96,7 @@ class DcbCmd(object):
 
     def ditheredFlats(self, cmd):
         """
-        `iic ditheredFlats exptime=??? [pixels=FF.F] [nPositions=N] [warmingTime=FF.F] [force] [noLampCtl] [switchOff]
+        `iic ditheredFlats exptime=??? [pixels=FF.F,FF.F,FF.F] [warmingTime=FF.F] [force] [noLampCtl] [switchOff]
         [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
 
         Take a set of dithered fiberTrace with a given pixel step (default=0.3).
@@ -106,10 +106,8 @@ class DcbCmd(object):
         ---------
         exptime : `float`
             shutter exposure time.
-        pixels : `float`
-            dithering step in pixels.
-        nPositions : `int`
-            number of dithered positions on each side of home (nTotalPosition=nPositions * 2 + 1).
+        pixels : `float`,`float`,`float`
+            pixels array : start, end, step (default: -6, 6, 0.3).
         warmingTime : `float`
             optional continuum lamp warming time.
         force : `bool`
@@ -145,10 +143,9 @@ class DcbCmd(object):
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
         seqKwargs['name'] = 'calibProduct' if not seqKwargs['name'] else seqKwargs['name']
 
-        pixels = cmdKeys['pixels'].values[0] if 'pixels' in cmdKeys else 0.3
-        nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
-        nPositions = (nPositions // 2) * 2
-        positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1).round(2)
+        [start, stop, step] = cmdKeys['pixels'].values if 'pixels' in cmdKeys else [-6, 6, 0.3]
+        nPositions = round((stop - start) / step + 1)
+        positions = np.linspace(start, stop, nPositions).round(2)
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, spsSequence.DitheredFlats)

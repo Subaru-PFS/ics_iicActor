@@ -49,8 +49,7 @@ class SpsCmd(object):
         self.vocab = [
             ('masterBiases', f'{commonArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {commonArgs}', self.masterDarks),
-            ('ditheredFlats', f'<halogen> [@doShutterTiming] [<pixels>] [<nPositions>] {commonArgs}',
-             self.ditheredFlats),
+            ('ditheredFlats', f'<halogen> [@doShutterTiming] [<pixels>] {commonArgs}',  self.ditheredFlats),
             ('scienceArc', f'{timedLampsArgs} {commonArgs}', self.scienceArc),
             ('scienceTrace', f'<halogen> [@doShutterTiming] {windowingArgs} {commonArgs}', self.scienceTrace),
             ('scienceObject', f'<exptime> {windowingArgs} {commonArgs}', self.scienceObject),
@@ -88,9 +87,9 @@ class SpsCmd(object):
                                         keys.Key('tail', types.String() * (1,), help='cmdStr list to process after'),
                                         keys.Key('position', types.Float() * (1, 3),
                                                  help='slit/motor position for throughfocus same args as np.linspace'),
-                                        keys.Key('nPositions', types.Int(),
-                                                 help='Number of position for dithered flats (default : 20)'),
-                                        keys.Key('pixels', types.Float(), help='dithering step in pixels'),
+                                        keys.Key('pixels', types.Float() * (1, 3),
+                                                 help='pixels array(start, stop, step) '
+                                                      'for ditheredFlats default(-6,6,0.3)'),
                                         keys.Key('halogen', types.Float(), help='quartz halogen lamp on time'),
                                         keys.Key('argon', types.Float(), help='Ar lamp on time'),
                                         keys.Key('hgar', types.Float(), help='HgAr lamp on time'),
@@ -189,7 +188,7 @@ class SpsCmd(object):
 
     def ditheredFlats(self, cmd):
         """
-        `iic ditheredFlats halogen=FF.F [@doShutterTiming] [pixels=FF.F] [nPositions=N] [cam=???] [arm=???] [sm=???]
+        `iic ditheredFlats halogen=FF.F [@doShutterTiming] [pixels=FF.F,FF.F,FF.F] [cam=???] [arm=???] [sm=???]
         [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Take a set of dithered fiberTrace with a given pixel step (default=0.3).
@@ -201,10 +200,8 @@ class SpsCmd(object):
             number of second to trigger continuum lamp.
         doShutterTiming : `bool`
            if True, use the shutters to control exposure time, ie fire the lamps before opening the shutters.
-        pixels : `float`
-            dithering step in pixels.
-        nPositions : `int`
-            number of dithered positions on each side of home (nTotalPosition=nPositions * 2 + 1).
+        pixels : `float`,`float`,`float`
+            pixels array : start, end, step (default: -6, 6, 0.3).
         cam : list of `str`
            List of camera to expose, default=all.
         arm : list of `str`
@@ -226,10 +223,9 @@ class SpsCmd(object):
         seqKwargs['name'] = 'calibProduct' if not seqKwargs['name'] else seqKwargs['name']
         exptime = timedLampsKwargs(cmdKeys)
 
-        pixels = cmdKeys['pixels'].values[0] if 'pixels' in cmdKeys else 0.3
-        nPositions = cmdKeys['nPositions'].values[0] if 'nPositions' in cmdKeys else 20
-        nPositions = (nPositions // 2) * 2
-        positions = np.linspace(-nPositions * pixels, nPositions * pixels, 2 * nPositions + 1).round(2)
+        [start, stop, step] = cmdKeys['pixels'].values if 'pixels' in cmdKeys else [-6, 6, 0.3]
+        nPositions = round((stop - start) / step + 1)
+        positions = np.linspace(start, stop, nPositions).round(2)
         duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
 
         job = self.resourceManager.request(cmd, timedSpsSequence.DitheredFlats)
