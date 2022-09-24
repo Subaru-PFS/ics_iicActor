@@ -32,6 +32,7 @@ class MiscCmd(object):
             ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] {identArgs} {seqArgs}', self.dotRoaching),
             ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
             ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
+            ('fastRoach', '', self.fastRoaching)
         ]
 
         # Define typed command arguments for the above commands.
@@ -183,5 +184,47 @@ class MiscCmd(object):
                 # useful for blackDotOptimization
                 job2.seq.insertVisitSet(visit.visitId)
                 self.actor.visitor.finishField()
+
+        cmd.finish()
+
+    @singleShot
+    def fastRoaching(self, cmd):
+        cmdKeys = cmd.cmd.keywords
+        seqKwargs = iicUtils.genSequenceKwargs(cmd)
+
+        mcsCamera = 'mcs'
+        cmd.inform('text="starting fastRoaching script..."')
+
+        # load config from instdata
+        dotRoachConfig = self.actor.actorConfig['dotRoach']
+        nearDotConvergenceConfig = self.actor.actorConfig['nearDotConvergence']
+
+        maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'SM1_000'
+        try:
+            maskFile = self.getFpsMaskFile(maskFile)
+        except:
+            cmd.fail(f'text="failed to open maskFile file:{maskFile} !"')
+            return
+
+        # retrieve designId from opdb
+        designId = 0x662cf9deec5c1ce9
+        # declare current design as nearDotDesign.
+        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
+
+        with self.actor.visitor.getVisit(caller='fps') as visit:
+            job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
+            job1.instantiate(cmd, designId=designId, visitId=visit.visitId, maskFile=maskFile,
+                             **nearDotConvergenceConfig, isMainSequence=False, **seqKwargs)
+            try:
+                job1.seq.process(cmd)
+            finally:
+                # nearDotConvergence book-keeping.
+                job1.seq.insertVisitSet(visit.visitId)
+
+        # We should be nearDot at this point, so we can start the actual dotRoaching.
+        job2 = self.resourceManager.request(cmd, miscSequence.FastRoach)
+        job2.instantiate(cmd, visitId=visit.visitId, maskFile=maskFile, **dotRoachConfig,
+                         **seqKwargs)
+        job2.seq.process(cmd)
 
         cmd.finish()

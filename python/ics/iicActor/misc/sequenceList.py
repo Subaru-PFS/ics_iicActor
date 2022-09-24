@@ -91,3 +91,29 @@ class PhiCrossing(DotCrossing):
 class ThetaCrossing(DotCrossing):
     motor = 'theta'
     seqtype = 'thetaCrossing'
+
+
+class FastRoach(timedLampsSequence):
+    """ fps MoveToPfsDesign command. """
+    seqtype = 'dotRoach'
+    dependencies = ['fps']
+
+    def __init__(self, visitId, maskFile, cams, rootDir, stepSize, count, motor, windowedFlat, doTest=False,
+                 **kwargs):
+        timedLampsSequence.__init__(self, **kwargs)
+
+        maskFilesRoot = '/data/dotRoach/fastRoach'
+
+        exptime = dict(halogen=60, shutterTiming=False)
+
+        for i in range(3):
+            self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest)
+
+        for iterNum in range(37):
+
+            self.add(actor='fps',
+                     cmdStr=f'cobraMoveSteps phi', stepsize=-40,
+                     maskFile=os.path.join(maskFilesRoot, f'iter{iterNum}.csv'))
+
+        for i in range(3):
+            self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest)
