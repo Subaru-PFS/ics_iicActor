@@ -12,17 +12,15 @@ class SpsExpose(VisitedCmd):
     def specify(cls, exptype, exptime, timeOffset=120, **kwargs):
         timeLim = timeOffset + exptime
         exptime = exptime if exptime else None
-        return cls('sps', f'expose {exptype}', timeLim=timeLim, exptime=exptime, **kwargs)
+        obj = cls('sps', f'expose {exptype}', timeLim=timeLim, exptime=exptime, **kwargs)
+        obj.isObject = exptype == 'object'
+        return obj
 
     def setVisit(self, cmd, visitId):
         self.visit = visitId
 
-        try:
-            autoGuiderOn = self.iicActor.models['ag'].keyVarDict['guideReady'].getValue()
-        except ValueError:
-            return
-
-        if self.sequence.job.lightSource == 'pfi' and autoGuiderOn:
+        # bump up ag visit whenever sps is taking object.
+        if self.sequence.job.lightSource == 'pfi' and self.isObject:
             self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={visitId}', timeLim=10)
 
     def visitConsumed(self, cmdVar):
