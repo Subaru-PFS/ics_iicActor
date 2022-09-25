@@ -7,7 +7,7 @@ class MoveToPfsDesign(FpsSequence):
     timeLim = 900
     dependencies = ['mcs']
 
-    def __init__(self, visitId, designId, exptime, doTest=False, **kwargs):
+    def __init__(self, visitId, designId, exptime, maskFile, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
         # turning illuminators on
         self.add(actor='sps', cmdStr='bia on')
@@ -16,7 +16,7 @@ class MoveToPfsDesign(FpsSequence):
         self.add(actor='fps', cmdStr='moveToHome all', visit=visitId, timeLim=300)
         # move to pfsDesign.
         self.add(actor='fps', cmdStr='moveToPfsDesign', visit=visitId, designId=designId, exptime=exptime,
-                 timeLim=MoveToPfsDesign.timeLim)
+                 maskFile=maskFile, timeLim=MoveToPfsDesign.timeLim)
         # turning illuminators off
         self.tail.add(actor='sps', cmdStr='bia off')
         self.tail.add(actor='peb', cmdStr='led off')
@@ -34,7 +34,7 @@ class MoveToHome(FpsSequence):
         self.add(actor='sps', cmdStr='bia on')
         self.add(actor='peb', cmdStr='led on')
         # move cobras to home, not supposed to, but meh.
-        self.add(actor='fps', cmdStr='moveToHome all', visit=visitId, timeLim=300)
+        self.add(actor='fps', cmdStr='moveToHome', phi=phi, theta=theta, all=all, visit=visitId, timeLim=300)
         # move to pfsDesign.
         # turning illuminators off
         self.tail.add(actor='sps', cmdStr='bia off')

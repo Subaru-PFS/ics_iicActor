@@ -64,7 +64,7 @@ class FpsCmd(object):
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
             # ('mcsLoop', '[<expTime>] [<cnt>] [@noCentroids]', self.mcsLoop),
 
-            ('moveToPfsDesign', f'[<designId>] [<exptime>] {seqArgs}', self.moveToPfsDesign),
+            ('moveToPfsDesign', f'[<designId>] [<exptime>] [<maskFile>] {seqArgs}', self.moveToPfsDesign),
             ('moveToHome', f'@(phi|theta|all)  [<exptime>] {seqArgs}', self.moveToHome),
 
             ('movePhiToAngle', f'<angle> <iteration> {seqArgs}', self.movePhiToAngle),
@@ -101,6 +101,8 @@ class FpsCmd(object):
                                         keys.Key("iteration", types.Int(), help="Interation number"),
                                         keys.Key("designId", types.Long(),
                                                  help="pfsDesignId for the field,which defines the fiber positions"),
+                                        keys.Key('maskFile', types.String() * (1,),
+                                                 help='filename containing which fibers to expose.'),
                                         )
 
     @property
@@ -127,6 +129,7 @@ class FpsCmd(object):
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
         exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else False
+        maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else False
 
         # then declare new design.
         if 'designId' in cmdKeys:
@@ -137,7 +140,7 @@ class FpsCmd(object):
         job = self.resourceManager.request(cmd, fpsSequence.MoveToPfsDesign)
 
         with self.actor.visitor.getVisit(caller='fps') as visit:
-            job.instantiate(cmd, visitId=visit.visitId, designId=designId, exptime=exptime, **seqKwargs)
+            job.instantiate(cmd, visitId=visit.visitId, designId=designId, exptime=exptime, maskFile=maskFile, **seqKwargs)
             job.seq.process(cmd)
 
         cmd.finish()

@@ -2,6 +2,7 @@ import os
 
 from ics.iicActor.fps.sequence import FpsSequence
 from ics.iicActor.sps.timed import timedLampsSequence
+from ics.iicActor.sps.sequence import SpsSequence
 
 
 class NearDotConvergence(FpsSequence):
@@ -11,6 +12,7 @@ class NearDotConvergence(FpsSequence):
     def __init__(self, designId, visitId, maxIteration, tolerance, maskFile=False, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
         # turning on the illuminators
+        self.add(actor='peb', cmdStr='led on')
         self.add(actor='sps', cmdStr='bia on')
 
         # move cobras to home
@@ -21,17 +23,18 @@ class NearDotConvergence(FpsSequence):
                  tolerance=tolerance, maskFile=maskFile, timeLim=300)
 
         # turning off the illuminators
+        self.tail.add(actor='peb', cmdStr='led off')
         self.tail.add(actor='sps', cmdStr='bia off')
 
 
-class DotRoach(timedLampsSequence):
+class DotRoach(SpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'dotRoach'
     dependencies = ['fps']
 
     def __init__(self, visitId, maskFile, keepMoving, cams, rootDir, stepSize, count, motor, windowedFlat, doTest=False,
-                 **kwargs):
-        timedLampsSequence.__init__(self, **kwargs)
+                 stepRatio=4, **kwargs):
+        SpsSequence.__init__(self, **kwargs)
 
         dataRoot = os.path.join(rootDir, f'v{str(visitId).zfill(6)}')
         maskFilesRoot = os.path.join(dataRoot, 'maskFiles')
@@ -42,20 +45,44 @@ class DotRoach(timedLampsSequence):
         # turning drp processing on
         self.add(actor='drp', cmdStr='startDotRoach', dataRoot=dataRoot, maskFile=maskFile, keepMoving=keepMoving)
 
-        exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
+        # exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
+        exptime = float(windowedFlat['exptime'])
         redWindow = windowedFlat['redWindow']
         blueWindow = windowedFlat['blueWindow']
 
+        # initial exposure
+        self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
+                    redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
+                    blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
+
+        self.add(actor='drp', cmdStr='processDotRoach')
+
         for iterNum in range(count):
-            self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest,
+            self.add(actor='fps',
+                     cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,
+                     maskFile=os.path.join(maskFilesRoot, f'iter{iterNum}.csv'))
+
+            self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
                         redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
                         blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
 
             self.add(actor='drp', cmdStr='processDotRoach')
 
+        # dotRoach in the opposite direction.
+        self.add(actor='drp', cmdStr='reverseDotRoach')
+        stepSize = int(round(-stepSize / 4))
+
+        for iterNum in range(2 * stepRatio):
+            fileName = 'finalMove.csv' if not iterNum else f'iter{iterNum + count}.csv'
             self.add(actor='fps',
                      cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,
-                     maskFile=os.path.join(maskFilesRoot, f'iter{iterNum}.csv'))
+                     maskFile=os.path.join(maskFilesRoot, fileName))
+
+            self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
+                        redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
+                        blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
+
+            self.add(actor='drp', cmdStr='processDotRoach')
 
         # turning drp processing off
         self.tail.add(actor='drp', cmdStr='stopDotRoach')
@@ -71,6 +98,8 @@ class DotCrossing(FpsSequence):
 
         # turning on the illuminators
         self.add(actor='sps', cmdStr='bia on')
+        self.add(actor='peb', cmdStr='led on')
+
         self.add(actor='mcs', cmdStr='expose object',
                  exptime=exptime, frameId=visit.nextFrameId(), doFibreId=True)
 
@@ -81,6 +110,7 @@ class DotCrossing(FpsSequence):
 
         # turning off the illuminators
         self.tail.add(actor='sps', cmdStr='bia off')
+        self.tail.add(actor='peb', cmdStr='led off')
 
 
 class PhiCrossing(DotCrossing):
