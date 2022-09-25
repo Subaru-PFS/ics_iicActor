@@ -36,7 +36,7 @@ class MiscCmd(object):
             ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] [@noConverge] {seqArgs}',
              self.dotCrossing),
             ('fiberIdentification',
-             f'[<groups>] [@(phi|theta)] [<stepSize>] [<count>] [<exptime>] {identArgs} {seqArgs}',
+             f'[<groups>] [@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [@noConverge] {identArgs} {seqArgs}',
              self.fiberIdentification),
         ]
 
@@ -207,6 +207,7 @@ class MiscCmd(object):
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
         cmd.inform('text="starting fiberIdentification')
+        doConverge = 'noConverge' not in cmdKeys
 
         # load config from instdata
         fiberIdentificationConfig = self.actor.actorConfig['fiberIdentification']
@@ -232,15 +233,16 @@ class MiscCmd(object):
         # declare current design as nearDotDesign.
         pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
 
-        with self.actor.visitor.getVisit(caller='fps') as visit:
-            job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
-            job1.instantiate(cmd, designId=designId, visitId=visit.visitId, **nearDotConvergenceConfig,
-                             isMainSequence=False, **seqKwargs)
-            try:
-                job1.seq.process(cmd)
-            finally:
-                # nearDotConvergence book-keeping.
-                job1.seq.insertVisitSet(visit.visitId)
+        if doConverge:
+            with self.actor.visitor.getVisit(caller='fps') as visit:
+                job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
+                job1.instantiate(cmd, designId=designId, visitId=visit.visitId, **nearDotConvergenceConfig,
+                                 isMainSequence=False, **seqKwargs)
+                try:
+                    job1.seq.process(cmd)
+                finally:
+                    # nearDotConvergence book-keeping.
+                    job1.seq.insertVisitSet(visit.visitId)
 
         # We should be nearDot at this point, so we can start the actual dotRoaching.
         job2 = self.resourceManager.request(cmd, miscSequence.FiberIdentification)
