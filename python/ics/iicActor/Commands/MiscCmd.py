@@ -29,10 +29,15 @@ class MiscCmd(object):
         identArgs = '[<cam>] [<arm>] [<sm>]'
 
         self.vocab = [
-            ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [@noConverge] {identArgs} {seqArgs}', self.dotRoaching),
-            ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] [@noConverge] {seqArgs}', self.dotCrossing),
-            ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] [@noConverge] {seqArgs}', self.dotCrossing),
-            ('fastRoach', '', self.fastRoaching)
+            ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [@noConverge] {identArgs} {seqArgs}',
+             self.dotRoaching),
+            ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] [@noConverge] {seqArgs}',
+             self.dotCrossing),
+            ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] [@noConverge] {seqArgs}',
+             self.dotCrossing),
+            ('fiberIdentification',
+             f'[<groups>] [@(phi|theta)] [<stepSize>] [<count>] [<exptime>] {identArgs} {seqArgs}',
+             self.fiberIdentification),
         ]
 
         # Define typed command arguments for the above commands.
@@ -50,6 +55,7 @@ class MiscCmd(object):
                                         keys.Key('maskFile', types.String() * (1,),
                                                  help='filename containing which fibers to expose.'),
                                         keys.Key('designId', types.Long(), help='selected nearDot designId'),
+                                        keys.Key('groups', types.Int() * (1,), help='which groups to identify 2->31')
                                         )
 
     @property
@@ -89,6 +95,7 @@ class MiscCmd(object):
         # load config from instdata
         dotRoachConfig = self.actor.actorConfig['dotRoach']
         nearDotConvergenceConfig = self.actor.actorConfig['nearDotConvergence']
+        pfsDesignConfig = self.actor.actorConfig['pfsDesign']
 
         if 'stepSize' in cmdKeys:
             dotRoachConfig.update(stepSize=cmdKeys['stepSize'].values[0])
@@ -111,8 +118,9 @@ class MiscCmd(object):
             return
 
         if doConverge:
-            # get designId from opdb or provided one.
-            designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.getNearDotDesign(mcsCamera, dotRoachConfig['motor'])
+            # retrieve designId from config
+            designId = pfsDesignConfig[f"{dotRoachConfig['motor']}Crossing"]
+
             # declare current design as nearDotDesign.
             pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
 
@@ -155,6 +163,7 @@ class MiscCmd(object):
         # load config from instdata
         dotCrossingConfig = self.actor.actorConfig['dotCrossing']
         nearDotConvergenceConfig = self.actor.actorConfig['nearDotConvergence']
+        pfsDesignConfig = self.actor.actorConfig['pfsDesign']
 
         if 'stepSize' in cmdKeys:
             dotCrossingConfig.update(stepSize=cmdKeys['stepSize'].values[0])
@@ -165,7 +174,7 @@ class MiscCmd(object):
 
         if doConverge:
             # get designId from opdb or provided one.
-            designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.getNearDotDesign(mcsCamera, motor)
+            designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else pfsDesignConfig[f'{motor}Crossing']
             # declare current design as nearDotDesign.
             pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
 
@@ -193,33 +202,40 @@ class MiscCmd(object):
         cmd.finish()
 
     @singleShot
-    def fastRoaching(self, cmd):
+    def fiberIdentification(self, cmd):
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
-        mcsCamera = 'mcs'
-        cmd.inform('text="starting fastRoaching script..."')
+        cmd.inform('text="starting fiberIdentification')
 
         # load config from instdata
-        dotRoachConfig = self.actor.actorConfig['dotRoach']
+        fiberIdentificationConfig = self.actor.actorConfig['fiberIdentification']
         nearDotConvergenceConfig = self.actor.actorConfig['nearDotConvergence']
+        pfsDesignConfig = self.actor.actorConfig['pfsDesign']
+        maskFilesRoot = self.actor.actorConfig['maskFiles']['rootDir']
 
-        maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'SM1_000'
-        try:
-            maskFile = self.getFpsMaskFile(maskFile)
-        except:
-            cmd.fail(f'text="failed to open maskFile file:{maskFile} !"')
-            return
+        if 'stepSize' in cmdKeys:
+            fiberIdentificationConfig.update(stepSize=cmdKeys['stepSize'].values[0])
+        if 'count' in cmdKeys:
+            fiberIdentificationConfig.update(count=cmdKeys['count'].values[0])
+        if 'exptime' in cmdKeys:
+            fiberIdentificationConfig['windowedFlat'].update(exptime=cmdKeys['exptime'].values[0])
+        if 'phi' in cmdKeys:
+            fiberIdentificationConfig.update(motor='phi')
+        if 'theta' in cmdKeys:
+            fiberIdentificationConfig.update(motor='theta')
 
-        # retrieve designId from opdb
-        designId = 0x662cf9deec5c1ce9
+        groups = cmdKeys['groups'].values if 'groups' in cmdKeys else list(range(2, 32))
+
+        # retrieve designId from config
+        designId = pfsDesignConfig[f"{fiberIdentificationConfig['motor']}Crossing"]
         # declare current design as nearDotDesign.
         pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
 
         with self.actor.visitor.getVisit(caller='fps') as visit:
             job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
-            job1.instantiate(cmd, designId=designId, visitId=visit.visitId, maskFile=maskFile,
-                             **nearDotConvergenceConfig, isMainSequence=False, **seqKwargs)
+            job1.instantiate(cmd, designId=designId, visitId=visit.visitId, **nearDotConvergenceConfig,
+                             isMainSequence=False, **seqKwargs)
             try:
                 job1.seq.process(cmd)
             finally:
@@ -227,9 +243,8 @@ class MiscCmd(object):
                 job1.seq.insertVisitSet(visit.visitId)
 
         # We should be nearDot at this point, so we can start the actual dotRoaching.
-        job2 = self.resourceManager.request(cmd, miscSequence.FastRoach)
-        job2.instantiate(cmd, visitId=visit.visitId, maskFile=maskFile, **dotRoachConfig,
-                         **seqKwargs)
+        job2 = self.resourceManager.request(cmd, miscSequence.FiberIdentification)
+        job2.instantiate(cmd, maskFilesRoot=maskFilesRoot, groups=groups, **fiberIdentificationConfig, **seqKwargs)
         job2.seq.process(cmd)
 
         cmd.finish()

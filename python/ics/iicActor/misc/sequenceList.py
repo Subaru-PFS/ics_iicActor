@@ -123,27 +123,59 @@ class ThetaCrossing(DotCrossing):
     seqtype = 'thetaCrossing'
 
 
-class FastRoach(timedLampsSequence):
+class FiberIdentification(timedLampsSequence):
     """ fps MoveToPfsDesign command. """
-    seqtype = 'dotRoach'
+    seqtype = 'fiberIdentification'
     dependencies = ['fps']
 
-    def __init__(self, visitId, maskFile, cams, rootDir, stepSize, count, motor, windowedFlat, doTest=False,
+    def __init__(self, maskFilesRoot, groups, cams, stepSize, count, motor, windowedFlat, doTest=False,
                  **kwargs):
         timedLampsSequence.__init__(self, **kwargs)
 
-        maskFilesRoot = '/data/dotRoach/fastRoach'
+        exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
+        redWindow = windowedFlat['redWindow']
+        blueWindow = windowedFlat['blueWindow']
 
-        exptime = dict(halogen=60, shutterTiming=False)
+        for groupId in groups:
+            # use sps erase command to niet things up.
+            self.add(actor='sps', cmdStr='erase', cams=cams)
 
-        for i in range(3):
-            self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest)
+            self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest,
+                        redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
+                        blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
 
-        for iterNum in range(37):
+            for iterNum in range(count):
+                self.add(actor='fps',
+                         cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,
+                         maskFile=os.path.join(maskFilesRoot, f'group{groupId}.csv'))
 
-            self.add(actor='fps',
-                     cmdStr=f'cobraMoveSteps phi', stepsize=-40,
-                     maskFile=os.path.join(maskFilesRoot, f'iter{iterNum}.csv'))
+                self.add(actor='fps',
+                         cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,
+                         maskFile=os.path.join(maskFilesRoot, f'group{groupId}.csv'))
 
-        for i in range(3):
-            self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest)
+
+
+# class FastRoach(timedLampsSequence):
+#     """ fps MoveToPfsDesign command. """
+#     seqtype = 'dotRoach'
+#     dependencies = ['fps']
+#
+#     def __init__(self, visitId, maskFile, cams, rootDir, stepSize, count, motor, windowedFlat, doTest=False,
+#                  **kwargs):
+#         timedLampsSequence.__init__(self, **kwargs)
+#
+#         maskFilesRoot = '/data/dotRoach/fastRoach'
+#
+#         exptime = dict(halogen=60, shutterTiming=False)
+#
+#         for i in range(3):
+#             self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest)
+#
+#         for iterNum in range(37):
+#
+#             self.add(actor='fps',
+#                      cmdStr=f'cobraMoveSteps phi', stepsize=-40,
+#                      maskFile=os.path.join(maskFilesRoot, f'iter{iterNum}.csv'))
+#
+#         for i in range(3):
+#             self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest)
