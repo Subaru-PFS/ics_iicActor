@@ -1,8 +1,8 @@
 import os
 
 from ics.iicActor.fps.sequence import FpsSequence
-from ics.iicActor.sps.timed import timedLampsSequence
 from ics.iicActor.sps.sequence import SpsSequence
+from ics.iicActor.sps.timed import timedLampsSequence
 
 
 class NearDotConvergence(FpsSequence):
@@ -39,16 +39,16 @@ class DotRoach(SpsSequence):
         dataRoot = os.path.join(rootDir, f'v{str(visitId).zfill(6)}')
         maskFilesRoot = os.path.join(dataRoot, 'maskFiles')
 
+        # exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
+        exptime = float(windowedFlat['exptime'])
+        redWindow = windowedFlat['redWindow']
+        blueWindow = windowedFlat['blueWindow']
+
         # use sps erase command to niet things up.
         self.add(actor='sps', cmdStr='erase', cams=cams)
 
         # turning drp processing on
         self.add(actor='drp', cmdStr='startDotRoach', dataRoot=dataRoot, maskFile=maskFile, keepMoving=keepMoving)
-
-        # exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
-        exptime = float(windowedFlat['exptime'])
-        redWindow = windowedFlat['redWindow']
-        blueWindow = windowedFlat['blueWindow']
 
         # initial exposure
         self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
@@ -128,11 +128,12 @@ class FiberIdentification(SpsSequence):
     seqtype = 'fiberIdentification'
     dependencies = ['fps']
 
-    def __init__(self, maskFilesRoot, groups, cams, stepSize, count, motor, windowedFlat, doTest=False,
+    def __init__(self, maskFilesRoot, groups, cams, stepSize, count, motor, windowedFlat, repeatSteps=4, doTest=False,
                  **kwargs):
         timedLampsSequence.__init__(self, **kwargs)
 
-        exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
+        # exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
+        exptime = float(windowedFlat['exptime'])
         redWindow = windowedFlat['redWindow']
         blueWindow = windowedFlat['blueWindow']
 
@@ -145,18 +146,14 @@ class FiberIdentification(SpsSequence):
                         blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
 
             for iterNum in range(count):
-                self.add(actor='fps',
-                         cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,
-                         maskFile=os.path.join(maskFilesRoot, f'group{groupId}.csv'))
-
-                self.add(actor='fps',
-                         cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,
-                         maskFile=os.path.join(maskFilesRoot, f'group{groupId}.csv'))
+                for repeat in range(repeatSteps):
+                    self.add(actor='fps',
+                             cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,
+                             maskFile=os.path.join(maskFilesRoot, f'group{groupId}.csv'))
 
                 self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
                             redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
                             blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
-
 
 # class FastRoach(timedLampsSequence):
 #     """ fps MoveToPfsDesign command. """
