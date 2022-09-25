@@ -13,7 +13,7 @@ class MoveToPfsDesign(FpsSequence):
         self.add(actor='sps', cmdStr='bia on')
         self.add(actor='peb', cmdStr='led on')
         # move cobras to home, not supposed to, but meh.
-        self.add(actor='fps', cmdStr='moveToHome all', visit=visitId, timeLim=300)
+        self.add(actor='fps', cmdStr='moveToHome all', visit=visitId, exptime=exptime, timeLim=300)
         # move to pfsDesign.
         self.add(actor='fps', cmdStr='moveToPfsDesign', visit=visitId, designId=designId, exptime=exptime,
                  maskFile=maskFile, timeLim=MoveToPfsDesign.timeLim)
@@ -34,8 +34,7 @@ class MoveToHome(FpsSequence):
         self.add(actor='sps', cmdStr='bia on')
         self.add(actor='peb', cmdStr='led on')
         # move cobras to home, not supposed to, but meh.
-        self.add(actor='fps', cmdStr='moveToHome', phi=phi, theta=theta, all=all, visit=visitId, timeLim=300)
-        # move to pfsDesign.
+        self.add(actor='fps', cmdStr='moveToHome', phi=phi, theta=theta, all=all, visit=visitId, exptime=exptime, timeLim=300)
         # turning illuminators off
         self.tail.add(actor='sps', cmdStr='bia off')
         self.tail.add(actor='peb', cmdStr='led off')

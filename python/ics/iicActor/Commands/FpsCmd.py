@@ -65,7 +65,7 @@ class FpsCmd(object):
             # ('mcsLoop', '[<expTime>] [<cnt>] [@noCentroids]', self.mcsLoop),
 
             ('moveToPfsDesign', f'[<designId>] [<exptime>] [<maskFile>] {seqArgs}', self.moveToPfsDesign),
-            ('moveToHome', f'@(phi|theta|all)  [<exptime>] {seqArgs}', self.moveToHome),
+            ('moveToHome', f'@(phi|theta|all) [<exptime>] {seqArgs}', self.moveToHome),
 
             ('movePhiToAngle', f'<angle> <iteration> {seqArgs}', self.movePhiToAngle),
             ('moveToSafePosition', f'{seqArgs}', self.moveToSafePosition),
@@ -173,7 +173,7 @@ class FpsCmd(object):
         job = self.resourceManager.request(cmd, fpsSequence.MoveToHome)
 
         with self.actor.visitor.getVisit(caller='fps') as visit:
-            job.instantiate(cmd,  phi=phi, theta=theta, all=all, visitId=visit.visitId,  exptime=exptime, **seqKwargs)
+            job.instantiate(cmd, phi=phi, theta=theta, all=all, visitId=visit.visitId, exptime=exptime, **seqKwargs)
             job.seq.process(cmd)
 
         cmd.finish()

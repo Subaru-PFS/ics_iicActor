@@ -123,7 +123,7 @@ class ThetaCrossing(DotCrossing):
     seqtype = 'thetaCrossing'
 
 
-class FiberIdentification(timedLampsSequence):
+class FiberIdentification(SpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'fiberIdentification'
     dependencies = ['fps']
@@ -140,7 +140,7 @@ class FiberIdentification(timedLampsSequence):
             # use sps erase command to niet things up.
             self.add(actor='sps', cmdStr='erase', cams=cams)
 
-            self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest,
+            self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
                         redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
                         blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
 
@@ -153,6 +153,9 @@ class FiberIdentification(timedLampsSequence):
                          cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,
                          maskFile=os.path.join(maskFilesRoot, f'group{groupId}.csv'))
 
+                self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
+                            redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
+                            blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
 
 
 # class FastRoach(timedLampsSequence):
