@@ -57,7 +57,7 @@ class SequenceCmd(object):
         groupName = cmdKeys['groupName'].values[0]
 
         groupId = self.resourceManager.requestGroupId(groupName, doContinue=doContinue)
-        cmd.finish(f'groupId={groupId}')
+        cmd.finish(f'groupId={groupId},{groupName}')
 
     def findOnGoingJob(self, cmd):
         cmdKeys = cmd.cmd.keywords
