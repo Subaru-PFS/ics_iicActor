@@ -29,15 +29,14 @@ class MiscCmd(object):
         identArgs = '[<cam>] [<arm>] [<sm>]'
 
         self.vocab = [
-            ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [@noConverge] {identArgs} {seqArgs}',
+            ('dotRoach',
+             f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [@noConverge] {identArgs} {seqArgs}',
              self.dotRoaching),
             ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] [@noConverge] {seqArgs}',
              self.dotCrossing),
             ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] [@noConverge] {seqArgs}',
              self.dotCrossing),
-            ('fiberIdentification',
-             f'[<groups>] [@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [@noConverge] {identArgs} {seqArgs}',
-             self.fiberIdentification),
+            ('fiberIdentification', f'[<groups>] [<exptime>]  {identArgs} {seqArgs}', self.fiberIdentification),
         ]
 
         # Define typed command arguments for the above commands.
@@ -207,42 +206,15 @@ class MiscCmd(object):
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
         cmd.inform('text="starting fiberIdentification')
-        doConverge = 'noConverge' not in cmdKeys
 
         # load config from instdata
         fiberIdentificationConfig = self.actor.actorConfig['fiberIdentification']
-        nearDotConvergenceConfig = self.actor.actorConfig['nearDotConvergence']
-        pfsDesignConfig = self.actor.actorConfig['pfsDesign']
         maskFilesRoot = self.actor.actorConfig['maskFiles']['rootDir']
 
-        if 'stepSize' in cmdKeys:
-            fiberIdentificationConfig.update(stepSize=cmdKeys['stepSize'].values[0])
-        if 'count' in cmdKeys:
-            fiberIdentificationConfig.update(count=cmdKeys['count'].values[0])
         if 'exptime' in cmdKeys:
             fiberIdentificationConfig['windowedFlat'].update(exptime=cmdKeys['exptime'].values[0])
-        if 'phi' in cmdKeys:
-            fiberIdentificationConfig.update(motor='phi')
-        if 'theta' in cmdKeys:
-            fiberIdentificationConfig.update(motor='theta')
 
         groups = cmdKeys['groups'].values if 'groups' in cmdKeys else list(range(2, 32))
-
-        # retrieve designId from config
-        designId = pfsDesignConfig[f"{fiberIdentificationConfig['motor']}Crossing"]
-        # declare current design as nearDotDesign.
-        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
-
-        if doConverge:
-            with self.actor.visitor.getVisit(caller='fps') as visit:
-                job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
-                job1.instantiate(cmd, designId=designId, visitId=visit.visitId, **nearDotConvergenceConfig,
-                                 isMainSequence=False, **seqKwargs)
-                try:
-                    job1.seq.process(cmd)
-                finally:
-                    # nearDotConvergence book-keeping.
-                    job1.seq.insertVisitSet(visit.visitId)
 
         # We should be nearDot at this point, so we can start the actual dotRoaching.
         job2 = self.resourceManager.request(cmd, miscSequence.FiberIdentification)

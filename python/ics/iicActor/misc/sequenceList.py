@@ -123,37 +123,37 @@ class ThetaCrossing(DotCrossing):
     seqtype = 'thetaCrossing'
 
 
-class FiberIdentification(SpsSequence):
+class FiberIdentification(timedLampsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'fiberIdentification'
     dependencies = ['fps']
 
-    def __init__(self, maskFilesRoot, groups, cams, stepSize, count, motor, windowedFlat, repeatSteps=4, doTest=False,
+    def __init__(self, maskFilesRoot, groups, cams, windowedFlat, doTest=False,
                  **kwargs):
         timedLampsSequence.__init__(self, **kwargs)
 
-        # exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
-        exptime = float(windowedFlat['exptime'])
+        exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
         redWindow = windowedFlat['redWindow']
         blueWindow = windowedFlat['blueWindow']
 
+        self.add(actor='sps', cmdStr='bia on')
+        self.add(actor='peb', cmdStr='led on')
+
+        self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest)
+
         for groupId in groups:
             # use sps erase command to niet things up.
+            self.add(actor='fps', cmdStr='moveToHome all', exptime=4.8,
+                     maskFile=os.path.join(maskFilesRoot, f'group{groupId}.csv'), timeLim=300)
+
             self.add(actor='sps', cmdStr='erase', cams=cams)
 
-            self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
+            self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest,
                         redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
                         blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
 
-            for iterNum in range(count):
-                for repeat in range(repeatSteps):
-                    self.add(actor='fps',
-                             cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,
-                             maskFile=os.path.join(maskFilesRoot, f'group{groupId}.csv'))
-
-                self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
-                            redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
-                            blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
+        self.tail.add(actor='sps', cmdStr='bia off')
+        self.tail.add(actor='peb', cmdStr='led off')
 
 # class FastRoach(timedLampsSequence):
 #     """ fps MoveToPfsDesign command. """
