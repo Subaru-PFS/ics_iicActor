@@ -123,7 +123,7 @@ class ThetaCrossing(DotCrossing):
     seqtype = 'thetaCrossing'
 
 
-class FiberIdentification(timedLampsSequence):
+class FiberIdentification(SpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'fiberIdentification'
     dependencies = ['fps']
@@ -132,28 +132,23 @@ class FiberIdentification(timedLampsSequence):
                  **kwargs):
         timedLampsSequence.__init__(self, **kwargs)
 
-        exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
+        # exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
+        exptime = float(windowedFlat['exptime'])
         redWindow = windowedFlat['redWindow']
         blueWindow = windowedFlat['blueWindow']
 
-        self.add(actor='sps', cmdStr='bia on')
-        self.add(actor='peb', cmdStr='led on')
-
-        self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest)
+        self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest)
 
         for groupId in groups:
             # use sps erase command to niet things up.
-            self.add(actor='fps', cmdStr='moveToHome all', exptime=4.8,
-                     maskFile=os.path.join(maskFilesRoot, f'group{groupId}.csv'), timeLim=300)
+            self.add(actor='fps', cmdStr=f'cobraMoveSteps phi', stepsize=3000,
+                     maskFile=os.path.join(maskFilesRoot, f'group{groupId}.csv'))
 
             self.add(actor='sps', cmdStr='erase', cams=cams)
 
-            self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest,
+            self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
                         redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
                         blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
-
-        self.tail.add(actor='sps', cmdStr='bia off')
-        self.tail.add(actor='peb', cmdStr='led off')
 
 # class FastRoach(timedLampsSequence):
 #     """ fps MoveToPfsDesign command. """
