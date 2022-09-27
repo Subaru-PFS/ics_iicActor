@@ -9,40 +9,43 @@ class NearDotConvergence(FpsSequence):
     seqtype = 'nearDotConvergence'
     dependencies = ['mcs']
 
-    def __init__(self, designId, visitId, maxIteration, tolerance, maskFile=False, doTest=False, **kwargs):
+    def __init__(self, designId, visitId, maxIteration, tolerance, exptime, maskFile=False, doTest=False, **kwargs):
         FpsSequence.__init__(self, **kwargs)
         # turning on the illuminators
         self.add(actor='peb', cmdStr='led on')
         self.add(actor='sps', cmdStr='bia on')
 
         # move cobras to home
-        self.add(actor='fps', cmdStr='moveToHome all', visit=visitId, timeLim=300)
+        self.add(actor='fps', cmdStr='moveToHome all', visit=visitId, exptime=exptime, timeLim=300)
 
         # going to nearDot pfsDesign
         self.add(actor='fps', cmdStr='moveToPfsDesign', designId=designId, visit=visitId, iteration=maxIteration,
-                 tolerance=tolerance, maskFile=maskFile, timeLim=300)
+                 tolerance=tolerance, maskFile=maskFile, exptime=exptime, timeLim=300)
 
         # turning off the illuminators
         self.tail.add(actor='peb', cmdStr='led off')
         self.tail.add(actor='sps', cmdStr='bia off')
 
 
-class DotRoach(SpsSequence):
+class HscRoach(SpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'dotRoach'
     dependencies = ['fps']
 
-    def __init__(self, visitId, maskFile, keepMoving, cams, rootDir, stepSize, count, motor, windowedFlat, doTest=False,
-                 stepRatio=4, **kwargs):
+    @staticmethod
+    def exposeArgs(windowedFlatConfig):
+        return float(windowedFlatConfig['exptime']), 'domeflat'
+
+    def __init__(self, visitId, maskFile, keepMoving, cams, rootDir, stepSize, count, motor, windowedFlatConfig,
+                 doTest=False, stepRatio=4, **kwargs):
         SpsSequence.__init__(self, **kwargs)
 
         dataRoot = os.path.join(rootDir, f'v{str(visitId).zfill(6)}')
         maskFilesRoot = os.path.join(dataRoot, 'maskFiles')
 
-        # exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
-        exptime = float(windowedFlat['exptime'])
-        redWindow = windowedFlat['redWindow']
-        blueWindow = windowedFlat['blueWindow']
+        exptime, exptype = self.exposeArgs(windowedFlatConfig)
+        redWindow = windowedFlatConfig['redWindow']
+        blueWindow = windowedFlatConfig['blueWindow']
 
         # use sps erase command to niet things up.
         self.add(actor='sps', cmdStr='erase', cams=cams)
@@ -51,7 +54,7 @@ class DotRoach(SpsSequence):
         self.add(actor='drp', cmdStr='startDotRoach', dataRoot=dataRoot, maskFile=maskFile, keepMoving=keepMoving)
 
         # initial exposure
-        self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
+        self.expose(exptype=exptype, exptime=exptime, cams=cams, doTest=doTest,
                     redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
                     blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
 
@@ -62,7 +65,7 @@ class DotRoach(SpsSequence):
                      cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,
                      maskFile=os.path.join(maskFilesRoot, f'iter{iterNum}.csv'))
 
-            self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
+            self.expose(exptype=exptype, exptime=exptime, cams=cams, doTest=doTest,
                         redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
                         blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
 
@@ -78,7 +81,7 @@ class DotRoach(SpsSequence):
                      cmdStr=f'cobraMoveSteps {motor}', stepsize=stepSize,
                      maskFile=os.path.join(maskFilesRoot, fileName))
 
-            self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
+            self.expose(exptype=exptype, exptime=exptime, cams=cams, doTest=doTest,
                         redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
                         blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
 
@@ -86,6 +89,14 @@ class DotRoach(SpsSequence):
 
         # turning drp processing off
         self.tail.add(actor='drp', cmdStr='stopDotRoach')
+
+
+class PfiRoach(HscRoach, timedLampsSequence):
+    """"""
+
+    @staticmethod
+    def exposeArgs(windowedFlatConfig):
+        return dict(halogen=int(windowedFlatConfig['exptime']), shutterTiming=False), 'flat'
 
 
 class DotCrossing(FpsSequence):
@@ -128,14 +139,13 @@ class FiberIdentification(SpsSequence):
     seqtype = 'fiberIdentification'
     dependencies = ['fps']
 
-    def __init__(self, maskFilesRoot, groups, cams, windowedFlat, doTest=False,
-                 **kwargs):
+    def __init__(self, maskFilesRoot, groups, cams, windowedFlatConfig, doTest=False, **kwargs):
         timedLampsSequence.__init__(self, **kwargs)
 
         # exptime = dict(halogen=int(windowedFlat['exptime']), shutterTiming=False)
-        exptime = float(windowedFlat['exptime'])
-        redWindow = windowedFlat['redWindow']
-        blueWindow = windowedFlat['blueWindow']
+        exptime = float(windowedFlatConfig['exptime'])
+        redWindow = windowedFlatConfig['redWindow']
+        blueWindow = windowedFlatConfig['blueWindow']
 
         self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest)
 
@@ -149,28 +159,3 @@ class FiberIdentification(SpsSequence):
             self.expose(exptype='domeflat', exptime=exptime, cams=cams, doTest=doTest,
                         redWindow='%d,%d' % (redWindow['row0'], redWindow['nrows']),
                         blueWindow='%d,%d' % (blueWindow['row0'], blueWindow['nrows']))
-
-# class FastRoach(timedLampsSequence):
-#     """ fps MoveToPfsDesign command. """
-#     seqtype = 'dotRoach'
-#     dependencies = ['fps']
-#
-#     def __init__(self, visitId, maskFile, cams, rootDir, stepSize, count, motor, windowedFlat, doTest=False,
-#                  **kwargs):
-#         timedLampsSequence.__init__(self, **kwargs)
-#
-#         maskFilesRoot = '/data/dotRoach/fastRoach'
-#
-#         exptime = dict(halogen=60, shutterTiming=False)
-#
-#         for i in range(3):
-#             self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest)
-#
-#         for iterNum in range(37):
-#
-#             self.add(actor='fps',
-#                      cmdStr=f'cobraMoveSteps phi', stepsize=-40,
-#                      maskFile=os.path.join(maskFilesRoot, f'iter{iterNum}.csv'))
-#
-#         for i in range(3):
-#             self.expose(exptype='flat', exptime=exptime, cams=cams, doTest=doTest)

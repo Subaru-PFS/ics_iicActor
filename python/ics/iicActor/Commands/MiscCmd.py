@@ -3,7 +3,6 @@ from importlib import reload
 
 import ics.iicActor.misc.sequenceList as miscSequence
 import ics.iicActor.utils.lib as iicUtils
-import ics.utils.opdb as opdb
 import iicActor.utils.pfsDesign as pfsDesignUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
@@ -30,13 +29,11 @@ class MiscCmd(object):
 
         self.vocab = [
             ('dotRoach',
-             f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [@noConverge] {identArgs} {seqArgs}',
+             f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [@(hscLamps)] {identArgs} {seqArgs}',
              self.dotRoaching),
-            ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] [@noConverge] {seqArgs}',
-             self.dotCrossing),
-            ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] [@noConverge] {seqArgs}',
-             self.dotCrossing),
-            ('fiberIdentification', f'[<groups>] [<exptime>]  {identArgs} {seqArgs}', self.fiberIdentification),
+            ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
+            ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
+            ('fiberIdentification', f'[<groups>] [<exptime>] {identArgs} {seqArgs}', self.fiberIdentification),
         ]
 
         # Define typed command arguments for the above commands.
@@ -61,21 +58,6 @@ class MiscCmd(object):
     def resourceManager(self):
         return self.actor.resourceManager
 
-    def getNearDotDesign(self, mcsCamera, motor):
-        """Retrieve nearDot design from opdb for phi|theta"""
-        # retrieving designId from opdb
-        designName = f'{motor}Crossing'
-        sql = f"select pfs_design_id from pfs_design where substring(design_name,1,{len(designName)})='{designName}'"
-
-        try:
-            # not very clean but it's all I can do for now.
-            allDesign = opdb.opDB.fetchall(sql)
-            [designId] = allDesign[-1]
-        except:
-            raise RuntimeError(f'could not retrieve {designName} designId from opdb')
-
-        return designId
-
     def getFpsMaskFile(self, maskFile):
         """load MaskFile for fps moves."""
         maskFile = os.path.join(self.actor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
@@ -88,25 +70,32 @@ class MiscCmd(object):
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
-        doConverge = 'noConverge' not in cmdKeys
+        # do the right
+        if 'hscLamps' in cmdKeys:
+            doConverge = False
+            lamps = 'hscLamps'
+            DotRoach = miscSequence.HscRoach
+        else:
+            doConverge = True
+            lamps = 'pfiLamps'
+            DotRoach = miscSequence.PfiRoach
 
-        mcsCamera = 'mcs'
-        cmd.inform('text="starting dot-roaching script..."')
+        cmd.inform(f'text="starting dot-roaching script using {lamps}.."')
 
         # load config from instdata
         dotRoachConfig = self.actor.actorConfig['dotRoach']
-        nearDotConvergenceConfig = self.actor.actorConfig['nearDotConvergence']
+        windowedFlatConfig = self.actor.actorConfig['windowedFlat'][lamps]
 
         if 'stepSize' in cmdKeys:
             dotRoachConfig.update(stepSize=cmdKeys['stepSize'].values[0])
         if 'count' in cmdKeys:
             dotRoachConfig.update(count=cmdKeys['count'].values[0])
-        if 'exptime' in cmdKeys:
-            dotRoachConfig['windowedFlat'].update(exptime=cmdKeys['exptime'].values[0])
         if 'phi' in cmdKeys:
             dotRoachConfig.update(motor='phi')
         if 'theta' in cmdKeys:
             dotRoachConfig.update(motor='theta')
+        if 'exptime' in cmdKeys:
+            windowedFlatConfig.update(exptime=cmdKeys['exptime'].values[0])
 
         keepMoving = 'keepMoving' in cmdKeys
 
@@ -118,8 +107,11 @@ class MiscCmd(object):
             return
 
         if doConverge:
+            mcsConfig = self.actor.actorConfig['mcs']
+            nearDotConvergenceConfig = self.actor.actorConfig['nearDotConvergence']
+            nearDotConvergenceConfig.update(exptime=mcsConfig['exptime'])
             # retrieve designId from config
-            designId = self.getNearDotDesign(mcsCamera, dotRoachConfig['motor'])
+            designId = pfsDesignUtils.PfsDesignHandler.latestDesignId(designName=f"{dotRoachConfig['motor']}Crossing")
 
             # declare current design as nearDotDesign.
             pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
@@ -136,9 +128,9 @@ class MiscCmd(object):
 
         # We should be nearDot at this point, so we can start the actual dotRoaching.
         with self.actor.visitor.getVisit(caller='sps') as visit:
-            job2 = self.resourceManager.request(cmd, miscSequence.DotRoach)
-            job2.instantiate(cmd, visitId=visit.visitId, maskFile=maskFile, keepMoving=keepMoving, **dotRoachConfig,
-                             **seqKwargs)
+            job2 = self.resourceManager.request(cmd, DotRoach)
+            job2.instantiate(cmd, visitId=visit.visitId, maskFile=maskFile, keepMoving=keepMoving,
+                             windowedFlatConfig=windowedFlatConfig, **dotRoachConfig, **seqKwargs)
             job2.seq.process(cmd)
 
         cmd.finish()
@@ -147,7 +139,6 @@ class MiscCmd(object):
     def dotCrossing(self, cmd):
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
-        doConverge = 'noConverge' not in cmdKeys
 
         # retrieving which crossing
         if cmd.cmd.name == 'phiCrossing':
@@ -163,29 +154,35 @@ class MiscCmd(object):
         # load config from instdata
         dotCrossingConfig = self.actor.actorConfig['dotCrossing']
         nearDotConvergenceConfig = self.actor.actorConfig['nearDotConvergence']
+        mcsConfig = self.actor.actorConfig['mcs']
+        # setting mcs exptime consistently.
+        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else mcsConfig['exptime']
+        nearDotConvergenceConfig.update(exptime=exptime)
+        dotCrossingConfig.update(exptime=exptime)
 
         if 'stepSize' in cmdKeys:
             dotCrossingConfig.update(stepSize=cmdKeys['stepSize'].values[0])
         if 'count' in cmdKeys:
             dotCrossingConfig.update(count=cmdKeys['count'].values[0])
-        if 'exptime' in cmdKeys:
-            dotCrossingConfig.update(exptime=cmdKeys['exptime'].values[0])
 
-        if doConverge:
-            # get designId from opdb or provided one.
-            designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.getNearDotDesign(mcsCamera, motor)
-            # declare current design as nearDotDesign.
-            pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
+        # get designId from opdb or provided one.
+        if 'designId' in cmdKeys:
+            designId = cmdKeys['designId'].values[0]
+        else:
+            designId = pfsDesignUtils.PfsDesignHandler.latestDesignId(designName=f"{motor}Crossing")
 
-            with self.actor.visitor.getVisit(caller='fps') as visit:
-                job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
-                job1.instantiate(cmd, designId=designId, visitId=visit.visitId,
-                                 **nearDotConvergenceConfig, isMainSequence=False, **seqKwargs)
-                try:
-                    job1.seq.process(cmd)
-                finally:
-                    # nearDotConvergence book-keeping.
-                    job1.seq.insertVisitSet(visit.visitId)
+        # declare current design as nearDotDesign.
+        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
+
+        with self.actor.visitor.getVisit(caller='fps') as visit:
+            job1 = self.resourceManager.request(cmd, miscSequence.NearDotConvergence)
+            job1.instantiate(cmd, designId=designId, visitId=visit.visitId,
+                             **nearDotConvergenceConfig, isMainSequence=False, **seqKwargs)
+            try:
+                job1.seq.process(cmd)
+            finally:
+                # nearDotConvergence book-keeping.
+                job1.seq.insertVisitSet(visit.visitId)
 
         with self.actor.visitor.getVisit(caller='fps') as visit:
             # We should be nearDot at this point, so we can start the actual dotCrossing.
@@ -208,17 +205,18 @@ class MiscCmd(object):
         cmd.inform('text="starting fiberIdentification')
 
         # load config from instdata
-        fiberIdentificationConfig = self.actor.actorConfig['fiberIdentification']
+        windowedFlatConfig = self.actor.actorConfig['windowedFlat']['hscLamps']
         maskFilesRoot = self.actor.actorConfig['maskFiles']['rootDir']
 
         if 'exptime' in cmdKeys:
-            fiberIdentificationConfig['windowedFlat'].update(exptime=cmdKeys['exptime'].values[0])
+            windowedFlatConfig['windowedFlat'].update(exptime=cmdKeys['exptime'].values[0])
 
-        groups = cmdKeys['groups'].values if 'groups' in cmdKeys else list(range(2, 32))
+        groups = cmdKeys['groups'].values if 'groups' in cmdKeys else list(set(range(2, 32)) - {25})
 
         # We should be nearDot at this point, so we can start the actual dotRoaching.
         job2 = self.resourceManager.request(cmd, miscSequence.FiberIdentification)
-        job2.instantiate(cmd, maskFilesRoot=maskFilesRoot, groups=groups, **fiberIdentificationConfig, **seqKwargs)
+        job2.instantiate(cmd, maskFilesRoot=maskFilesRoot, groups=groups, windowedFlatConfig=windowedFlatConfig,
+                         **seqKwargs)
         job2.seq.process(cmd)
 
         cmd.finish()
