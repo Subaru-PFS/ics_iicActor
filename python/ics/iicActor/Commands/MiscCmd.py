@@ -64,11 +64,13 @@ class MiscCmd(object):
     def getNearDotDesign(self, mcsCamera, motor):
         """Retrieve nearDot design from opdb for phi|theta"""
         # retrieving designId from opdb
-        designName = f"{mcsCamera}.nearDot.{motor}"
+        designName = f'{motor}Crossing'
+        sql = f"select pfs_design_id from pfs_design where substring(design_name,1,{len(designName)})='{designName}'"
 
         try:
-            [designId, ] = opdb.opDB.fetchone(
-                f"select pfs_design_id from pfs_design where design_name='{designName}' order by designed_at desc limit 1")
+            # not very clean but it's all I can do for now.
+            allDesign = opdb.opDB.fetchall(sql)
+            [designId] = allDesign[-1]
         except:
             raise RuntimeError(f'could not retrieve {designName} designId from opdb')
 
@@ -94,7 +96,6 @@ class MiscCmd(object):
         # load config from instdata
         dotRoachConfig = self.actor.actorConfig['dotRoach']
         nearDotConvergenceConfig = self.actor.actorConfig['nearDotConvergence']
-        pfsDesignConfig = self.actor.actorConfig['pfsDesign']
 
         if 'stepSize' in cmdKeys:
             dotRoachConfig.update(stepSize=cmdKeys['stepSize'].values[0])
@@ -118,7 +119,7 @@ class MiscCmd(object):
 
         if doConverge:
             # retrieve designId from config
-            designId = pfsDesignConfig[f"{dotRoachConfig['motor']}Crossing"]
+            designId = self.getNearDotDesign(mcsCamera, dotRoachConfig['motor'])
 
             # declare current design as nearDotDesign.
             pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
@@ -162,7 +163,6 @@ class MiscCmd(object):
         # load config from instdata
         dotCrossingConfig = self.actor.actorConfig['dotCrossing']
         nearDotConvergenceConfig = self.actor.actorConfig['nearDotConvergence']
-        pfsDesignConfig = self.actor.actorConfig['pfsDesign']
 
         if 'stepSize' in cmdKeys:
             dotCrossingConfig.update(stepSize=cmdKeys['stepSize'].values[0])
@@ -173,7 +173,7 @@ class MiscCmd(object):
 
         if doConverge:
             # get designId from opdb or provided one.
-            designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else pfsDesignConfig[f'{motor}Crossing']
+            designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.getNearDotDesign(mcsCamera, motor)
             # declare current design as nearDotDesign.
             pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
 
