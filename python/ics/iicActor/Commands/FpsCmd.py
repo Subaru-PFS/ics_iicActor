@@ -65,7 +65,7 @@ class FpsCmd(object):
             # ('mcsLoop', '[<expTime>] [<cnt>] [@noCentroids]', self.mcsLoop),
 
             ('moveToPfsDesign', f'[<designId>] [<exptime>] [<maskFile>] {seqArgs}', self.moveToPfsDesign),
-            ('moveToHome', f'@(phi|theta|all) [<exptime>] {seqArgs}', self.moveToHome),
+            ('moveToHome', f'[@(all)] [<exptime>] [<designId>] {seqArgs}', self.moveToHome),
 
             ('movePhiToAngle', f'<angle> <iteration> {seqArgs}', self.movePhiToAngle),
             ('moveToSafePosition', f'{seqArgs}', self.moveToSafePosition),
@@ -128,7 +128,8 @@ class FpsCmd(object):
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
-        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else False
+        mcsConfig = self.actor.actorConfig['mcs']
+        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else mcsConfig['exptime']
         maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else False
 
         # then declare new design.
@@ -140,7 +141,8 @@ class FpsCmd(object):
         job = self.resourceManager.request(cmd, fpsSequence.MoveToPfsDesign)
 
         with self.actor.visitor.getVisit(caller='fps') as visit:
-            job.instantiate(cmd, visitId=visit.visitId, designId=designId, exptime=exptime, maskFile=maskFile, **seqKwargs)
+            job.instantiate(cmd, visitId=visit.visitId, designId=designId, exptime=exptime, maskFile=maskFile,
+                            **seqKwargs)
             job.seq.process(cmd)
 
         cmd.finish()
@@ -161,19 +163,21 @@ class FpsCmd(object):
         cmdKeys = cmd.cmd.keywords
         seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
-        phi = 'phi' in cmdKeys
-        theta = 'theta' in cmdKeys
-        all = 'all' in cmdKeys
-        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else False
+        mcsConfig = self.actor.actorConfig['mcs']
+        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else mcsConfig['exptime']
 
-        # Declare cobra home design as current.
-        homeDesignId = self.actor.actorConfig['pfsDesign']['cobraHome']
-        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=homeDesignId)
+        # get designId from opdb or provided one.
+        if 'designId' in cmdKeys:
+            designId = cmdKeys['designId'].values[0]
+        else:
+            designId = pfsDesignUtils.PfsDesignHandler.latestDesignId(designName="cobraHome")
+
+        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor, designId=designId)
 
         job = self.resourceManager.request(cmd, fpsSequence.MoveToHome)
 
         with self.actor.visitor.getVisit(caller='fps') as visit:
-            job.instantiate(cmd, phi=phi, theta=theta, all=all, visitId=visit.visitId, exptime=exptime, **seqKwargs)
+            job.instantiate(cmd, visitId=visit.visitId, exptime=exptime, **seqKwargs)
             job.seq.process(cmd)
 
         cmd.finish()
