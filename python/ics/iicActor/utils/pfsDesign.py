@@ -35,3 +35,19 @@ class PfsDesignHandler(object):
     def read(pfsDesignId, dirName):
         """Read PfsDesign from pfsDesignId"""
         return PfsDesign.read(pfsDesignId, dirName=dirName)
+
+    @staticmethod
+    def latestDesignId(designName):
+        """Retrieve last designId matching the name"""
+        # retrieving designId from opdb
+        sql = f"select pfs_design_id from pfs_design where substring(design_name,1,{len(designName)})='{designName}'"
+
+        try:
+            # not very clean but it's all I can do for now.
+            allDesign = opDB.fetchall(sql)
+            [designId] = allDesign[-1]
+        except:
+            raise RuntimeError(f'could not retrieve {designName} designId from opdb')
+
+        return designId
+
