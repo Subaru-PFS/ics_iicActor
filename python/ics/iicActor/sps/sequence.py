@@ -1,72 +1,75 @@
+import ics.utils.cmd as cmdUtils
+import iicActor.utils.sequence as sequence
 from ics.iicActor.sps.subcmd import SpsExpose, DcbCmd, LampsCmd
-from ics.iicActor.utils.sequencing import Sequence
 from ics.iicActor.utils.subcmd import SubCmd
 
 
-class SpsSequence(Sequence):
-    """Capture SpS sequence specificities here..."""
+class SpsSequence(sequence.Sequence):
     lightBeam = True
     shutterRequired = True
-    doCheckFocus = False
+    doScienceCheck = False
+    """"""
 
-    def __init__(self, *args, **kwargs):
-        Sequence.__init__(self, *args, **kwargs)
+    def __init__(self, cams, *args, isWindowed=False, **kwargs):
+        self.cams = cams
+        self.lightSource = self.getLightSource(cams)
 
-    def expose(self, exptype, exptime=0.0, duplicate=1, doTest=False, window=False, blueWindow=False, redWindow=False,
-               **identKeys):
-        """ Append duplicate * sps expose to sequence """
+        sequence.Sequence.__init__(self, *args, **kwargs)
+        self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
+
+    def getLightSource(self, cams):
+        """ Get light source from our sets of specs. """
+        # easy in that case.
+        if not self.lightBeam:
+            return 'None'
+
+        try:
+            [lightSource] = list(set([cam.lightSource for cam in cams]))
+        except:
+            raise RuntimeError('there can only be one light source for a given sequence')
+
+        return lightSource
+
+    def expose(self, exptype, exptime, cams, duplicate=1, windowKeys=None):
+        """Append duplicate * sps expose to sequence."""
+        # being nice about input arguments.
         exptime = [exptime] if not isinstance(exptime, list) else exptime
+        windowKeys = dict() if windowKeys is None else windowKeys
 
+        # instantiating for each exptime/duplicate.
         for expTime in exptime:
-            for i in range(duplicate):
-                self.append(SpsExpose.specify(exptype, expTime, doTest=doTest, window=window, blueWindow=blueWindow,
-                                              redWindow=redWindow, **identKeys))
+            for nExposure in range(duplicate):
+                # creating SpsExpose command object.
+                spsExpose = SpsExpose.specify(self, exptype, expTime, cams,
+                                              doTest=self.doTest, doScienceCheck=self.doScienceCheck, **windowKeys)
+                list.append(self, spsExpose)
 
-    def guessType(self, actor, cmdStr):
-        """ Guess SubCmd type """
+    def instantiate(self, actor, cmdStr, **kwargs):
+        """Return right SubCmd type based on actor/cmdStr."""
+        # this is called by add function.
         if actor == 'lamps':
             cls = LampsCmd
-        elif actor == 'dcb':
+        elif 'dcb' in actor:
             cls = DcbCmd
+        # I always call expose(), so this should never be called and might fail or might work, leaving there for now.
         elif actor == 'sps' and 'expose' in cmdStr:
             cls = SpsExpose
         else:
             cls = SubCmd
 
-        return cls
+        return cls(self, actor, cmdStr, **kwargs)
 
-    def guessTimeLim(self, cmdStr, timeLim=0):
-        """ Guess timeLim """
-        keys = ['warmingTime', 'exptime']
-        offset = 120 if 'rexm' in cmdStr else 0
-        args = cmdStr.split(' ')
-        for arg in args:
-            for key in keys:
-                try:
-                    __, timeLim = arg.split(f'{key}=')
-                except ValueError:
-                    pass
+    def guessTimeOffset(self, subCmd):
+        """This is sketchy but only called by head or tail, so okay."""
+        timeOffset = 0
 
-        return int(float(timeLim)) + 60 + offset
+        # find those arguments that can extend command above timeout.
+        for key in ['warmingTime', 'exptime']:
+            value = cmdUtils.findCmdKeyValue(subCmd.cmdStr, cmdKey=key)
+            timeOffset = max(float(value), timeOffset) if value is not None else timeOffset
 
+        # We know very well those can take a while, not taking risk here.
+        if 'rexm' in subCmd.cmdStr or 'rda' in subCmd.cmdStr:
+            timeOffset = max(timeOffset, 120)
 
-class Loop(SpsSequence):
-    def __init__(self, *args, **kwargs):
-        SpsSequence.__init__(self, *args, **kwargs)
-
-    def commandLogic(self, cmd):
-        """ loop the command until being told to stop, store in database"""
-        [subCmd] = self.cmdList
-        self.processSubCmd(cmd, subCmd=subCmd)
-
-        while not (self.doFinish or self.doAbort):
-            self.archiveAndReset(cmd, subCmd)
-            self.processSubCmd(cmd, subCmd=subCmd)
-
-    def archiveAndReset(self, cmd, subCmd):
-        """ archive a copy of the current command then reset it."""
-        self.insert(subCmd.id, subCmd.copy())
-        subCmd.initialise()
-        subCmd.register(self, len(self.cmdList) - 1)
-        subCmd.inform(cmd=cmd)
-        self.sort(key=lambda x: x.id)
+        return timeOffset

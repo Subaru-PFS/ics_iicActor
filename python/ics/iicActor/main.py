@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 import actorcore.ICC
-from ics.iicActor.utils.resourceManager import ResourceManager
-from ics.utils import visit
+from ics.iicActor.utils import engine
 from ics.utils.instdata import InstData
 from ics.utils.sps.spectroIds import getSite
+from twisted.internet import reactor
 
 
 class IicActor(actorcore.ICC.ICC):
@@ -16,15 +16,15 @@ class IicActor(actorcore.ICC.ICC):
         # This sets up the connections to/from the hub, the logger, and the twisted reactor.
         #
         actorcore.ICC.ICC.__init__(self, name,
-                                   productName=productName)
+                                   productName=productName,
+                                   modelNames=['hub', 'sps'])
 
         # No quite sure what to do about this yet. But one of the
         # "clocks" of the PFS is the single visit, for which the IIC
         # is responsible for distributing to sub actors.
         #
         self.instData = InstData(self)
-        self.visitor = visit.VisitManager(self)
-        self.resourceManager = ResourceManager(self)
+        self.engine = engine.Engine(self)
 
         self.everConnected = False
 
@@ -33,13 +33,20 @@ class IicActor(actorcore.ICC.ICC):
             self.logger.info('Establishing first tron connection...')
             self.everConnected = True
 
-            _needModels = [self.name, 'gen2', 'fps', 'mcs', 'sps', 'ag']
+            _needModels = [self.name, 'gen2', 'fps', 'mcs', 'ag']
             self.logger.info(f'adding models: {sorted(_needModels)}')
             self.addModels(_needModels)
             self.logger.info(f'added models: {sorted(self.models.keys())}')
 
             self.site = getSite()
             self.logger.info(f'site :{self.site}')
+
+            reactor.callLater(1, self.letsGetReadyToRumble)
+
+    def letsGetReadyToRumble(self):
+        """"""
+        for actor in ['hub', 'sps']:
+            self.cmdr.bgCall(callFunc=None, actor=actor, cmdStr='status')
 
 
 def main():
