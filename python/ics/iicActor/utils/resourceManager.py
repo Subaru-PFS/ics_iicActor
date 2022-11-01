@@ -1,179 +1,169 @@
-import ics.iicActor.sps.engineering as spsEngineering
-from astropy import time as astroTime
-from ics.iicActor.ag.job import AgJob
-from ics.iicActor.ag.sequence import AgSequence
-from ics.iicActor.fps.job import FpsJob
-from ics.iicActor.fps.sequence import FpsSequence
-from ics.iicActor.sps.job import SpectroJob, RdaJob
+import logging
+
+import iicActor.utils.lib as libUtils
 from ics.iicActor.sps.sequence import SpsSequence
-from ics.utils.opdb import opDB
 from ics.utils.sps.config import SpsConfig
-from iicActor.utils.lib import genIdentKeys
+from iicActor.utils import exception
+
+
+class Resource(object):
+    def __init__(self, name):
+        self.name = name
+        self.available = True
+
+    def lock(self):
+        """"""
+        if not self.available:
+            raise exception.ResourceIsBusy(f'{self.name} already busy.')
+
+        self.available = False
+
+    def free(self):
+        """"""
+        self.available = True
 
 
 class ResourceManager(object):
+    ignore = ['hub', 'keys', 'msg', 'iic', 'gen2', 'sequencepanel']
+
     """ Placeholder to reject/accept incoming jobs based on the availability of the software/hardware. """
 
     def __init__(self, actor):
         self.actor = actor
-        self.groupIds = dict()
-        self.jobs = dict()
+        self.logger = logging.getLogger('resourceManager')
+        self.connectedActors = dict()
+        self.spsResources = dict()
+
+        self.spsConfig = None
+        self.attachCallbacks()
 
     @property
-    def onGoing(self):
-        return [job for job in self.jobs.values() if not job.isDone]
+    def resources(self):
+        return dict([it for it in self.connectedActors.items()] + [it for it in self.spsResources.items()])
 
-    @property
-    def activeIds(self):
-        return [job.visitSetId for job in self.onGoing]
+    def attachCallbacks(self):
+        """Attaching callbacks for hub.actors and sps.spsModules"""
 
-    @property
-    def activeSequences(self):
-        activeSequences = ",".join(map(str, self.activeIds))
-        activeSequences = 'None' if not activeSequences else activeSequences
-        return activeSequences
+        def connectedActors(keyVar):
+            """Always keep an up-to-date inventory of the connected actors."""
+            actorList = list(map(str, keyVar.getValue()))
 
-    @property
-    def busy(self):
-        return sum([job.required for job in self.onGoing], [])
+            for actorName in actorList:
+                if actorName in self.connectedActors or actorName in ResourceManager.ignore:
+                    continue
 
-    @property
-    def locked(self):
-        return sum([job.resources for job in self.onGoing], [])
+                self.connectedActors[actorName] = Resource(actorName)
 
-    def request(self, cmd, seqObj):
-        """ Request a new Job and lock it if all checks passes. """
-        visitSetId = self.arrangeVisitSetId()
+            # also check for actors that disappeared.
+            disconnected = set(self.connectedActors) - set(actorList)
 
-        if issubclass(seqObj, SpsSequence):
-            identKeys = genIdentKeys(cmd.cmd.keywords)
-            specs = SpsConfig.fromModel(self.actor.models['sps']).identify(**identKeys)
-            job = SpectroJob(self.actor, specs, seqObj, visitSetId)
+            for actorName in disconnected:
+                self.connectedActors.pop(actorName, None)
 
-        elif issubclass(seqObj, FpsSequence):
-            job = FpsJob(self.actor, seqObj, visitSetId)
+        def spsConfig(keyVar):
+            """Always keep an up-to-date inventory of the spsConfig and resources."""
+            self.spsConfig = self.reloadSpsResources()
 
-        elif issubclass(seqObj, AgSequence):
-            job = AgJob(self.actor, seqObj, visitSetId)
+        self.actor.models['hub'].keyVarDict['actors'].addCallback(connectedActors)
+        self.actor.models['sps'].keyVarDict['spsModules'].addCallback(spsConfig)
 
-        elif issubclass(seqObj, spsEngineering.RdaMove):
-            identKeys = genIdentKeys(cmd.cmd.keywords)
-            specModules = SpsConfig.fromModel(self.actor.models['sps']).selectModules(identKeys['sm'])
-            job = RdaJob(self.actor, specModules, seqObj, visitSetId)
-
-        else:
-            raise RuntimeError('unknown sequence type')
-
-        if any([resource in self.busy for resource in job.resources]):
-            raise RuntimeError('cannot fire your sequence, dependent resources already busy...')
-
-        if any([resource in self.locked for resource in job.required]):
-            raise RuntimeError('cannot fire your sequence, required resources already locked...')
-
-        job.sanityCheck(cmd)
-
-        return self.lock(job)
-
-    def lock(self, job):
-        """ all specs points to the same job. """
-        self.allocate(job, job.visitSetId)
-
-        return job
-
-    def allocate(self, job, key):
-        """ Just associate a spec with a job, free a previous job if it's not longer referenced. """
+    def reloadSpsResources(self):
+        """Reloading spsConfig and resources."""
+        # getting all the current operational parts.
         try:
-            prevJob = self.jobs[key]
-        except KeyError:
-            prevJob = None
+            spsConfig = SpsConfig.fromModel(self.actor.models['sps'])
+        except ValueError:
+            return None
 
-        self.jobs[key] = job
+        parts = list(map(str, sum([specModule.opeSubSys for specModule in spsConfig.values()], [])))
 
-        if prevJob is not None and prevJob not in self.jobs.values():
-            prevJob.free()
-
-        self.cleanHistory()
-
-    def cleanHistory(self, nDay=1):
-        """ Just associate a spec with a job, free a previous job if it's not longer referenced. """
-        now = float(astroTime.Time.now().mjd)
-        oldVisitSets = [job.visitSetId for job in self.jobs.values() if now - job.tStart.mjd > nDay]
-
-        for visitSetId in oldVisitSets:
-            self.jobs[visitSetId].free()
-            self.jobs.pop(visitSetId, None)
-
-    def identify(self, identifier):
-        """ identify job from identifier(sps, dcb ...), look for job with light source first. """
-        ret = None
-
-        if identifier is None:
-            try:
-                [ret] = [job for job in self.jobs.values() if not job.isDone]
-            except:
-                pass
-
-        if isinstance(identifier, int):
-            visitSetId = identifier
-            try:
-                return self.jobs[visitSetId]
-            except KeyError:
-                raise RuntimeError(f'{visitSetId} is not valid, activeSequences:{self.activeSequences}')
-
-        for job in set(self.jobs.values()):
-            if job.isDone:
+        for partName in parts:
+            if partName in self.spsResources:
                 continue
 
-            if identifier == 'sps':
-                if isinstance(job, SpectroJob) and all([spec.specModule.spsModule for spec in job.specs]):
-                    ret = job
+            self.spsResources[partName] = Resource(partName)
 
-            if identifier == 'fps':
-                if isinstance(job, FpsJob):
-                    ret = job
+        # also check for parts that are no longer available.
+        disconnected = set(self.spsResources) - set(parts)
+        for partName in disconnected:
+            self.spsResources.pop(partName, None)
 
-        if ret is None:
-            raise RuntimeError('could not identify job')
+        return spsConfig
 
-        return ret
+    def request(self, resources):
+        """Requesting and locking given resources."""
+        notConnected = []
+        isBusy = []
 
-    def fetchLastVisitSetId(self):
-        """ get last visit_set_id from opDB """
-        visit_set_id, = opDB.fetchone('select max(visit_set_id) from iic_sequence')
-        visit_set_id = 0 if visit_set_id is None else visit_set_id
-        return int(visit_set_id)
+        for required in resources:
+            # checking for unconnected resources.
+            if required not in self.resources:
+                notConnected.append(required)
+                continue
+            # checking for unavailable resources.
+            if not self.resources[required].available:
+                isBusy.append(required)
 
-    def arrangeVisitSetId(self):
-        """ Multiple Jobs can happen in parallel, make sure you don't attribute same visit_set_id.  """
-        lastVisitSetId = [self.fetchLastVisitSetId()]
-        newVisitSetId = max(lastVisitSetId + self.activeIds + list(self.groupIds.values())) + 1
-        return newVisitSetId
+        if notConnected:
+            raise exception.ResourceUnAvailable(f'{",".join(notConnected)} not connected.')
 
-    def genStatus(self, cmd, visitSetId=None):
-        """ generate Job(s) status(es). """
+        if isBusy:
+            raise exception.ResourceIsBusy(f'{",".join(isBusy)} already busy.')
 
-        if visitSetId is not None:
-            try:
-                job = self.jobs[visitSetId]
-                return job.genStatus(cmd)
-            except KeyError:
-                raise RuntimeError(f'{visitSetId} is not valid, valids:{",".join(map(str, self.jobs.keys()))}')
+        # all tests have passed we can lock everything down
+        self.logger.info(f'locking resources : {",".join(resources)}')
+        for required in resources:
+            self.resources[required].lock()
 
-        cmd.inform(f'activeSequences={self.activeSequences}')
+        return resources
 
-        for job in self.jobs.values():
-            job.genStatus(cmd)
+    def free(self, locked):
+        """Freeing resources."""
+        # is nothing got locked just return.
+        if locked is None:
+            return
 
-    def requestGroupId(self, groupName, doContinue=False):
-        """"""
-        # just return the current one.
-        if doContinue:
-            if groupName not in self.groupIds.keys():
-                raise KeyError(f'no group:{groupName} is actually on-going !')
+        self.logger.info(f'freeing resources : {",".join(locked)}')
+        for resource in locked:
+            if resource not in self.resources:
+                continue
 
-            return self.groupIds[groupName]
+            self.resources[resource].free()
 
-        # reserving a visit_set_id/group_id
-        groupId = self.arrangeVisitSetId()
-        self.groupIds[groupName] = groupId
-        return groupId
+    def inspect(self, sequence):
+        """Inspect sequence object and find-out what resources needs to be booked."""
+        # just get the list of all actors that will be called as start.
+        allDeps = list(set([subCmd.actor for subCmd in sequence.subCmds]))
+
+        # most fps command use mcs as well.
+        if 'fps' in allDeps:
+            for fpsCommand in list(set([subCmd.cmdHead for subCmd in sequence.subCmds if subCmd.actor == 'fps'])):
+                # This command requires fps only, might be the only one, actually.
+                if fpsCommand in ['cobraMoveSteps', 'calculateBoresight']:
+                    continue
+
+                allDeps.append('mcs')
+
+        # sps is somehow peculiar because it's not driving hardware directly just actors (enu, xcu, hx, ccd, ...).
+        if 'sps' in allDeps:
+            allDeps.remove('sps')
+            if isinstance(sequence, SpsSequence):
+                # dependencies are derived from cams.
+                deps = list(set(map(str, sum([cam.dependencies(sequence) for cam in sequence.cams], []))))
+                allDeps.extend(deps)
+            else:
+                for spsCommand in list(set([subCmd for subCmd in sequence.subCmds if subCmd.actor == 'sps'])):
+                    # selecting spectrograph modules from the command inputs.
+                    specNums = libUtils.identSpecNums(spsCommand.cmdStr)
+                    specModules = self.spsConfig.selectModules(specNums)
+                    # select resource based on cmdHead.
+                    if spsCommand.cmdHead == 'bia':
+                        allDeps.extend([str(specModule.bia) for specModule in specModules])
+                    elif spsCommand.cmdHead == 'rda':
+                        allDeps.extend([str(specModule.rda) for specModule in specModules])
+                    elif spsCommand.cmdHead == 'slit':
+                        allDeps.extend([str(specModule.fca) for specModule in specModules])
+                    else:
+                        raise RuntimeError(f'dont know what to do with {spsCommand.cmdHead}...')
+
+        return list(set(allDeps))

@@ -1,16 +1,19 @@
 from importlib import reload
 
 import opscore.protocols.keys as keys
-import opscore.protocols.types as types
-from opscore.utility.qstr import qstr
-
 from ics.utils import visit
+
 
 class TestCmd(object):
 
     def __init__(self, actor):
         # This lets us access the rest of the actor.
         self.actor = actor
+        seqArgs = '[<name>] [<comments>] [@doTest] [<groupId>] [<head>] [<tail>]'
+        identArgs = '[<cam>] [<arm>] [<sm>]'
+        commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
+        timedLampsArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>] [@doShutterTiming]'
+        windowingArgs = '[<window>] [<blueWindow>] [<redWindow>]'
 
         self.vocab = [
             ('testMcs1', '', self.testMcs1),
@@ -18,7 +21,7 @@ class TestCmd(object):
         ]
 
         # Define typed command arguments for the above commands.
-        self.keys = keys.KeysDictionary("iic_test", (1, 1),
+        self.keys = keys.KeysDictionary('iic_test', (1, 1),
                                         )
 
     def testMcs1(self, cmd):
@@ -27,11 +30,10 @@ class TestCmd(object):
         gen2Model = self.actor.models['gen2'].keyVarDict
         axes = gen2Model['tel_axes'].getValue()
         cmd.inform(f'text="axes={axes}"')
-        cmd.finish('')
+        cmd.finish()
 
     def reloadVisitor(self, cmd):
+        """"""
         reload(visit)
-
-        self.actor.visitor = visit.VisitManager(self.actor)
-
+        self.actor.engine.visitManager = visit.VisitManager(self.actor)
         cmd.finish()

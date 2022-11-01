@@ -1,10 +1,9 @@
 from importlib import reload
 
-import ics.iicActor.ag.sequenceList as agSequence
+import ics.iicActor.sequenceList.ag as agSequence
 import ics.iicActor.utils.lib as iicUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
-from ics.utils.threading import singleShot
 
 reload(agSequence)
 reload(iicUtils)
@@ -21,7 +20,7 @@ class AgCmd(object):
         # associated methods when matched. The callbacks will be
         # passed a single argument, the parsed and typed command.
         #
-        seqArgs = '[<name>] [<comments>]'
+        seqArgs = '[<name>] [<comments>] [@doTest] [<groupId>] [<head>] [<tail>]'
         self.vocab = [
             ('acquireField',
              f'[<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] {seqArgs}', self.acquireField),
@@ -32,9 +31,12 @@ class AgCmd(object):
         ]
 
         # Define typed command arguments for the above commands.
-        self.keys = keys.KeysDictionary("iic_iic", (1, 1),
+        self.keys = keys.KeysDictionary("iic_fps", (1, 1),
                                         keys.Key('name', types.String(), help='iic_sequence name'),
                                         keys.Key('comments', types.String(), help='iic_sequence comments'),
+                                        keys.Key('groupId', types.Int(), help='optional groupId'),
+                                        keys.Key('head', types.String() * (1,), help='cmdStr list to process before'),
+                                        keys.Key('tail', types.String() * (1,), help='cmdStr list to process after'),
                                         keys.Key("designId", types.Long(),
                                                  help="pfsDesignId for the field, which defines the fiber positions"),
                                         keys.Key('exptime', types.Float() * (1,), help='exptime list (seconds)'),
@@ -44,10 +46,9 @@ class AgCmd(object):
                                         )
 
     @property
-    def resourceManager(self):
-        return self.actor.resourceManager
+    def engine(self):
+        return self.actor.engine
 
-    @singleShot
     def acquireField(self, cmd):
         """
         `iic acquireField [designId=???] [exptime=???] [magnitude=???] [@guideOff] [@dryRun] [name=\"SSS\"] [comments=\"SSS\"]`
@@ -72,27 +73,10 @@ class AgCmd(object):
            To be inserted in opdb:iic_sequence.comments.
         """
         cmdKeys = cmd.cmd.keywords
-        seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
-        exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
-        magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
-        guide = 'no' if 'guideOff' in cmdKeys else None
-        dryRun = 'yes' if 'dryRun' in cmdKeys else None
+        acquireField = agSequence.AcquireField.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, acquireField)
 
-        # get provided designId or get current one.
-        designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.actor.visitor.getCurrentDesignId()
-
-        # requesting resources, erk..
-        job = self.resourceManager.request(cmd, agSequence.AcquireField)
-
-        with self.actor.visitor.getVisit(caller='ag') as visit:
-            job.instantiate(cmd, designId=designId, visitId=visit.visitId, exptime=exptime, guide=guide,
-                            magnitude=magnitude, dryRun=dryRun, **seqKwargs)
-            job.seq.process(cmd)
-
-        cmd.finish()
-
-    @singleShot
     def autoguideStart(self, cmd):
         """
         `iic autoguideStart [exptime=???] [cadence=???] [center=???] [magnitude=???] [@guideOff] [@dryRun] [name=\"SSS\"] [comments=\"SSS\"]`
@@ -121,27 +105,9 @@ class AgCmd(object):
            To be inserted in opdb:iic_sequence.comments.
         """
         cmdKeys = cmd.cmd.keywords
-        seqKwargs = iicUtils.genSequenceKwargs(cmd)
 
-        exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
-        cadence = cmdKeys['cadence'].values[0] if 'cadence' in cmdKeys else None
-        center = cmdKeys['center'].values if 'center' in cmdKeys else None
-        magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
-        fromSky = 'yes' if 'fromSky' in cmdKeys else None
-        dryRun = 'yes' if 'dryRun' in cmdKeys else None
-
-        # get provided designId or get current one.
-        designId = cmdKeys['designId'].values[0] if 'designId' in cmdKeys else self.actor.visitor.getCurrentDesignId()
-
-        # requesting resources, erk..
-        job = self.resourceManager.request(cmd, agSequence.AutoguideStart)
-        with self.actor.visitor.getVisit(caller='ag') as visit:
-            job.instantiate(cmd, designId=designId, visitId=visit.visitId, exptime=exptime, fromSky=fromSky,
-                            cadence=cadence, center=center, magnitude=magnitude, dryRun=dryRun,
-                            **seqKwargs)
-            job.seq.process(cmd)
-
-        cmd.finish()
+        autoguideStart = agSequence.AutoguideStart.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, autoguideStart)
 
     def autoguideStop(self, cmd):
         """
@@ -149,12 +115,7 @@ class AgCmd(object):
 
         Ag stop autoguiding.
         """
-        cmdVar = self.actor.cmdr.call(actor='ag', cmdStr='autoguide stop', timeLim=120, forUserCmd=cmd)
+        cmdKeys = cmd.cmd.keywords
 
-        if cmdVar.didFail:
-            reply = cmdVar.replyList[-1]
-            repStr = reply.keywords.canonical(delimiter=';')
-            cmd.fail(repStr)
-            return
-
-        cmd.finish('text="autoguide stop OK"')
+        autoguideStop = agSequence.AutoguideStop.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, autoguideStop)

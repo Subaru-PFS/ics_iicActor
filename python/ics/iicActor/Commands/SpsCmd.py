@@ -1,32 +1,16 @@
 from importlib import reload
 
-import ics.iicActor.sps.engineering as engineering
-import ics.iicActor.sps.sequenceList as spsSequence
-import ics.iicActor.sps.timed as timedSpsSequence
-import ics.iicActor.utils.lib as iicUtils
-import numpy as np
+import ics.iicActor.sequenceList.sps.base as base
+import ics.iicActor.sequenceList.sps.calib as calib
+import ics.iicActor.sequenceList.sps.engineering as eng
+import ics.iicActor.sequenceList.sps.science as science
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 
-reload(spsSequence)
-reload(timedSpsSequence)
-reload(engineering)
-reload(iicUtils)
-
-
-def timedLampsKwargs(cmdKeys):
-    lampNames = 'halogen', 'hgcd', 'hgar', 'argon', 'neon', 'krypton', 'xenon'
-    doShutterTiming = 'doShutterTiming' in cmdKeys
-    timingOverHead = 5 if doShutterTiming else 0
-
-    lampsPrepare = {name: int(round(cmdKeys[name].values[0]) + timingOverHead) for name in lampNames if name in cmdKeys}
-
-    if not lampsPrepare:
-        raise ValueError('exptime nor per-lamp time has been specified')
-
-    lampsPrepare['shutterTiming'] = max(lampsPrepare.values()) - timingOverHead if doShutterTiming else 0
-
-    return lampsPrepare
+reload(base)
+reload(calib)
+reload(science)
+reload(eng)
 
 
 class SpsCmd(object):
@@ -34,62 +18,52 @@ class SpsCmd(object):
     def __init__(self, actor):
         # This lets us access the rest of the actor.
         self.actor = actor
-        self.seq = None
-
-        # Declare the commands we implement. When the actor is started
-        # these are registered with the parser, which will call the
-        # associated methods when matched. The callbacks will be
-        # passed a single argument, the parsed and typed command.
-        #
-        seqArgs = '[<name>] [<comments>] [@doTest] [<groupId>]'
-        identArgs = '[<cam>] [<arm>] [<sm>]'
+        seqArgs = '[<name>] [<comments>] [@doTest] [<groupId>] [<head>] [<tail>]'
+        identArgs = '[<cam>] [<arm>] [<specNum>]'
         commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
-        timedLampsArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>] [@doShutterTiming]'
+        timedArcArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>] [@doShutterTiming]'
+        timedFlatArgs = '[<halogen>] [@doShutterTiming]'
         windowingArgs = '[<window>] [<blueWindow>] [<redWindow>]'
+
         self.vocab = [
             ('masterBiases', f'{commonArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {commonArgs}', self.masterDarks),
-            ('ditheredFlats', f'<halogen> [@doShutterTiming] [<pixels>] {commonArgs}',  self.ditheredFlats),
-            ('scienceArc', f'{timedLampsArgs} {commonArgs}', self.scienceArc),
-            ('scienceTrace', f'<halogen> [@doShutterTiming] {windowingArgs} {commonArgs}', self.scienceTrace),
-            ('scienceObject', f'<exptime> {windowingArgs} {commonArgs}', self.scienceObject),
+            ('ditheredFlats', f'{timedFlatArgs} [<pixelRange>] {commonArgs}', self.ditheredFlats),
+            ('scienceArc', f'{timedArcArgs} {commonArgs}', self.scienceArc),
+            ('scienceTrace', f'{timedFlatArgs} {windowingArgs} {commonArgs}', self.scienceTrace),
             ('domeFlat', f'<exptime> {windowingArgs} {commonArgs}', self.domeFlat),
-            ('domeArc', f'<exptime> {commonArgs}', self.domeArc),
-            ('sps', f'@startExposures <exptime> {identArgs} [<name>] [<comments>] [@doBias] [@doTest]',
-             self.startExposures),
+            ('scienceObject', f'<exptime> {windowingArgs} {commonArgs}', self.scienceObject),
+
+            ('sps', f'@startExposures <exptime> {windowingArgs} {commonArgs}', self.startExposureLoop),
             ('sps', f'@erase {commonArgs}', self.erase),
 
-            ('bias', f'{commonArgs} [<head>] [<tail>]', self.doBias),
-            ('dark', f'<exptime> {commonArgs} [<head>] [<tail>]', self.doDark),
-            ('expose', f'arc {timedLampsArgs} {commonArgs} [<head>] [<tail>]', self.doArc),
-            ('expose', f'flat <halogen> [<window>] {commonArgs} [<head>] [<tail>]', self.doFlat),
+            ('bias', f'{commonArgs}', self.doBias),
+            ('dark', f'<exptime> {commonArgs}', self.doDark),
+            ('expose', f'arc {timedArcArgs} {commonArgs}', self.doArc),
+            ('expose', f'flat {timedFlatArgs} {windowingArgs} {commonArgs}', self.doFlat),
 
-            ('dither', f'arc {timedLampsArgs} <pixels> [doMinus] {commonArgs} [<head>] [<tail>]', self.ditheredArcs),
-            ('defocus', f'arc {timedLampsArgs} <position> {commonArgs} [<head>] [<tail>]', self.defocusedArcs),
-            ('test', f'hexapodStability {timedLampsArgs} [<position>] {commonArgs}', self.hexapodStability),
+            ('ditheredArcs', f'{timedArcArgs} <pixelStep> {commonArgs}', self.ditheredArcs),
+            ('defocusedArcs', f'{timedArcArgs} <position> {commonArgs}', self.defocusedArcs),
+            ('test', f'hexapodStability {timedArcArgs} [<position>] {commonArgs}', self.hexapodStability),
 
-            ('sps', 'rdaMove (low|med) [<sm>]', self.rdaMove),
+            ('sps', 'rdaMove (low|med) [<specNum>]', self.rdaMove),
             ('setGratingToDesign', '', self.setGratingToDesign),
-
         ]
 
         # Define typed command arguments for the above commands.
-        self.keys = keys.KeysDictionary('iic_iic', (1, 1),
+        self.keys = keys.KeysDictionary('iic_sps', (1, 1),
                                         keys.Key('exptime', types.Float() * (1,), help='exptime list (seconds)'),
                                         keys.Key('duplicate', types.Int(), help='exposure duplicate (1 is default)'),
                                         keys.Key('cam', types.String() * (1,), help='camera(s) to take exposure from'),
                                         keys.Key('arm', types.String() * (1,), help='arm to take exposure from'),
-                                        keys.Key('sm', types.Int() * (1,),
+                                        keys.Key('specNum', types.Int() * (1,),
                                                  help='spectrograph module(s) to take exposure from'),
                                         keys.Key('name', types.String(), help='iic_sequence name'),
                                         keys.Key('comments', types.String(), help='iic_sequence comments'),
+                                        keys.Key('groupId', types.Int(), help='optional groupId'),
                                         keys.Key('head', types.String() * (1,), help='cmdStr list to process before'),
                                         keys.Key('tail', types.String() * (1,), help='cmdStr list to process after'),
-                                        keys.Key('position', types.Float() * (1, 3),
-                                                 help='slit/motor position for throughfocus same args as np.linspace'),
-                                        keys.Key('pixels', types.Float() * (1, 3),
-                                                 help='pixels array(start, stop, step) '
-                                                      'for ditheredFlats default(-6,6,0.3)'),
+
                                         keys.Key('halogen', types.Float(), help='quartz halogen lamp on time'),
                                         keys.Key('argon', types.Float(), help='Ar lamp on time'),
                                         keys.Key('hgar', types.Float(), help='HgAr lamp on time'),
@@ -97,24 +71,30 @@ class SpsCmd(object):
                                         keys.Key('krypton', types.Float(), help='Kr lamp on time'),
                                         keys.Key('hgcd', types.Float(), help='HgCd lamp on time'),
                                         keys.Key('xenon', types.Float(), help='Xenon lamp on time'),
+
+                                        keys.Key('pixelRange', types.Float() * (1, 3),
+                                                 help='pixels array(start, stop, step) for ditheredFlats'
+                                                      'default(-6,6,0.3)'),
+                                        keys.Key('pixelStep', types.Float(),
+                                                 help='pixel step for ditheredArcs'),
+                                        keys.Key('position', types.Float() * (1, 3),
+                                                 help='slit position(start, stop, step) for defocusedArcs'),
+
                                         keys.Key("window", types.Int() * (1, 2),
                                                  help='first row, total number of rows to read'),
                                         keys.Key("blueWindow", types.Int() * (1, 2),
                                                  help='first row, total number of rows to read'),
                                         keys.Key("redWindow", types.Int() * (1, 2),
                                                  help='first row, total number of rows to read'),
-                                        keys.Key('groupId', types.Int(),
-                                                 help='optional groupId'),
-
                                         )
 
     @property
-    def resourceManager(self):
-        return self.actor.resourceManager
+    def engine(self):
+        return self.actor.engine
 
     def masterBiases(self, cmd):
         """
-        `iic masterBiases [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+        `iic masterBiases [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Take a set of biases.
         Sequence is referenced in opdb as iic_sequence.seqtype=masterBiases.
@@ -126,7 +106,7 @@ class SpsCmd(object):
            List of camera to expose, default=all
         arm : list of `str`
            List of arm to expose, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all
         duplicate : `int`
            Number of biases, default=15
@@ -136,21 +116,17 @@ class SpsCmd(object):
            To be inserted in opdb:iic_sequence.comments.
         doTest : `bool`
            image/exposure type will be labelled as test, default=bias.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd)
-        seqKwargs['name'] = 'calibProduct' if not seqKwargs['name'] else seqKwargs['name']
-        duplicate = min(cmdKeys['duplicate'].values[0], 15) if 'duplicate' in cmdKeys else 15
-
-        job = self.resourceManager.request(cmd, spsSequence.MasterBiases)
-        job.instantiate(cmd, duplicate=duplicate, **seqKwargs)
-
-        job.fire(cmd)
+        masterBiases = calib.MasterBiases.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, masterBiases)
 
     def masterDarks(self, cmd):
         """
-        `iic masterDarks [exptime=???] [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+        `iic masterDarks [exptime=???] [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Take a set of darks with given exptime.
         Sequence is referenced in opdb as iic_sequence.seqtype=masterDarks.
@@ -163,7 +139,7 @@ class SpsCmd(object):
            List of camera to expose, default=all
         arm : list of `str`
            List of arm to expose, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all
         duplicate : `int`
            Number of darks, default=15
@@ -173,22 +149,17 @@ class SpsCmd(object):
            To be inserted in opdb:iic_sequence.comments.
         doTest : `bool`
            image/exposure type will be labelled as test, default=dark.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd)
-        seqKwargs['name'] = 'calibProduct' if not seqKwargs['name'] else seqKwargs['name']
-        duplicate = min(cmdKeys['duplicate'].values[0], 15) if 'duplicate' in cmdKeys else 15
-        exptime = cmdKeys['exptime'].values if 'exptime' in cmdKeys else [300]
-
-        job = self.resourceManager.request(cmd, spsSequence.MasterDarks)
-
-        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
-        job.fire(cmd)
+        masterDarks = calib.MasterDarks.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, masterDarks)
 
     def ditheredFlats(self, cmd):
         """
-        `iic ditheredFlats halogen=FF.F [@doShutterTiming] [pixels=FF.F,FF.F,FF.F] [cam=???] [arm=???] [sm=???]
+        `iic ditheredFlats halogen=FF.F [@doShutterTiming] [pixels=FF.F,FF.F,FF.F] [cam=???] [arm=???] [specNum=???]
         [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Take a set of dithered fiberTrace with a given pixel step (default=0.3).
@@ -206,7 +177,7 @@ class SpsCmd(object):
            List of camera to expose, default=all.
         arm : list of `str`
            List of arm to expose, default=all.
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all.
         duplicate : `int`
            Number of exposure, default=1.
@@ -219,24 +190,13 @@ class SpsCmd(object):
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd)
-        seqKwargs['name'] = 'calibProduct' if not seqKwargs['name'] else seqKwargs['name']
-        exptime = timedLampsKwargs(cmdKeys)
-
-        [start, stop, step] = cmdKeys['pixels'].values if 'pixels' in cmdKeys else [-6, 6, 0.3]
-        nPositions = round((stop - start) / step + 1)
-        positions = np.linspace(start, stop, nPositions).round(2)
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.DitheredFlats)
-        job.instantiate(cmd, exptime=exptime, positions=positions, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate,
-                        **seqKwargs)
-        job.fire(cmd)
+        ditheredFlats = calib.DitheredFlats.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, ditheredFlats)
 
     def scienceArc(self, cmd):
         """
         `iic scienceArc [hgar=FF.F] [hgcd=FF.F] [argon=FF.F] [neon=FF.F] [krypton=FF.F] [xenon=FF.F] [@doShutterTiming]
-        [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+        [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Check focus and take a set of arc exposure.
         Sequence is referenced in opdb as iic_sequence.seqtype=scienceArc.
@@ -261,7 +221,7 @@ class SpsCmd(object):
            List of camera to expose, default=all
         arm : list of `str`
            List of arm to expose, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all
         duplicate : `int`
            Number of exposure, default=1
@@ -271,21 +231,18 @@ class SpsCmd(object):
            To be inserted in opdb:iic_sequence.comments.
         doTest : `bool`
            image/exposure type will be labelled as test, default=arc
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=False)
-        exptime = timedLampsKwargs(cmdKeys)
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.ScienceArc)
-        job.instantiate(cmd, exptime=exptime, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate, **seqKwargs)
-        job.fire(cmd)
+        scienceArc = calib.ScienceArc.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, scienceArc)
 
     def scienceTrace(self, cmd):
         """
         `iic scienceTrace halogen=FF.F [@doShutterTiming] [window=???] [blueWindow=???] [redWindow=???] [cam=???]
-        [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+        [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Check focus and take a set of fiberTrace.
         Sequence is referenced in opdb as iic_sequence.seqtype=scienceTrace.
@@ -307,7 +264,7 @@ class SpsCmd(object):
            List of camera to expose, default=all
         arm : list of `str`
            List of arm to expose, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all
         duplicate : `int`
            Number of exposure, default=1
@@ -317,74 +274,17 @@ class SpsCmd(object):
            To be inserted in opdb:iic_sequence.comments.
         doTest : `bool`
            image/exposure type will be labelled as test, default=flat.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=False)
-        exptime = timedLampsKwargs(cmdKeys)
-        window = cmdKeys['window'].values if 'window' in cmdKeys else False
-        blueWindow = cmdKeys['blueWindow'].values if 'blueWindow' in cmdKeys else False
-        redWindow = cmdKeys['redWindow'].values if 'redWindow' in cmdKeys else False
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.ScienceTrace)
-        job.instantiate(cmd, exptime=exptime, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate, window=window,
-                        blueWindow=blueWindow, redWindow=redWindow,
-                        **seqKwargs)
-        job.fire(cmd)
-
-    def scienceObject(self, cmd):
-        """
-        `iic scienceObject exptime=??? [window=???] [blueWindow=???] [redWindow=???] [cam=???] [arm=???] [sm=???]
-        [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
-
-        Check focus and take a set of object exposure.
-        Sequence is referenced in opdb as iic_sequence.seqtype=scienceObject.
-        Note that if the exposure is windowed, the seqtype will actually be scienceObject_windowed.
-
-        Parameters
-        ---------
-        exptime : `float`
-            exposure time.
-        window : `int`,`int`
-            first row, total number of rows.
-        blueWindow : `int`,`int`
-            first row, total number of rows. (blue arm)
-        redWindow : `int`,`int`
-            first row, total number of rows. (red arm)
-        cam : list of `str`
-           List of camera to expose, default=all
-        arm : list of `str`
-           List of arm to expose, default=all
-        sm : list of `int`
-           List of spectrograph module to expose, default=all
-        duplicate : `int`
-           Number of exposure, default=1
-        name : `str`
-           To be inserted in opdb:iic_sequence.name.
-        comments : `str`
-           To be inserted in opdb:iic_sequence.comments.
-        doTest : `bool`
-           image/exposure type will be labelled as test, default=object.
-        """
-        cmdKeys = cmd.cmd.keywords
-
-        seqKwargs = iicUtils.genSequenceKwargs(cmd)
-        exptime = cmdKeys['exptime'].values
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-        window = cmdKeys['window'].values if 'window' in cmdKeys else False
-        blueWindow = cmdKeys['blueWindow'].values if 'blueWindow' in cmdKeys else False
-        redWindow = cmdKeys['redWindow'].values if 'redWindow' in cmdKeys else False
-
-        job = self.resourceManager.request(cmd, spsSequence.Object)
-        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, window=window, blueWindow=blueWindow,
-                        redWindow=redWindow, **seqKwargs)
-
-        job.fire(cmd)
+        scienceTrace = calib.ScienceTrace.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, scienceTrace)
 
     def domeFlat(self, cmd):
         """
-        `iic domeFlat exptime=??? [window=???] [blueWindow=???] [redWindow=???] [cam=???] [arm=???] [sm=???]
+        `iic domeFlat exptime=??? [window=???] [blueWindow=???] [redWindow=???] [cam=???] [arm=???] [specNum=???]
          [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Check focus and take a set of fiberTrace, this sequence rely on an external illuminator (HSC lamps).
@@ -405,7 +305,7 @@ class SpsCmd(object):
            List of camera to expose, default=all
         arm : list of `str`
            List of arm to expose, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all
         duplicate : `int`
            Number of exposure, default=1
@@ -415,39 +315,38 @@ class SpsCmd(object):
            To be inserted in opdb:iic_sequence.comments.
         doTest : `bool`
            image/exposure type will be labelled as test, default=domeflat.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=False)
-        exptime = cmdKeys['exptime'].values
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-        window = cmdKeys['window'].values if 'window' in cmdKeys else False
-        blueWindow = cmdKeys['blueWindow'].values if 'blueWindow' in cmdKeys else False
-        redWindow = cmdKeys['redWindow'].values if 'redWindow' in cmdKeys else False
+        domeFlat = calib.DomeFlat.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, domeFlat)
 
-        job = self.resourceManager.request(cmd, spsSequence.DomeFlat)
-        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, window=window, blueWindow=blueWindow,
-                        redWindow=redWindow, **seqKwargs)
-
-        job.fire(cmd)
-
-    def domeArc(self, cmd):
+    def scienceObject(self, cmd):
         """
-        `iic domeArc exptime=??? [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+        `iic scienceObject exptime=??? [window=???] [blueWindow=???] [redWindow=???] [cam=???] [arm=???] [specNum=???]
+        [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
-        Check focus and take a set of arcs, this sequence rely on an external illuminator.
-        Sequence is referenced in opdb as iic_sequence.seqtype=domeArc.
-        Note that if the exposure is windowed, the seqtype will actually be domeArc_windowed.
+        Check focus and take a set of object exposure.
+        Sequence is referenced in opdb as iic_sequence.seqtype=scienceObject.
+        Note that if the exposure is windowed, the seqtype will actually be scienceObject_windowed.
 
         Parameters
         ---------
         exptime : `float`
             exposure time.
+        window : `int`,`int`
+            first row, total number of rows.
+        blueWindow : `int`,`int`
+            first row, total number of rows. (blue arm)
+        redWindow : `int`,`int`
+            first row, total number of rows. (red arm)
         cam : list of `str`
            List of camera to expose, default=all
         arm : list of `str`
            List of arm to expose, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all
         duplicate : `int`
            Number of exposure, default=1
@@ -456,22 +355,18 @@ class SpsCmd(object):
         comments : `str`
            To be inserted in opdb:iic_sequence.comments.
         doTest : `bool`
-           image/exposure type will be labelled as test, default=arc.
+           image/exposure type will be labelled as test, default=object.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=False)
-        exptime = cmdKeys['exptime'].values
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
+        scienceObject = science.ScienceObject.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, scienceObject)
 
-        job = self.resourceManager.request(cmd, spsSequence.DomeArc)
-        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
-
-        job.fire(cmd)
-
-    def startExposures(self, cmd):
+    def startExposureLoop(self, cmd):
         """
-        `iic sps @startExposures exptime=??? [cam=???] [arm=???] [sm=???] [name=\"SSS\"] [comments=\"SSS\"] [@doBias] [@doTest]`
+        `iic sps @startExposures exptime=??? [cam=???] [arm=???] [specNum=???] [name=\"SSS\"] [comments=\"SSS\"] [@doBias] [@doTest]`
 
         Start object exposure loop with a given exposure time, don't stop until finishExposure.
 
@@ -483,7 +378,7 @@ class SpsCmd(object):
            List of camera to expose, default=all
         arm : list of `str`
            List of arm to expose, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all
         duplicate : `int`
            Number of exposure, default=1
@@ -495,22 +390,17 @@ class SpsCmd(object):
             Take interleaved bias between object.
         doTest : `bool`
            image/exposure type will be labelled as test, default=object.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=False)
-        exptime = cmdKeys['exptime'].values[0]
-        objectLoop = spsSequence.ObjectInterleavedBiasLoop if 'doBias' in cmdKeys else spsSequence.ObjectLoop
-
-        job = self.resourceManager.request(cmd, objectLoop)
-        job.instantiate(cmd, exptime=exptime, **seqKwargs)
-
-        cmd.finish()
-        job.fire(cmd=self.actor.bcast)
+        exposureLoop = science.ScienceObjectLoop.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, exposureLoop)
 
     def erase(self, cmd):
         """
-        `iic sps erase [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"]`
+        `iic sps erase [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"]`
 
         Erase sps detectors, meant mainly to use before windowed exposures.
 
@@ -520,7 +410,7 @@ class SpsCmd(object):
            List of camera to erase, default=all
         arm : list of `str`
            List of arm to erase, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to erase, default=all
         duplicate : `int`
            Number of repeat, default=1
@@ -528,20 +418,17 @@ class SpsCmd(object):
            To be inserted in opdb:iic_sequence.name.
         comments : `str`
            To be inserted in opdb:iic_sequence.comments.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=False)
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-
-        job = self.resourceManager.request(cmd, spsSequence.Erase)
-        job.instantiate(cmd, duplicate=duplicate, **seqKwargs)
-
-        job.fire(cmd)
+        erase = base.Erase.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, erase)
 
     def doBias(self, cmd):
         """
-        `iic bias [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]
+        `iic bias [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]
         [head=???] [tail=???]`
 
         Take a set of biases.
@@ -554,7 +441,7 @@ class SpsCmd(object):
            List of camera to expose, default=all
         arm : list of `str`
            List of arm to expose, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all
         duplicate : `int`
            Number of biases, default=15
@@ -568,20 +455,17 @@ class SpsCmd(object):
             list of command to be launched before the sequence.
         tail : list of `str`
             list of command to be launched after the sequence.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-
-        job = self.resourceManager.request(cmd, spsSequence.Biases)
-        job.instantiate(cmd, duplicate=duplicate, **seqKwargs)
-
-        job.fire(cmd)
+        biases = base.Biases.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, biases)
 
     def doDark(self, cmd):
         """
-        `iic dark exptime=??? [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]
+        `iic dark exptime=??? [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]
         [head=???] [tail=???]`
 
         Take a set of darks with given exptime.
@@ -595,7 +479,7 @@ class SpsCmd(object):
            List of camera to expose, default=all
         arm : list of `str`
            List of arm to expose, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all
         duplicate : `int`
            Number of darks, default=15
@@ -609,22 +493,18 @@ class SpsCmd(object):
             list of command to be launched before the sequence.
         tail : list of `str`
             list of command to be launched after the sequence.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
-        exptime = cmdKeys['exptime'].values
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-
-        job = self.resourceManager.request(cmd, spsSequence.Darks)
-        job.instantiate(cmd, exptime=exptime, duplicate=duplicate, **seqKwargs)
-
-        job.fire(cmd)
+        darks = base.Darks.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, darks)
 
     def doArc(self, cmd):
         """
         `iic expose arc [hgar=FF.F] [hgcd=FF.F] [argon=FF.F] [neon=FF.F] [krypton=FF.F] [xenon=FF.F] [@doShutterTiming]
-        [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
+        [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
 
         Take a set of arc exposure.
         Sequence is referenced in opdb as iic_sequence.seqtype=arcs.
@@ -649,7 +529,7 @@ class SpsCmd(object):
            List of camera to expose, default=all
         arm : list of `str`
            List of arm to expose, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all
         duplicate : `int`
            Number of exposure, default=1
@@ -663,20 +543,17 @@ class SpsCmd(object):
             list of command to be launched before the sequence.
         tail : list of `str`
             list of command to be launched after the sequence.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
-        exptime = timedLampsKwargs(cmdKeys)
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.Arcs)
-        job.instantiate(cmd, exptime=exptime, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate, **seqKwargs)
-        job.fire(cmd)
+        arcs = base.Arcs.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, arcs)
 
     def doFlat(self, cmd):
         """
-        `iic expose flat halogen=FF.F [window=???] [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"]
+        `iic expose flat halogen=FF.F [window=???] [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"]
         [@doTest] [head=???] [tail=???]`
 
         Take a set of flat exposure.
@@ -692,7 +569,7 @@ class SpsCmd(object):
            List of camera to expose, default=all
         arm : list of `str`
            List of arm to expose, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all
         duplicate : `int`
            Number of exposure, default=1
@@ -706,24 +583,18 @@ class SpsCmd(object):
             list of command to be launched before the sequence.
         tail : list of `str`
             list of command to be launched after the sequence.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
-        exptime = timedLampsKwargs(cmdKeys)
-        window = cmdKeys['window'].values if 'window' in cmdKeys else False
-
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.Flats)
-        job.instantiate(cmd, exptime=exptime, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate, window=window,
-                        **seqKwargs)
-        job.fire(cmd)
+        flats = base.Flats.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, flats)
 
     def ditheredArcs(self, cmd):
         """
         `iic dither arc [hgar=FF.F] [hgcd=FF.F] [argon=FF.F] [neon=FF.F] [krypton=FF.F] [xenon=FF.F] [@doShutterTiming]
-        pixels=FF.F [doMinus] [cam=???] [arm=???] sm=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]
+        pixels=FF.F [doMinus] [cam=???] [arm=???] specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]
         [head=???] [tail=???]`
 
         Take a set of dithered Arc with a given pixel step.
@@ -754,7 +625,7 @@ class SpsCmd(object):
            List of camera to expose, default=all
         arm : list of `str`
            List of arm to expose, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all
         duplicate : `int`
            Number of exposure, default=1
@@ -768,24 +639,18 @@ class SpsCmd(object):
             list of command to be launched before the sequence.
         tail : list of `str`
             list of command to be launched after the sequence.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
-        exptime = timedLampsKwargs(cmdKeys)
-        pixels = cmdKeys['pixels'].values[0]
-        doMinus = 'doMinus' in cmdKeys
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.DitheredArcs)
-        job.instantiate(cmd, exptime=exptime, pixels=pixels, doMinus=doMinus, dcbOn=dict(), dcbOff=dict(),
-                        duplicate=duplicate, **seqKwargs)
-        job.fire(cmd)
+        ditheredArcs = base.DitheredArcs.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, ditheredArcs)
 
     def defocusedArcs(self, cmd):
         """
         `iic defocus arc [hgar=FF.F] [hgcd=FF.F] [argon=FF.F] [neon=FF.F] [krypton=FF.F] [xenon=FF.F]
-        [@doShutterTiming] position=??? [cam=???] [arm=???] [sm=???] [duplicate=N] [name=\"SSS\"]
+        [@doShutterTiming] position=??? [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"]
         [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
 
         Take Arc dataset through focus using fca hexapod, exposure time is scaled such as psf max flux ~= constant
@@ -813,7 +678,7 @@ class SpsCmd(object):
            List of camera to expose, default=all
         arm : list of `str`
            List of arm to expose, default=all
-        sm : list of `int`
+        specNum : list of `int`
            List of spectrograph module to expose, default=all
         duplicate : `int`
            Number of exposure, default=1
@@ -827,19 +692,13 @@ class SpsCmd(object):
             list of command to be launched before the sequence.
         tail : list of `str`
             list of command to be launched after the sequence.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
 
-        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
-        exptime = timedLampsKwargs(cmdKeys)
-        start, stop, num = cmdKeys['position'].values
-        positions = np.linspace(start, stop, num=int(num)).round(6)
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.DefocusedArcs)
-        job.instantiate(cmd, exp_time_0=exptime, positions=positions, dcbOn=dict(), dcbOff=dict(), duplicate=duplicate,
-                        **seqKwargs)
-        job.fire(cmd)
+        defocusedArcs = base.DefocusedArcs.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, defocusedArcs)
 
     def hexapodStability(self, cmd):
         """
@@ -881,22 +740,17 @@ class SpsCmd(object):
            To be inserted in opdb:iic_sequence.comments.
         doTest : `bool`
            image/exposure type will be labelled as test, default=arc.
+        groupId : `int`
+           optional sequence group id.
         """
         cmdKeys = cmd.cmd.keywords
-        seqKwargs = iicUtils.genSequenceKwargs(cmd, customMade=True)
-        timedLamps = timedLampsKwargs(cmdKeys)
 
-        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 3
-        position = cmdKeys['position'].values if 'position' in cmdKeys else [-0.05, 0.055, 0.01]
-        position = np.arange(*position)
-
-        job = self.resourceManager.request(cmd, timedSpsSequence.HexapodStability)
-        job.instantiate(cmd, position=position, timedLamps=timedLamps, duplicate=duplicate, **seqKwargs)
-        job.fire(cmd)
+        hexapodStability = eng.HexapodStability.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, hexapodStability)
 
     def rdaMove(self, cmd):
         """
-        `iic sps rdaMove low|med [sm=???]`
+        `iic sps rdaMove low|med [specNum=???]`
 
         Move Red disperser assembly to required position (low or med).
 
@@ -907,16 +761,8 @@ class SpsCmd(object):
         """
         cmdKeys = cmd.cmd.keywords
 
-        if 'low' in cmdKeys:
-            seqObj = engineering.RdaLow
-        elif 'med' in cmdKeys:
-            seqObj = engineering.RdaMed
-        else:
-            raise ValueError('incorrect target position')
-
-        job = self.resourceManager.request(cmd, seqObj)
-        job.instantiate(cmd)
-        job.fire(cmd)
+        rdaMove = eng.RdaMove.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, rdaMove)
 
     def setGratingToDesign(self, cmd):
         """
@@ -924,20 +770,15 @@ class SpsCmd(object):
 
         Move Red disperser assembly to PfsDesign position (low or med).
         """
-        if self.actor.visitor.activeField:
-            position = self.actor.visitor.activeField.getGratingPosition()
+        if self.engine.visitManager.activeField:
+            targetPosition = self.engine.visitManager.activeField.getGratingPosition()
         else:
             cmd.fail('text="no current pfsDesign..."')
             return
 
-        if position == 'low':
-            seqObj = engineering.RdaLow
-        elif position == 'med':
-            seqObj = engineering.RdaMed
-        else:
-            cmd.finish('text="no position requested, finishing here..."')
+        if targetPosition is None:
+            cmd.finish('text="no grating position requested, finishing here..."')
             return
 
-        job = self.resourceManager.request(cmd, seqObj)
-        job.instantiate(cmd)
-        job.fire(cmd)
+        rdaMove = eng.RdaMove.fromDesign(self.actor, targetPosition)
+        self.engine.runInThread(cmd, rdaMove)

@@ -35,6 +35,9 @@ class TopCmd(object):
                                         keys.Key('designedAt', types.String(), help=''),
                                         keys.Key('toBeObservedAt', types.String(), help=''),
                                         )
+    @property
+    def visitManager(self):
+        return self.actor.engine.visitManager
 
     def ping(self, cmd):
         """Query the actor for liveness/happiness."""
@@ -50,10 +53,10 @@ class TopCmd(object):
 
     def declareCurrentPfsDesign(self, cmd):
         """Report camera status and actor version. """
-        pfsDesign, visit0 = pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.actor.visitor)
+        pfsDesign, visit0 = pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.visitManager)
 
         # setting grating to design.
-        self.actor.callCommand('setGratingToDesign')
+        self.actor.cmdr.bgCall(None, 'iic', 'setGratingToDesign')
 
         # generating keyword for gen2
         designName = 'unnamed' if not pfsDesign.designName else pfsDesign.designName
@@ -67,7 +70,7 @@ class TopCmd(object):
     def finishField(self, cmd):
         """Report camera status and actor version. """
         # invalidating previous pfsDesign keyword
-        self.actor.visitor.finishField()
+        self.visitManager.finishField()
 
         cmd.finish('pfsDesign=0x%016x,%d,%.6f,%.6f,%.6f,%s' % (0,
                                                                0,
@@ -84,7 +87,7 @@ class TopCmd(object):
         doFreeze = 'unfreeze' not in cmdKeys
 
         # get matching visit.
-        visit = self.actor.visitor.getField().getVisit(caller)
+        visit = self.visitManager.getField().getVisit(caller)
 
         cmd.inform(f'text="freezing({doFreeze} visit0({visit.visitId}) for {caller}')
         visit.setFrozen(doFreeze)
