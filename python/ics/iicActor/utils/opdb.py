@@ -1,26 +1,36 @@
 import logging
 
+import iicActor.utils.lib as iicUtils
 from ics.utils.opdb import opDB
 from iicActor.utils import exception
 
 
+def fetchOneEntry(query):
+    try:
+        oneEntry, = opDB.fetchone(query)
+    except Exception as e:
+        raise exception.OpDBFailure(iicUtils.stripQuotes(str(e)))
+
+    return oneEntry
+
+
 def fetchLastSequenceId():
     """Get last sequence_id from iic_sequence table."""
-    sequence_id, = opDB.fetchone('select max(iic_sequence_id) from iic_sequence')
+    sequence_id = fetchOneEntry('select max(iic_sequence_id) from iic_sequence')
     sequence_id = 0 if sequence_id is None else sequence_id
     return int(sequence_id)
 
 
 def fetchLastGroupId():
     """Get last group_id from sequence_group table."""
-    group_id, = opDB.fetchone('select max(group_id) from sequence_group')
+    group_id = fetchOneEntry('select max(group_id) from sequence_group')
     group_id = 0 if group_id is None else group_id
     return int(group_id)
 
 
 def fetchLastGroupIdMatchingName(group_name):
     """Get last group_id from sequence_group table matching group_name."""
-    group_id, = opDB.fetchone(f"select max(group_id) from sequence_group where group_name='{group_name}'")
+    group_id = fetchOneEntry(f"select max(group_id) from sequence_group where group_name='{group_name}'")
     # something went wrong here
     if not group_id:
         raise exception.OpDBFailure(f'no sequence_group match group_name: {group_name}')
@@ -70,7 +80,7 @@ def insertVisitSet(caller, pfs_visit_id, sequence_id):
         logging.warning(f'visit_set.pfs_visit_id={pfs_visit_id} already exists.')
         return
 
-    insertIntoOpDB('visit_set', pfs_visit_id=pfs_visit_id, sequence_id=sequence_id)
+    insertIntoOpDB('visit_set', pfs_visit_id=pfs_visit_id, iic_sequence_id=sequence_id)
 
 
 def insertSequenceStatus(sequence_id, status):
