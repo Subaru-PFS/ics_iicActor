@@ -6,7 +6,7 @@ from iicActor.utils import exception
 
 def fetchLastSequenceId():
     """Get last sequence_id from iic_sequence table."""
-    sequence_id, = opDB.fetchone('select max(sequence_id) from iic_sequence')
+    sequence_id, = opDB.fetchone('select max(iic_sequence_id) from iic_sequence')
     sequence_id = 0 if sequence_id is None else sequence_id
     return int(sequence_id)
 
@@ -40,8 +40,8 @@ def insertSequence(group_id, sequence_type, name, comments, cmd_str):
     """Insert into iic_sequence table. """
     # new_sequence_id = last + 1
     new_sequence_id = fetchLastSequenceId() + 1
-    insertIntoOpDB('iic_sequence', sequence_id=new_sequence_id, group_id=group_id, sequence_type=sequence_type,
-                   name=name, comments=comments, cmd_str=cmd_str)
+    insertIntoOpDB('iic_sequence', iic_sequence_id=new_sequence_id, group_id=group_id, sequence_type=sequence_type,
+                   name=name, comments=comments, cmd_str=cmd_str, created_at='now')
     return new_sequence_id
 
 
@@ -75,7 +75,7 @@ def insertVisitSet(caller, pfs_visit_id, sequence_id):
 
 def insertSequenceStatus(sequence_id, status):
     """Insert into iic_sequence_status table."""
-    insertIntoOpDB('iic_sequence_status', sequence_id=sequence_id, **status.toOpDB())
+    insertIntoOpDB('iic_sequence_status', iic_sequence_id=sequence_id, finished_at='now', **status.toOpDB())
 
 
 def insertSequenceGroup(group_name):
