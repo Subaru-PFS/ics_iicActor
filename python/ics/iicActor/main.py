@@ -2,7 +2,6 @@
 
 import actorcore.ICC
 from ics.iicActor.utils import engine
-from ics.utils.instdata import InstData
 from ics.utils.sps.spectroIds import getSite
 from twisted.internet import reactor
 
@@ -23,7 +22,6 @@ class IicActor(actorcore.ICC.ICC):
         # "clocks" of the PFS is the single visit, for which the IIC
         # is responsible for distributing to sub actors.
         #
-        self.instData = InstData(self)
         self.engine = engine.Engine(self)
 
         self.everConnected = False
