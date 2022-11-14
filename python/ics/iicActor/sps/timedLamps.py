@@ -26,7 +26,7 @@ class TimedLampsSequence(SpsSequence):
         # pfilamps.waitForReadySignal() is where its happening, ~2s for qth, immediate for neon,krypton,argon,xenon.
         # for hgcd can take up to 2 minutes ! It won't work on n arm with the current scheme, but I think most hgcd
         # lines are in the blue anyway.
-        timeOffset = 240 if 'hgcd' in lampsCmdStr else 90
+        timeOffset = 240 if ('hgcd' in lampsCmdStr or 'hgar' in lampsCmdStr) else 90
 
         if lampKeys['shutterTiming']:
             exptime = lampKeys['shutterTiming']
