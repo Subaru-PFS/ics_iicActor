@@ -70,7 +70,7 @@ class MiscCmd(object):
         if 'designId' in cmdKeys:
             designId = cmdKeys['designId'].values[0]
         else:
-            designId = pfsDesignUtils.PfsDesignHandler.latestDesignId(designName=cmdName)
+            designId = pfsDesignUtils.PfsDesignHandler.latestDesignIdMatchingName(cmdName)
 
         # declare/insert current design as nearDotDesign.
         pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.engine.visitManager, designId=designId)

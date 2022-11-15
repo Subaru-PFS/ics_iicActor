@@ -33,7 +33,7 @@ class FpsCmd(object):
             ('abortBoresightAcquisition', '', self.abortBoresightAcquisition),
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
 
-            ('moveToPfsDesign', f'[<designId>] [<exptime>] [<maskFile>] {seqArgs}', self.moveToPfsDesign),
+            ('moveToPfsDesign', f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] {seqArgs}', self.moveToPfsDesign),
             ('moveToHome', f'[@(all)] [<exptime>] [<designId>] {seqArgs}', self.moveToHome),
 
             ('movePhiToAngle', f'<angle> <iteration> {seqArgs}', self.movePhiToAngle),
@@ -232,7 +232,7 @@ class FpsCmd(object):
         if 'designId' in cmdKeys:
             designId = cmdKeys['designId'].values[0]
         else:
-            designId = pfsDesignUtils.PfsDesignHandler.latestDesignId(designName="cobraHome")
+            designId = pfsDesignUtils.PfsDesignHandler.latestDesignIdMatchingName("cobraHome")
 
         pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.engine.visitManager, designId=designId)
 
