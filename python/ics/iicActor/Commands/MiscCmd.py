@@ -30,7 +30,10 @@ class MiscCmd(object):
         self.vocab = [
             ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
             ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
+
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
+            ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] {seqArgs}', self.nearDotConvergence)
+
         ]
 
         # Define typed command arguments for the above commands.
@@ -60,25 +63,36 @@ class MiscCmd(object):
     def engine(self):
         return self.actor.engine
 
-    @singleShot
-    def dotCrossing(self, cmd):
+    def nearDotConvergence(self, cmd, designName=None, doFinish=True):
         """"""
         cmdKeys = cmd.cmd.keywords
-        cmdName = cmd.cmd.name
+
+        designName = 'phiCrossing' if 'phi' in cmdKeys else designName
+        designName = 'thetaCrossing' if 'theta' in cmdKeys else designName
 
         # get dotCrossing designId from opdb or use provided new one.
         if 'designId' in cmdKeys:
             designId = cmdKeys['designId'].values[0]
         else:
-            designId = pfsDesignUtils.PfsDesignHandler.latestDesignIdMatchingName(cmdName)
+            designId = pfsDesignUtils.PfsDesignHandler.latestDesignIdMatchingName(designName)
 
         # declare/insert current design as nearDotDesign.
         pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.engine.visitManager, designId=designId)
 
         # run nearDotConvergence.
         nearDotConvergence = misc.NearDotConvergence.fromCmdKeys(self.actor, cmdKeys, designId=designId)
-        self.engine.run(cmd, nearDotConvergence, doFinish=False)
+        self.engine.run(cmd, nearDotConvergence, doFinish=doFinish)
 
+        return nearDotConvergence
+
+    @singleShot
+    def dotCrossing(self, cmd):
+        """"""
+        cmdKeys = cmd.cmd.keywords
+        cmdName = cmd.cmd.name
+
+        # converge to near dot in the first place.
+        nearDotConvergence = self.nearDotConvergence(cmd, designName=cmdName, doFinish=False)
         # something happened convergence did not complete, we need to stop here.
         if nearDotConvergence.status.statusFlag != 0:
             genStatus = cmd.finish if nearDotConvergence.status.statusStr == 'finished' else cmd.fail
