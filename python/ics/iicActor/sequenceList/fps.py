@@ -84,7 +84,7 @@ class MoveToPfsDesign(FpsSequence):
 
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=maxIteration,
-                 tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=goHome, timeLim=300)
+                 tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=goHome, timeLim=600)
 
         # turning illuminators off
         self.tail.add('sps', 'bia off')
@@ -114,7 +114,7 @@ class MoveToHome(FpsSequence):
         self.add('sps', 'bia on')
         self.add('peb', 'led on')
         # move cobras to home, not supposed to, but meh.
-        self.add('fps', 'moveToHome all', parseVisit=True, exptime=exptime, timeLim=300)
+        self.add('fps', 'moveToHome all', parseVisit=True, exptime=exptime, timeLim=600)
         # turning illuminators off
         self.tail.add('sps', 'bia off')
         self.tail.add('peb', 'led off')
@@ -157,7 +157,7 @@ class MoveToSafePosition(FpsSequence):
     def __init__(self, **seqKeys):
         FpsSequence.__init__(self, **seqKeys)
 
-        self.add('fps', 'moveToSafePosition', parseVisit=True, timeLim=300)
+        self.add('fps', 'moveToSafePosition', parseVisit=True, timeLim=600)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -173,7 +173,7 @@ class GotoVerticalFromPhi60(FpsSequence):
     def __init__(self, **seqKeys):
         FpsSequence.__init__(self, **seqKeys)
 
-        self.add('fps', 'moveToSafePosition', parseVisit=True, timeLim=300)
+        self.add('fps', 'moveToSafePosition', parseVisit=True, timeLim=600)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -215,7 +215,7 @@ class MakeOntimeMap(FpsSequence):
     def __init__(self, phi, theta, **seqKeys):
         FpsSequence.__init__(self, **seqKeys)
 
-        self.add('fps', 'makeOntimeMap', parseVisit=True, phi=phi, theta=theta, timeLim=300)
+        self.add('fps', 'makeOntimeMap', parseVisit=True, phi=phi, theta=theta, timeLim=600)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -236,7 +236,7 @@ class AngleConvergenceTest(FpsSequence):
         FpsSequence.__init__(self, **seqKeys)
 
         self.add('fps', 'angleConvergenceTest', parseVisit=True,
-                 phi=phi, theta=theta, angleTargets=angleTargets, timeLim=300)
+                 phi=phi, theta=theta, angleTargets=angleTargets, timeLim=600)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -281,7 +281,7 @@ class MotorOntimeSearch(FpsSequence):
     def __init__(self, phi, theta, **seqKeys):
         FpsSequence.__init__(self, **seqKeys)
 
-        self.add('fps', 'motorOntimeSearch', parseVisit=True, phi=phi, theta=theta, timeLim=300)
+        self.add('fps', 'motorOntimeSearch', parseVisit=True, phi=phi, theta=theta, timeLim=600)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
