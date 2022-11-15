@@ -65,8 +65,24 @@ class PfsDesignHandler(object):
         fetched = opDB.fetchone(
             f'select pfs_design_id from pfs_design where design_id0={designId0} and variant={variant}')
         if not fetched:
-            raise ValueError(f'could not retrieve variant {variant} with design_id0:{designId0}')
+            raise ValueError(f'could not retrieve variant {variant} where design_id0={designId0}')
 
         [designId] = fetched
 
         return designId
+
+    @staticmethod
+    def maxVariantMatchingDesignId0(designId0):
+        """Retrieve actual designId from designId0 and variant"""
+
+        fetched = opDB.fetchone(f'select max(variant) from pfs_design where design_id0={designId0}')
+        if not fetched:
+            raise ValueError(f'could not retrieve pfs_design where design_id0={designId0}')
+
+        [maxVariant] = fetched
+
+        return maxVariant
+
+    @staticmethod
+    def getVariants(designId0):
+        return opDB.fetchall(f'select pfs_design_id,variant from pfs_design where design_id0={designId0}')
