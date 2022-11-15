@@ -33,10 +33,10 @@ class FpsCmd(object):
             ('abortBoresightAcquisition', '', self.abortBoresightAcquisition),
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
 
-            ('moveToPfsDesign', f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] {seqArgs}', self.moveToPfsDesign),
+            ('moveToPfsDesign', f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [<nIteration>] [<tolerance>] {seqArgs}', self.moveToPfsDesign),
             ('moveToHome', f'[@(all)] [<exptime>] [<designId>] {seqArgs}', self.moveToHome),
 
-            ('movePhiToAngle', f'<angle> <iteration> {seqArgs}', self.movePhiToAngle),
+            ('movePhiToAngle', f'<angle> <nIteration> {seqArgs}', self.movePhiToAngle),
             ('moveToSafePosition', f'{seqArgs}', self.moveToSafePosition),
             ('gotoVerticalFromPhi60', f'{seqArgs}', self.gotoVerticalFromPhi60),
             ('makeMotorMap', f'@(phi|theta) <stepsize> <repeat> [@slowOnly] {seqArgs}', self.makeMotorMap),
@@ -73,7 +73,8 @@ class FpsCmd(object):
                                                  help="Target number for 2D convergence"),
                                         keys.Key("maxsteps", types.Int(),
                                                  help="Maximum step number for 2D convergence test"),
-                                        keys.Key("iteration", types.Int(), help="Interation number"),
+                                        keys.Key("nIteration", types.Int(), help="Interation number"),
+                                        keys.Key("tolerance", types.Float(), help="Tolerance distance in mm"),
                                         keys.Key("designId", types.Long(),
                                                  help="pfsDesignId for the field,which defines the fiber positions"),
                                         keys.Key('maskFile', types.String() * (1,),
@@ -241,7 +242,7 @@ class FpsCmd(object):
 
     def movePhiToAngle(self, cmd):
         """
-        `iic movePhiToAngle angle=N iteration=N [name=\"SSS\"] [comments=\"SSS\"]`
+        `iic movePhiToAngle angle=N nIteration=N [name=\"SSS\"] [comments=\"SSS\"]`
 
         Move Phi arm to angle.
 
@@ -249,7 +250,7 @@ class FpsCmd(object):
         ---------
         angle : `int`
            specified angle .
-        iteration : `int`
+        nIteration : `int`
            Number of iteration.
         name : `str`
            To be inserted in opdb:iic_sequence.name.
