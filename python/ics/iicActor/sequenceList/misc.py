@@ -16,7 +16,7 @@ class NearDotConvergence(MoveToPfsDesign):
         config = iicActor.actorConfig['nearDotConvergence']
         config.update(exptime=exptime)
 
-        return cls(designId, maskFile=maskFile, **config, **seqKeys)
+        return cls(designId, maskFile=maskFile, goHome=True, **config, **seqKeys)
 
 
 class DotCrossing(FpsSequence):

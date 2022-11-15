@@ -22,7 +22,7 @@ class TopCmd(object):
         self.vocab = [
             ('ping', '', self.ping),
             ('status', '', self.status),
-            ('declareCurrentPfsDesign', '<designId>', self.declareCurrentPfsDesign),
+            ('declareCurrentPfsDesign', '<designId> [<variant>]', self.declareCurrentPfsDesign),
             ('ingestPfsDesign', '<designId> [<designedAt>] [<toBeObservedAt>]', self.ingestPfsDesign),
             ('finishField', '', self.finishField),
             ('visit0', '@(freeze|unfreeze) <caller>', self.setVisit0)
@@ -31,6 +31,7 @@ class TopCmd(object):
         # Define typed command arguments for the above commands.
         self.keys = keys.KeysDictionary("iic_iic", (1, 1),
                                         keys.Key('designId', types.Long(), help='selected pfsDesignId'),
+                                        keys.Key('variant', types.Int(), help='selected pfsDesign variant'),
                                         keys.Key('caller', types.String(), help='visit caller'),
                                         keys.Key('designedAt', types.String(), help=''),
                                         keys.Key('toBeObservedAt', types.String(), help=''),

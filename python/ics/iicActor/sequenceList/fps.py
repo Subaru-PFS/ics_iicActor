@@ -75,18 +75,16 @@ class MoveToPfsDesign(FpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'moveToPfsDesign'
 
-    def __init__(self, designId, maxIteration, tolerance, exptime, maskFile, **seqKeys):
+    def __init__(self, designId, maxIteration, tolerance, exptime, maskFile, goHome, **seqKeys):
         FpsSequence.__init__(self, **seqKeys)
 
         # turning illuminators on
         self.add('sps', 'bia on')
         self.add('peb', 'led on')
 
-        # move cobras to home, not supposed to, but meh.
-        self.add('fps', 'moveToHome all', parseVisit=True, exptime=exptime, timeLim=300)
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=maxIteration,
-                 tolerance=tolerance, maskFile=maskFile, exptime=exptime, timeLim=300)
+                 tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=goHome, timeLim=300)
 
         # turning illuminators off
         self.tail.add('sps', 'bia off')
@@ -100,8 +98,9 @@ class MoveToPfsDesign(FpsSequence):
         maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else False
         maxIteration = cmdKeys['maxIteration'].values[0] if 'maxIteration' in cmdKeys else False
         tolerance = cmdKeys['tolerance'].values[0] if 'tolerance' in cmdKeys else False
+        goHome = 'noHome' not in cmdKeys
 
-        return cls(designId, maxIteration, tolerance, exptime, maskFile, **seqKeys)
+        return cls(designId, maxIteration, tolerance, exptime, maskFile, goHome, **seqKeys)
 
 
 class MoveToHome(FpsSequence):

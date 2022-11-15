@@ -6,9 +6,16 @@ from pfs.datamodel import PfsDesign
 class PfsDesignHandler(object):
 
     @staticmethod
-    def declareCurrent(cmd, visitor, designId=None):
+    def declareCurrent(cmd, visitor, designId=None, variant=0):
         """ """
-        designId = cmd.cmd.keywords['designId'].values[0] if designId is None else designId
+        cmdKeys = cmd.cmd.keywords
+        designId = cmdKeys['designId'].values[0] if designId is None else designId
+        variant = cmdKeys['variant'].values[0] if 'variant' in cmdKeys else variant
+
+        # get actual pfsDesignId from designId0 and variant.
+        if variant:
+            designId = PfsDesignHandler.designIdFromVariant(designId0=designId, variant=variant)
+
         # declaring new field
         pfsDesign, visit0 = visitor.declareNewField(designId)
         # still generating that key for header/drp for now.
@@ -37,7 +44,7 @@ class PfsDesignHandler(object):
         return PfsDesign.read(pfsDesignId, dirName=dirName)
 
     @staticmethod
-    def latestDesignId(designName):
+    def latestDesignIdMatchingName(designName):
         """Retrieve last designId matching the name"""
         # retrieving designId from opdb
         sql = f"select pfs_design_id from pfs_design where substring(design_name,1,{len(designName)})='{designName}'"
@@ -51,3 +58,15 @@ class PfsDesignHandler(object):
 
         return designId
 
+    @staticmethod
+    def designIdFromVariant(designId0, variant):
+        """Retrieve actual designId from designId0 and variant"""
+
+        fetched = opDB.fetchone(
+            f'select pfs_design_id from pfs_design where design_id0={designId0} and variant={variant}')
+        if not fetched:
+            raise ValueError(f'could not retrieve variant {variant} with design_id0:{designId0}')
+
+        [designId] = fetched
+
+        return designId
