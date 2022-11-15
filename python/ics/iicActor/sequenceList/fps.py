@@ -84,7 +84,8 @@ class MoveToPfsDesign(FpsSequence):
 
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
-                 tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=goHome, timeLim=600)
+                 tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=goHome, twoStepsOff=not goHome,
+                 timeLim=600)
 
         # turning illuminators off
         self.tail.add('sps', 'bia off')
