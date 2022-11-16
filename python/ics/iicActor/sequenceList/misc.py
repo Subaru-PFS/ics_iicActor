@@ -103,7 +103,7 @@ class DotRoach(SpsSequence):
     seqtype = 'dotRoach'
 
     @staticmethod
-    def calculateSteps(shapeF=-5, minStepIter=8, nSteps=30, step0=50):
+    def calculateSteps(shapeF=-8, minStepIter=12, nSteps=30, step0=90):
         x = np.arange(nSteps)
         a = -shapeF / minStepIter
         Y = 1 / 2 * a * x ** 2 + shapeF * x + step0
