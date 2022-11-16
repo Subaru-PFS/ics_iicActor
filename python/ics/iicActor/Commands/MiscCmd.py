@@ -32,8 +32,10 @@ class MiscCmd(object):
             ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
 
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
-            ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] {seqArgs}', self.nearDotConvergence)
-
+            ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] {seqArgs}', self.nearDotConvergence),
+            ('dotRoach',
+             f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] {identArgs} {seqArgs}',
+             self.dotRoach),
         ]
 
         # Define typed command arguments for the above commands.
@@ -112,3 +114,10 @@ class MiscCmd(object):
 
         fiberIdentification = misc.FiberIdentification.fromCmdKeys(self.actor, cmdKeys)
         self.engine.runInThread(cmd, fiberIdentification)
+
+    def dotRoach(self, cmd):
+        """"""
+        cmdKeys = cmd.cmd.keywords
+
+        dotRoach = misc.DotRoach.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, dotRoach)
