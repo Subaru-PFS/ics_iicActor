@@ -27,6 +27,7 @@ class TopCmd(object):
 
             ('declareCurrentPfsDesign', '<designId> [<variant>]', self.declareCurrentPfsDesign),
             ('createVariants', '[<nVariants>] [<addVariants>] [<designId0>] [<sigma>]', self.createVariants),
+            ('getAllVariants', '<designId0>', self.getAllVariants),
 
             ('finishField', '', self.finishField),
             ('ingestPfsDesign', '<designId> [<designedAt>] [<toBeObservedAt>]', self.ingestPfsDesign),
@@ -103,7 +104,7 @@ class TopCmd(object):
 
         if 'nVariants' in cmdKeys:
             # make sure no variants already exist.
-            if PfsDesignHandler.getVariants(designId0).size:
+            if PfsDesignHandler.getAllVariants(designId0).size:
                 cmd.fail('text="there is already variants matching that designId0, use addVariants instead."')
                 return
             # variant starts at 1.
@@ -127,6 +128,22 @@ class TopCmd(object):
             pfsDesignVariant.write(dirName=self.actor.actorConfig['pfsDesign']['rootDir'])
             # Ingesting into opdb.
             PfsDesignHandler.ingest(cmd, pfsDesignVariant, designed_at='now', to_be_observed_at='now')
+
+        cmd.finish()
+
+    def getAllVariants(self, cmd):
+        """"""
+        cmdKeys = cmd.cmd.keywords
+
+        designId0 = cmdKeys['designId0'].values[0]
+        allVariants = PfsDesignHandler.getAllVariants(designId0)
+
+        if not allVariants.size:
+            cmd.fail(f'text="havent found any variant matching designId0:0x%016x'%designId0)
+            return
+
+        for designId, variant in allVariants:
+            cmd.inform(f'text="designId0:0x%016x found variant %d designId:0x%016x'%(designId0, variant, designId))
 
         cmd.finish()
 

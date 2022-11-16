@@ -84,5 +84,5 @@ class PfsDesignHandler(object):
         return maxVariant
 
     @staticmethod
-    def getVariants(designId0):
+    def getAllVariants(designId0):
         return opDB.fetchall(f'select pfs_design_id,variant from pfs_design where design_id0={designId0}')
