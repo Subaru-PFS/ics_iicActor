@@ -1,6 +1,7 @@
 import os
 
 import iicActor.utils.translate as translate
+import numpy as np
 from ics.iicActor.sequenceList.fps import MoveToPfsDesign, FpsSequence
 from ics.iicActor.sps.sequence import SpsSequence
 
@@ -101,11 +102,20 @@ class DotRoach(SpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'dotRoach'
 
+    @staticmethod
+    def calculateSteps(shapeF=-5, minStepIter=8, nSteps=30, step0=50):
+        x = np.arange(nSteps)
+        a = -shapeF / minStepIter
+        Y = 1 / 2 * a * x ** 2 + shapeF * x + step0
+        return np.ceil(Y).astype('int')
+
     def __init__(self, cams, exptime, windowKeys, maskFile, keepMoving, rootDir, stepSize, count, motor, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         dataRoot = os.path.join(rootDir, 'current')
         maskFilesRoot = os.path.join(dataRoot, 'maskFiles')
+
+        steps = DotRoach.calculateSteps(step0=stepSize, nSteps=count)
 
         # use sps erase command to niet things up.
         self.add('sps', 'erase', cams=cams)
@@ -118,18 +128,25 @@ class DotRoach(SpsSequence):
         # first image takes longer to process because of fiberTraces
         self.add('sps', 'erase', cams=cams)
 
-        for iterNum in range(count):
+        for iterNum, stepSize in enumerate(steps):
             self.add('fps', f'cobraMoveSteps {motor}',
-                     stepsize=stepSize, maskFile=os.path.join(maskFilesRoot, f'iter{iterNum}.csv'))
+                     stepsize=-stepSize, maskFile=os.path.join(maskFilesRoot, f'iter{iterNum}.csv'))
             # expose and process.
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
+
+            # for the last iter, we declare that'll go reverse.
+            if iterNum == len(steps) - 1:
+                self.add('drp', 'reverseDotRoach')
+
             self.add('drp', 'processDotRoach')
 
-        self.add('fps', f'cobraMoveSteps {motor}',
-                 stepsize=int(round(-stepSize / 2)), maskFile=os.path.join(maskFilesRoot, 'finalMove.csv'))
+        for i in range(5):
+            self.add('fps', f'cobraMoveSteps {motor}',
+                     stepsize=int(steps.min()/2), maskFile=os.path.join(maskFilesRoot, f'iter{len(steps) + i}.csv'))
+            # expose and process.
+            self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
 
-        self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-        self.add('drp', 'processDotRoach')
+            self.add('drp', 'processDotRoach')
 
         # turning drp processing off
         self.tail.add('drp', 'stopDotRoach')
