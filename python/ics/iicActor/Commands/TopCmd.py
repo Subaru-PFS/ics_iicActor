@@ -123,7 +123,7 @@ class TopCmd(object):
         pfsDesign0 = PfsDesignHandler.read(designId0, dirName=self.actor.actorConfig['pfsDesign']['rootDir'])
 
         for variant in variants:
-            cmd.inform(f'text="creating variant {variant} for designId0 {designId0}"')
+            cmd.inform(f'text="creating variant %d for designId0 0x%016x"' % (variant, designId0))
             pfsDesignVariant = makeVariantDesign(pfsDesign0, variant=variant, sigma=sigma)
             # writing to disk
             pfsDesignVariant.write(dirName=self.actor.actorConfig['pfsDesign']['rootDir'])
@@ -140,7 +140,7 @@ class TopCmd(object):
         allVariants = PfsDesignHandler.getAllVariants(designId0)
 
         if not allVariants.size:
-            cmd.fail(f'text="havent found any variants matching designId0:0x%016x' % designId0)
+            cmd.fail(f'text="have not found any variants matching designId0:0x%016x' % designId0)
             return
 
         for designId, variant in allVariants:
