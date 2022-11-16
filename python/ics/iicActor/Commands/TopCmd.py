@@ -28,6 +28,7 @@ class TopCmd(object):
             ('declareCurrentPfsDesign', '<designId> [<variant>]', self.declareCurrentPfsDesign),
             ('createVariants', '[<nVariants>] [<addVariants>] [<designId0>] [<sigma>]', self.createVariants),
             ('getAllVariants', '<designId0>', self.getAllVariants),
+            ('getMaxVariants', '<designId0>', self.getMaxVariants),
 
             ('finishField', '', self.finishField),
             ('ingestPfsDesign', '<designId> [<designedAt>] [<toBeObservedAt>]', self.ingestPfsDesign),
@@ -139,13 +140,28 @@ class TopCmd(object):
         allVariants = PfsDesignHandler.getAllVariants(designId0)
 
         if not allVariants.size:
-            cmd.fail(f'text="havent found any variant matching designId0:0x%016x'%designId0)
+            cmd.fail(f'text="havent found any variants matching designId0:0x%016x' % designId0)
             return
 
         for designId, variant in allVariants:
-            cmd.inform(f'text="designId0:0x%016x found variant %d designId:0x%016x'%(designId0, variant, designId))
+            cmd.inform(f'text="designId0:0x%016x found variant %d designId:0x%016x' % (designId0, variant, designId))
 
         cmd.finish()
+
+    def getMaxVariants(self, cmd):
+        """"""
+        cmdKeys = cmd.cmd.keywords
+
+        designId0 = cmdKeys['designId0'].values[0]
+        allVariants = PfsDesignHandler.getAllVariants(designId0)
+
+        if not allVariants.size:
+            cmd.fail(f'text="havent found any variants matching designId0:0x%016x' % designId0)
+            return
+
+        maxVariant = np.max(allVariants[:, 1])
+
+        cmd.finish(f'text="designId0:0x%016x maxVariant=%d"' % (designId0, maxVariant))
 
     def finishField(self, cmd):
         """Report camera status and actor version. """
