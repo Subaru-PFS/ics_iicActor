@@ -13,6 +13,8 @@ class VisitedCmd(SubCmd):
         self.parseVisit = parseVisit
         self.parseFrameId = parseFrameId
 
+        self.allocatedFrameId = -1
+
     @property
     def visitId(self):
         visitId = -1 if self.sequence.visit is None else self.sequence.visit.visitId
@@ -20,7 +22,7 @@ class VisitedCmd(SubCmd):
 
     @property
     def frameId(self):
-        frameId = -1 if self.sequence.visit is None else self.sequence.visit.nextFrameId()
+        frameId = -1 if self.sequence.visit is None else self.allocateFrameId()
         return frameId
 
     @property
@@ -38,6 +40,13 @@ class VisitedCmd(SubCmd):
     def build(self, cmd):
         """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visitId """
         return dict(actor=self.actor, cmdStr=self.cmdStrAndVisit, forUserCmd=cmd, timeLim=self.timeLim)
+
+    def allocateFrameId(self):
+        """Allocate frameId only once."""
+        if self.allocatedFrameId == -1:
+            self.allocatedFrameId = self.sequence.visit.nextFrameId()
+
+        return self.allocatedFrameId
 
 
 class VisitedSequence(Sequence):
