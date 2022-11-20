@@ -26,7 +26,7 @@ class TopCmd(object):
             ('status', '', self.status),
 
             ('declareCurrentPfsDesign', '<designId> [<variant>]', self.declareCurrentPfsDesign),
-            ('createVariants', '[<nVariants>] [<addVariants>] [<designId0>] [<sigma>]', self.createVariants),
+            ('createVariants', '[<nVariants>] [<addVariants>] [<designId0>] [<sigma>] [@(doHex)]', self.createVariants),
             ('getAllVariants', '<designId0>', self.getAllVariants),
             ('getMaxVariants', '<designId0>', self.getMaxVariants),
 
@@ -104,8 +104,8 @@ class TopCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         sigma = cmdKeys['sigma'].values[0] if 'sigma' in cmdKeys else 1
-        designId0 = cmdKeys['designId0'].values[
-            0] if 'designId0' in cmdKeys else self.engine.visitManager.getCurrentDesignId()
+        doHex = 'doHex' in cmdKeys
+        designId0 = cmdKeys['designId0'].values[0] if 'designId0' in cmdKeys else self.visitManager.getCurrentDesignId()
 
         if 'nVariants' in cmdKeys:
             # make sure no variants already exist.
@@ -128,7 +128,7 @@ class TopCmd(object):
 
         for variant in variants:
             cmd.inform(f'text="creating variant %d for designId0 0x%016x"' % (variant, designId0))
-            pfsDesignVariant = makeVariantDesign(pfsDesign0, variant=variant, sigma=sigma)
+            pfsDesignVariant = makeVariantDesign(pfsDesign0, variant=variant, sigma=sigma, doHex=doHex)
             # writing to disk
             pfsDesignVariant.write(dirName=self.pfsDesignRootDir)
             # Ingesting into opdb.
