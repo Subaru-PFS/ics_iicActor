@@ -34,7 +34,7 @@ class FpsCmd(object):
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
 
             ('moveToPfsDesign', f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [<nIteration>] [<tolerance>] {seqArgs}', self.moveToPfsDesign),
-            ('moveToHome', f'[@(all)] [<exptime>] [<designId>] {seqArgs}', self.moveToHome),
+            ('moveToHome', f'[@(all)] [<exptime>] [<designId>] [<maskFile>] {seqArgs}', self.moveToHome),
 
             ('movePhiToAngle', f'<angle> <nIteration> {seqArgs}', self.movePhiToAngle),
             ('moveToSafePosition', f'{seqArgs}', self.moveToSafePosition),
