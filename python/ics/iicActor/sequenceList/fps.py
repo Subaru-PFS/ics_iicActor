@@ -1,3 +1,5 @@
+import os
+
 import iicActor.utils.translate as translate
 from ics.iicActor.utils.visited import VisitedSequence
 
@@ -96,7 +98,12 @@ class MoveToPfsDesign(FpsSequence):
         seqKeys = translate.seqKeys(cmdKeys)
 
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
-        maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else False
+        if 'maskFile' in cmdKeys:
+            maskFile = cmdKeys['maskFile'].values[0]
+            maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
+        else:
+            maskFile = False
+
         nIteration = cmdKeys['nIteration'].values[0] if 'nIteration' in cmdKeys else False
         tolerance = cmdKeys['tolerance'].values[0] if 'tolerance' in cmdKeys else False
         goHome = 'noHome' not in cmdKeys
@@ -124,7 +131,12 @@ class MoveToHome(FpsSequence):
     def fromCmdKeys(cls, iicActor, cmdKeys):
         seqKeys = translate.seqKeys(cmdKeys)
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
-        maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else False
+
+        if 'maskFile' in cmdKeys:
+            maskFile = cmdKeys['maskFile'].values[0]
+            maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
+        else:
+            maskFile = False
 
         return cls(exptime, maskFile, **seqKeys)
 

@@ -162,7 +162,7 @@ class DotRoach(SpsSequence):
         exptime = windowedFlatConfig.pop('exptime')
 
         # construct maskFile path.
-        maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'SM13_000'
+        maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'SM13_moveAll'
         maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
 
         # load dotRoach config and override with user parameters.
