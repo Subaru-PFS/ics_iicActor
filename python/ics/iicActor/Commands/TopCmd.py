@@ -59,6 +59,10 @@ class TopCmd(object):
     def visitManager(self):
         return self.engine.visitManager
 
+    @property
+    def pfsDesignRootDir(self):
+        return self.actor.actorConfig['pfsDesign']['rootDir']
+
     def ping(self, cmd):
         """Query the actor for liveness/happiness."""
 
@@ -120,13 +124,13 @@ class TopCmd(object):
             return
 
         # Reading design0 file.
-        pfsDesign0 = PfsDesignHandler.read(designId0, dirName=self.actor.actorConfig['pfsDesign']['rootDir'])
+        pfsDesign0 = PfsDesignHandler.read(designId0, dirName=self.pfsDesignRootDir)
 
         for variant in variants:
             cmd.inform(f'text="creating variant %d for designId0 0x%016x"' % (variant, designId0))
             pfsDesignVariant = makeVariantDesign(pfsDesign0, variant=variant, sigma=sigma)
             # writing to disk
-            pfsDesignVariant.write(dirName=self.actor.actorConfig['pfsDesign']['rootDir'])
+            pfsDesignVariant.write(dirName=self.pfsDesignRootDir)
             # Ingesting into opdb.
             PfsDesignHandler.ingest(cmd, pfsDesignVariant, designed_at='now', to_be_observed_at='now')
 
@@ -156,7 +160,7 @@ class TopCmd(object):
         allVariants = PfsDesignHandler.getAllVariants(designId0)
 
         if not allVariants.size:
-            cmd.fail(f'text="havent found any variants matching designId0:0x%016x' % designId0)
+            cmd.fail(f'text="have not found any variants matching designId0:0x%016x' % designId0)
             return
 
         maxVariant = np.max(allVariants[:, 1])
@@ -186,8 +190,7 @@ class TopCmd(object):
         designed_at = cmdKeys['designedAt'].values[0] if 'designedAt' in cmdKeys else None
         to_be_observed_at = cmdKeys['toBeObservedAt'].values[0] if 'toBeObservedAt' in cmdKeys else None
         # Reading design file.
-        pfsDesign = PfsDesignHandler.read(designId,
-                                          dirName=self.actor.actorConfig['pfsDesign']['rootDir'])
+        pfsDesign = PfsDesignHandler.read(designId, dirName=self.pfsDesignRootDir)
         # Ingesting into opdb.
         PfsDesignHandler.ingest(cmd, pfsDesign,
                                 designed_at=designed_at, to_be_observed_at=to_be_observed_at)

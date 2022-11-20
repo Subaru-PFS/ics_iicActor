@@ -140,7 +140,7 @@ class DotRoach(SpsSequence):
 
             self.add('drp', 'processDotRoach')
 
-        for i in range(5):
+        for i in range(12):
             self.add('fps', f'cobraMoveSteps {motor}',
                      stepsize=int(steps.min()/2), maskFile=os.path.join(maskFilesRoot, f'iter{len(steps) + i}.csv'))
             # expose and process.
