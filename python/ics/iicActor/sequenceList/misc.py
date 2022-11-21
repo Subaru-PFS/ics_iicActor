@@ -116,7 +116,8 @@ class DotRoach(SpsSequence):
         maskFilesRoot = os.path.join(dataRoot, 'maskFiles')
 
         steps1 = DotRoach.calculateSteps(step0=116, minStepIter=5, nSteps=16, shapeF=-30)
-        steps2 = DotRoach.calculateSteps(step0=30, minStepIter=1, nSteps=5, shapeF=-10)
+        #steps2 = DotRoach.calculateSteps(step0=30, minStepIter=1, nSteps=5, shapeF=-10)
+        steps2 = [25, 35, 45, 55, 65, 75]
 
         # use sps erase command to niet things up.
         self.add('sps', 'erase', cams=cams)
@@ -154,7 +155,7 @@ class DotRoach(SpsSequence):
             self.add('drp', 'processDotRoach')
 
         self.add('fps', f'cobraMoveSteps {motor}',
-                 stepsize=-25, maskFile=os.path.join(maskFilesRoot, f'iter{len(steps1) + len(steps2)}.csv'))
+                 stepsize=-20, maskFile=os.path.join(maskFilesRoot, f'iter{len(steps1) + len(steps2)}.csv'))
 
         # turning drp processing off
         self.tail.add('drp', 'stopDotRoach')
