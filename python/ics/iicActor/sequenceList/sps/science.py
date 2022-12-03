@@ -1,6 +1,5 @@
 import iicActor.utils.translate as translate
 from ics.iicActor.sps.sequence import SpsSequence
-from iicActor.utils import exception
 
 
 class ScienceObject(SpsSequence):
@@ -32,13 +31,12 @@ class ScienceObjectLoop(ScienceObject):
     def __init__(self, cams, exptime, duplicate, windowKeys, **seqKeys):
         ScienceObject.__init__(self, cams, exptime, 1, windowKeys, **seqKeys)
 
-    def finish(self):
+    def setStatus(self, statusStr, *args, **kwargs):
         """Declare sequence as complete, that is the nominal end for a sequence."""
         # Loop until someone finish this sequence.
-        if self.status.statusStr == 'active':
+        if self.status.statusStr == 'active' and statusStr == 'finish':
             # append a copy of the first command.
             self.append(self[0].actor, self[0].cmdStr, timeLim=self[0].timeLim)
+            return
 
-        # sequence might have been aborted/finished in the meantime, but only raise for Abort.
-        elif self.status.statusStr == 'aborted':
-            raise exception.SequenceAborted()
+        ScienceObject.setStatus(self, statusStr, *args, **kwargs)
