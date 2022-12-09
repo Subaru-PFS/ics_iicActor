@@ -115,9 +115,11 @@ class DotRoach(SpsSequence):
         dataRoot = os.path.join(rootDir, 'current')
         maskFilesRoot = os.path.join(dataRoot, 'maskFiles')
 
-        steps1 = DotRoach.calculateSteps(step0=116, minStepIter=5, nSteps=16, shapeF=-30)
+        #steps1 = DotRoach.calculateSteps(step0=116, minStepIter=5, nSteps=16, shapeF=-30)
         #steps2 = DotRoach.calculateSteps(step0=30, minStepIter=1, nSteps=5, shapeF=-10)
-        steps2 = [25, 35, 45, 55, 65, 75]
+
+        steps1 = [177, 133, 100, 76, 63, 62, 77, 102, 140, 192, 265, 362, 494]
+        steps2 = [30, 42, 56, 74, 100]
 
         # use sps erase command to niet things up.
         self.add('sps', 'erase', cams=cams)
@@ -136,7 +138,7 @@ class DotRoach(SpsSequence):
 
             # for the last iter, we declare that'll go reverse.
             if iterNum == len(steps1) - 1:
-                self.add('drp', 'reverseDotRoach')
+                self.add('drp', 'dotRoach phase2')
 
             # expose and process.
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
@@ -148,7 +150,7 @@ class DotRoach(SpsSequence):
 
             # for the last iter, we declare that'll go reverse.
             if iterNum == len(steps2) - 1:
-                self.add('drp', 'reverseDotRoach')
+                self.add('drp', 'dotRoach phase3')
 
             # expose and process.
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
