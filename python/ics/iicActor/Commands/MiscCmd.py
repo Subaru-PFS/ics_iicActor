@@ -32,7 +32,7 @@ class MiscCmd(object):
             ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
 
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
-            ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] {seqArgs}', self.nearDotConvergence),
+            ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] {seqArgs}', self.nearDotConvergenceCmd),
             ('dotRoach',
              f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] {identArgs} {seqArgs}',
              self.dotRoach),
@@ -64,6 +64,11 @@ class MiscCmd(object):
     @property
     def engine(self):
         return self.actor.engine
+
+    @singleShot
+    def nearDotConvergenceCmd(self, cmd):
+        """Needs a dedicated command function for threading."""
+        return self.nearDotConvergence(cmd)
 
     def nearDotConvergence(self, cmd, designName=None, doFinish=True):
         """"""
