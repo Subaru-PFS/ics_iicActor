@@ -16,6 +16,10 @@ class VisitedCmd(SubCmd):
         self.allocatedFrameId = -1
 
     @property
+    def visitManager(self):
+        return self.iicActor.engine.visitManager
+
+    @property
     def visitId(self):
         visitId = -1 if self.sequence.visit is None else self.sequence.visit.visitId
         return visitId
