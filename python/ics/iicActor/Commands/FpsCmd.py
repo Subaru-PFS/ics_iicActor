@@ -2,6 +2,7 @@ from importlib import reload
 
 import ics.iicActor.sequenceList.fps as fpsSequence
 import ics.iicActor.utils.lib as iicUtils
+
 import iicActor.utils.pfsDesign as pfsDesignUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
@@ -84,6 +85,10 @@ class FpsCmd(object):
     @property
     def engine(self):
         return self.actor.engine
+
+    @property
+    def visitManager(self):
+        return self.engine.visitManager
 
     def startBoresightAcquisition(self, cmd):
         """
@@ -207,12 +212,29 @@ class FpsCmd(object):
 
         # then declare new design.
         if 'designId' in cmdKeys:
-            pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.engine.visitManager)
+            pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.visitManager)
 
-        designId = self.engine.visitManager.getCurrentDesignId()
+        designId = self.visitManager.getCurrentDesignId()
 
         moveToDesign = fpsSequence.MoveToPfsDesign.fromCmdKeys(self.actor, cmdKeys, designId=designId)
-        self.engine.runInThread(cmd, moveToDesign)
+        self.engine.run(cmd, moveToDesign, doFinish=False)
+
+        # something happened convergence did not complete, we need to stop here.
+        if moveToDesign.status.statusFlag != 0:
+            genStatus = cmd.finish if moveToDesign.status.statusStr == 'finished' else cmd.fail
+            genStatus('text="Cobra convergence not completed, stopping here."')
+            return
+
+        pfsConfig, dateDir = self.visitManager.activeField.loadPfsConfig()
+        cmd.finish('pfsConfig=0x%016x,%d,%s,%.6f,%.6f,%.6f,"%s",0x%016x,%d' % (pfsConfig.pfsDesignId,
+                                                                               pfsConfig.visit,
+                                                                               dateDir,
+                                                                               pfsConfig.raBoresight,
+                                                                               pfsConfig.decBoresight,
+                                                                               pfsConfig.posAng,
+                                                                               pfsConfig.designName,
+                                                                               pfsConfig.designId0,
+                                                                               pfsConfig.variant))
 
     def moveToHome(self, cmd):
         """
@@ -235,7 +257,7 @@ class FpsCmd(object):
         else:
             designId = pfsDesignUtils.PfsDesignHandler.latestDesignIdMatchingName("cobraHome")
 
-        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.engine.visitManager, designId=designId)
+        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.visitManager, designId=designId)
 
         moveToHome = fpsSequence.MoveToHome.fromCmdKeys(self.actor, cmdKeys)
         self.engine.runInThread(cmd, moveToHome)

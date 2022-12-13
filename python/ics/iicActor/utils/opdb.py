@@ -94,3 +94,8 @@ def insertSequenceGroup(group_name):
     new_group_id = fetchLastGroupId() + 1
     insertIntoOpDB('sequence_group', group_id=new_group_id, group_name=group_name, created_at='now')
     return new_group_id
+
+
+def insertPfsConfigSps(pfs_visit_id, visit0):
+    """Insert into pfs_config_sps table."""
+    insertIntoOpDB('pfs_config_sps', pfs_visit_id=pfs_visit_id, visit0=visit0)

@@ -1,5 +1,8 @@
+import os.path
+
 import ics.iicActor.utils.opdb as opdbUtils
 import ics.utils.cmd as cmdUtils
+import pfs.utils.pfsConfigUtils as pfsConfigUtils
 import pfscore.gen2 as gen2
 from ics.iicActor.utils.subcmd import SubCmd, CmdRet
 from ics.iicActor.utils.visited import VisitedCmd
@@ -43,7 +46,7 @@ class SpsExpose(VisitedCmd):
 
     def getVisitedCall(self, cmd):
         """Get and attach your visit, then parse it, insert into visit_set to finish."""
-        with self.iicActor.engine.visitManager.getVisit(caller='sps') as visit:
+        with self.visitManager.getVisit(caller='sps') as visit:
             # set new visit
             self.freshNewVisit(visit)
             # regular visitedCall which will parse the fresh new visit.
@@ -58,9 +61,31 @@ class SpsExpose(VisitedCmd):
         self.visit = visit
         self.genKeys(self.sequence.cmd)
 
-        # bump up ag visit whenever sps is taking object.
-        if self.sequence.lightSource == 'pfi' and self.exptype == 'object':
-            self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
+        if self.sequence.lightSource == 'pfi':
+            # make sure to create an associated pfsConfig file, if one is available.
+            if self.visitManager.activeField and self.visitManager.activeField.pfsConfig:
+                pfsConfig = self.visitManager.activeField.pfsConfig.copy(visit=self.visitId)
+                # Write pfsConfig to disk.
+                pfsConfigUtils.writePfsConfig(pfsConfig)
+                # Insert pfs_config_sps
+                opdbUtils.insertPfsConfigSps(pfs_visit_id=self.visitId, visit0=self.visitManager.activeField.visit0)
+            else:
+                raise RuntimeError('no field has been declared, pfsConfig is unknown...')
+
+            # bump up ag visit whenever sps is taking object.
+            if self.exptype == 'object':
+                self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}',
+                                        timeLim=10)
+        else:
+            if self.sequence.lightSource == 'sunss':
+                designId = 0xdeadbeef
+            else:
+                designId = self.iicActor.models[self.sequence.lightSource].keyVarDict['designId'].getValue()
+
+            # Construct dirName from pfsDesign root directory and lightSource.
+            dirName = os.path.join(self.iicActor.actorConfig['pfsDesign']['rootDir'], self.sequence.lightSource)
+            # Write pfsConfig to disk.
+            pfsConfigUtils.writePfsConfigFromDesign(self.visitId, designId, dirName=dirName)
 
     def abort(self, cmd):
         """ Abort current exposure """
