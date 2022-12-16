@@ -75,30 +75,35 @@ class SpsExpose(VisitedCmd):
             [lightSource] = lightSources
 
         if lightSource == 'pfi':
-            # make sure to create an associated pfsConfig file, if one is available.
-            if self.visitManager.activeField and self.visitManager.activeField.pfsConfig:
-                pfsConfig = self.visitManager.activeField.pfsConfig.copy(visit=self.visitId)
-                # Write pfsConfig to disk.
-                pfsConfigUtils.writePfsConfig(pfsConfig)
-                # Insert pfs_config_sps
-                opdbUtils.insertPfsConfigSps(pfs_visit_id=self.visitId, visit0=self.visitManager.activeField.visit0)
+            if self.visitManager.activeField:
+                # make sure to create an associated pfsConfig file, if one is available.
+                if self.visitManager.activeField.pfsConfig:
+                    pfsConfig = self.visitManager.activeField.pfsConfig.copy(visit=self.visitId)
+                    # Write pfsConfig to disk.
+                    pfsConfigUtils.writePfsConfig(pfsConfig)
+                    # Insert pfs_config_sps
+                    opdbUtils.insertPfsConfigSps(pfs_visit_id=self.visitId, visit0=self.visitManager.activeField.visit0)
+                    return
+                else:
+                    dirName = self.iicActor.actorConfig['pfsDesign']['rootDir']
+                    designId = self.visitManager.getCurrentDesignId()
             else:
                 raise RuntimeError('no field has been declared, pfsConfig is unknown...')
 
             # bump up ag visit whenever sps is taking object.
             if self.exptype == 'object':
-                self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}',
-                                        timeLim=10)
-        else:
-            if lightSource == 'sunss':
-                designId = 0xdeadbeef
-            else:
-                designId = self.iicActor.models[lightSource].keyVarDict['designId'].getValue()
+                self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
 
+        elif lightSource in {'sunss', 'dcb', 'dcb2'}:
             # Construct dirName from pfsDesign root directory and lightSource.
             dirName = os.path.join(self.iicActor.actorConfig['pfsDesign']['rootDir'], lightSource)
-            # Write pfsConfig to disk.
-            pfsConfigUtils.writePfsConfigFromDesign(self.visitId, designId, dirName=dirName)
+            designId = 0xdeadbeef if lightSource == 'sunss' else self.iicActor.models[lightSource].keyVarDict['designId'].getValue()
+
+        else:
+            raise ValueError(f'unknown lightSource : {lightSource}')
+
+        # Write pfsConfig to disk.
+        pfsConfigUtils.writePfsConfigFromDesign(self.visitId, designId, dirName=dirName)
 
     def abort(self, cmd):
         """ Abort current exposure """
