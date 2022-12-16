@@ -61,7 +61,20 @@ class SpsExpose(VisitedCmd):
         self.visit = visit
         self.genKeys(self.sequence.cmd)
 
-        if self.sequence.lightSource == 'pfi':
+        # lightSources can be a bit tricky, sequence member is actually set to None for biases and darks.
+        # For those it's possible to have multiple lightSources, not sure what to do in that case.
+        # Since you could have multiple designId for a given visit, and we don't support merging.
+        # It does not probably matter in any case for biases and darks.
+
+        lightSources = list(set([cam.lightSource for cam in self.sequence.cams]))
+
+        if len(lightSources) > 1:
+            return
+
+        else:
+            [lightSource] = lightSources
+
+        if lightSource == 'pfi':
             # make sure to create an associated pfsConfig file, if one is available.
             if self.visitManager.activeField and self.visitManager.activeField.pfsConfig:
                 pfsConfig = self.visitManager.activeField.pfsConfig.copy(visit=self.visitId)
@@ -77,13 +90,13 @@ class SpsExpose(VisitedCmd):
                 self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}',
                                         timeLim=10)
         else:
-            if self.sequence.lightSource == 'sunss':
+            if lightSource == 'sunss':
                 designId = 0xdeadbeef
             else:
-                designId = self.iicActor.models[self.sequence.lightSource].keyVarDict['designId'].getValue()
+                designId = self.iicActor.models[lightSource].keyVarDict['designId'].getValue()
 
             # Construct dirName from pfsDesign root directory and lightSource.
-            dirName = os.path.join(self.iicActor.actorConfig['pfsDesign']['rootDir'], self.sequence.lightSource)
+            dirName = os.path.join(self.iicActor.actorConfig['pfsDesign']['rootDir'], lightSource)
             # Write pfsConfig to disk.
             pfsConfigUtils.writePfsConfigFromDesign(self.visitId, designId, dirName=dirName)
 
