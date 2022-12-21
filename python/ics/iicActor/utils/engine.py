@@ -1,5 +1,5 @@
 import ics.iicActor.utils.opdb as opdbUtils
-from ics.utils import visit
+from ics.utils.visit import visitManager
 from ics.utils.threading import singleShot
 from iicActor.utils import registry
 from iicActor.utils import resourceManager
@@ -12,7 +12,7 @@ class Engine(object):
         self.actor = actor
 
         self.resourceManager = resourceManager.ResourceManager(actor)
-        self.visitManager = visit.VisitManager(actor)
+        self.visitManager = visitManager.VisitManager(actor)
         self.registry = registry.Registry(self)
 
     @singleShot
