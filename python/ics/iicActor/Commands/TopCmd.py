@@ -32,8 +32,6 @@ class TopCmd(object):
 
             ('finishField', '', self.finishField),
             ('ingestPfsDesign', '<designId> [<designedAt>] [<toBeObservedAt>]', self.ingestPfsDesign),
-
-            ('visit0', '@(freeze|unfreeze) <caller>', self.setVisit0)
         ]
 
         # Define typed command arguments for the above commands.
@@ -73,6 +71,10 @@ class TopCmd(object):
         """Report camera status and actor version. """
 
         self.actor.sendVersionKey(cmd)
+
+        self.actor.genPfsDesignKey(cmd)
+        self.actor.genPfsConfig0Key(cmd)
+
         cmd.finish()
 
     def declareCurrentPfsDesign(self, cmd):
@@ -81,24 +83,19 @@ class TopCmd(object):
 
         # setting grating to design.
         self.actor.cmdr.bgCall(None, 'iic', 'setGratingToDesign')
+        # generating keywords
+        self.actor.genPfsDesignKey(cmd)
 
-        # generating keyword for gen2
-        designName = 'unnamed' if not pfsDesign.designName else pfsDesign.designName
-        try:
-            designId0 = pfsDesign.designId0
-            variant = pfsDesign.variant
-        except AttributeError:
-            designId0 = 0
-            variant = 0
+        cmd.finish()
 
-        cmd.finish('pfsDesign=0x%016x,%d,%.6f,%.6f,%.6f,"%s",0x%016x,%d' % (pfsDesign.pfsDesignId,
-                                                                            visit0,
-                                                                            pfsDesign.raBoresight,
-                                                                            pfsDesign.decBoresight,
-                                                                            pfsDesign.posAng,
-                                                                            designName,
-                                                                            designId0,
-                                                                            variant))
+    def finishField(self, cmd):
+        """Report camera status and actor version. """
+        # invalidating previous pfsDesign keyword
+        self.visitManager.finishField()
+        self.actor.genPfsDesignKey(cmd)
+        self.actor.genPfsConfig0Key(cmd)
+
+        cmd.finish()
 
     def createVariants(self, cmd):
         cmdKeys = cmd.cmd.keywords
@@ -167,21 +164,6 @@ class TopCmd(object):
 
         cmd.finish(f'text="designId0:0x%016x maxVariant=%d"' % (designId0, maxVariant))
 
-    def finishField(self, cmd):
-        """Report camera status and actor version. """
-        # invalidating previous pfsDesign keyword
-        self.visitManager.finishField()
-
-        cmd.finish('pfsDesign=0x%016x,%d,%.6f,%.6f,%.6f,"%s",0x%016x,%d' % (0,
-                                                                            0,
-                                                                            np.NaN,
-                                                                            np.NaN,
-                                                                            np.NaN,
-                                                                            'none',
-                                                                            0,
-                                                                            0)
-                   )
-
     def ingestPfsDesign(self, cmd):
         """Report camera status and actor version. """
         cmdKeys = cmd.cmd.keywords
@@ -194,20 +176,5 @@ class TopCmd(object):
         # Ingesting into opdb.
         PfsDesignHandler.ingest(cmd, pfsDesign,
                                 designed_at=designed_at, to_be_observed_at=to_be_observed_at)
-
-        cmd.finish()
-
-    def setVisit0(self, cmd):
-        """Add more control over how visit0 is handled."""
-        cmdKeys = cmd.cmd.keywords
-
-        caller = cmdKeys['caller'].values[0]
-        doFreeze = 'unfreeze' not in cmdKeys
-
-        # get matching visit.
-        visit = self.visitManager.getField().getVisit(caller)
-
-        cmd.inform(f'text="freezing({doFreeze} visit0({visit.visitId}) for {caller}')
-        visit.setFrozen(doFreeze)
 
         cmd.finish()

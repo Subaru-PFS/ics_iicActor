@@ -225,16 +225,10 @@ class FpsCmd(object):
             genStatus('text="Cobra convergence not completed, stopping here."')
             return
 
-        pfsConfig, dateDir = self.visitManager.activeField.loadPfsConfig()
-        cmd.finish('pfsConfig=0x%016x,%d,%s,%.6f,%.6f,%.6f,"%s",0x%016x,%d' % (pfsConfig.pfsDesignId,
-                                                                               pfsConfig.visit,
-                                                                               dateDir,
-                                                                               pfsConfig.raBoresight,
-                                                                               pfsConfig.decBoresight,
-                                                                               pfsConfig.posAng,
-                                                                               pfsConfig.designName,
-                                                                               pfsConfig.designId0,
-                                                                               pfsConfig.variant))
+        self.visitManager.activeField.loadPfsConfig0()
+        self.actor.genPfsConfig0Key(cmd)
+
+        cmd.finish()
 
     def moveToHome(self, cmd):
         """
