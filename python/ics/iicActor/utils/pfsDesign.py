@@ -18,8 +18,6 @@ class PfsDesignHandler(object):
 
         # declaring new field
         pfsDesign, visit0 = visitor.declareNewField(designId)
-        # still generating that key for header/drp for now.
-        cmd.inform('designId=0x%016x' % designId)
         # ingesting into opdb
         PfsDesignHandler.ingest(cmd, pfsDesign, to_be_observed_at="now")
         return pfsDesign, visit0
@@ -62,8 +60,7 @@ class PfsDesignHandler(object):
     def designIdFromVariant(designId0, variant):
         """Retrieve actual designId from designId0 and variant"""
 
-        fetched = opDB.fetchone(
-            f'select pfs_design_id from pfs_design where design_id0={designId0} and variant={variant}')
+        fetched = opDB.fetchone(f'select pfs_design_id from pfs_design where design_id0={designId0} and variant={variant}')
         if not fetched:
             raise ValueError(f'could not retrieve variant {variant} where design_id0={designId0}')
 
