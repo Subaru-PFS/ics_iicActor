@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 
+import os
+
 import actorcore.ICC
+import iicActor.utils.mergePfsDesign as merge
 import numpy as np
+import pandas as pd
 import pfs.utils.pfsConfigUtils as pfsConfigUtils
 from ics.utils.sps.spectroIds import getSite
 from iicActor.utils import engine
+from pfs.datamodel.pfsConfig import PfsDesign, TargetType
+from pfs.utils.fiberids import FiberIds
 from twisted.internet import reactor
 
 
@@ -25,6 +31,8 @@ class IicActor(actorcore.ICC.ICC):
         # is responsible for distributing to sub actors.
         #
         self.engine = engine.Engine(self)
+        self.lightSources = self.loadLightSources()
+        self.dcbDesign = self.loadDcbDesign()
 
         self.everConnected = False
 
@@ -41,12 +49,83 @@ class IicActor(actorcore.ICC.ICC):
             self.site = getSite()
             self.logger.info(f'site :{self.site}')
 
+            for spectrographId in range(1, 5):
+                self.models['sps'].keyVarDict[f'sm{spectrographId}LightSource'].addCallback(self.hasLightSourceChanged)
+
             reactor.callLater(1, self.letsGetReadyToRumble)
 
     def letsGetReadyToRumble(self):
         """"""
         for actor in ['hub', 'sps']:
             self.cmdr.bgCall(callFunc=None, actor=actor, cmdStr='status')
+
+    def loadLightSources(self):
+        """"""
+        lightSources = []
+
+        spsKeys = self.actorData.loadKeys('sps')
+        for spectrographId in range(1, 5):
+            try:
+                lightSource, = spsKeys[f'sm{spectrographId}LightSource']
+            except:
+                lightSource = None
+
+            lightSources.append(lightSource)
+
+        return lightSources
+
+    def loadDcbDesign(self):
+        """"""
+        pass
+
+    def hasLightSourceChanged(self, keyVar):
+        """"""
+        lightSources = self.loadLightSources()
+        if lightSources != self.lightSources:
+            # clearing pfsField
+            self.lightSources = lightSources
+            self.engine.visitManager.finishField()
+            self.genPfsDesignKey(self.bcast)
+
+            if 'pfi' not in lightSources:
+                design = self.genAutoDesign()
+                # check if designFile already exists.
+                if not os.path.isfile(os.path.join(self.actorConfig['pfsDesign']['rootDir'], design.filename)):
+                    design.write(self.actorConfig['pfsDesign']['rootDir'])
+
+                # no visit0 concept in that case.
+                self.engine.visitManager.declareNewField(design.pfsDesignId, genVisit0=False)
+                self.genPfsDesignKey(self.bcast)
+
+    def genAutoDesign(self):
+        """"""
+        gfm = pd.DataFrame(FiberIds().data)
+        designToMerge = []
+
+        for specInd, lightSource in enumerate(self.lightSources):
+            if lightSource is None:
+                continue
+
+            spectrographId = specInd + 1
+            designId = 0xdeadbeef if lightSource == 'sunss' else self.models[lightSource].keyVarDict['designId'].getValue()
+            dirName = os.path.join(self.actorConfig['pfsDesign']['rootDir'], lightSource)
+            pfsDesign = PfsDesign.read(designId, dirName)
+
+            if lightSource == 'sunss':
+                fiberId = gfm[gfm.fiberHoleId.isin(pfsDesign.fiberId)].query(f'spectrographId=={spectrographId}').fiberId.to_numpy().astype('int32')
+                pfsDesign.fiberId = fiberId
+                pfsDesign.objId = fiberId
+
+            elif lightSource in {'dcb', 'dcb2'}:
+                pfsDesign = pfsDesign[pfsDesign.spectrograph == spectrographId]
+                pfsDesign.targetType = np.repeat(TargetType.DCB, len(pfsDesign)).astype('int32')
+
+            else:
+                raise ValueError(f'cannot merge design for {lightSource}')
+
+            designToMerge.append(pfsDesign)
+
+        return merge.mergeSunssAndDcbDesign(designToMerge)
 
     def genPfsDesignKey(self, cmd):
         """"""
