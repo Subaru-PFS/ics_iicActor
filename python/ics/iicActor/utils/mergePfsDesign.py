@@ -4,13 +4,11 @@ from pfs.datamodel.pfsConfig import PfsDesign
 from pfs.datamodel.utils import calculate_pfsDesignId
 from pfs.utils.fiberids import FiberIds
 
-gfm = pd.DataFrame(FiberIds().data)
-
 
 def fakeDesignIFromFiberId(fiberId):
     """"""
+    gfm = pd.DataFrame(FiberIds().data)
     # faking ra and dec from x,y
-
     x = gfm[gfm.fiberId.isin(fiberId)].x.to_numpy()
     y = gfm[gfm.fiberId.isin(fiberId)].y.to_numpy()
 
