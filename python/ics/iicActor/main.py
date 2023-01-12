@@ -126,6 +126,10 @@ class IicActor(actorcore.ICC.ICC):
 
         def genAutoDesign():
             """Generate a merged PfsDesign when SuNSS, DCB, DCB2 are connected to different spectrographs."""
+
+            def pfsDesignDirName(lightSource):
+                return os.path.join(self.actorConfig['pfsDesign']['rootDir'], lightSource)
+
             gfm = pd.DataFrame(FiberIds().data)
             designToMerge = []
 
@@ -134,16 +138,18 @@ class IicActor(actorcore.ICC.ICC):
                     continue
 
                 spectrographId = specInd + 1
-                dirName = os.path.join(self.actorConfig['pfsDesign']['rootDir'], lightSource)
+                # adding engineering fibers.
+                engDesign = PfsDesign.read(0xfacefeeb, pfsDesignDirName('engFibers'))
+                designToMerge.append(engDesign[engDesign.spectrograph == spectrographId])
 
                 if lightSource == 'sunss':
-                    pfsDesign = PfsDesign.read(0xdeadbeef, dirName)
+                    pfsDesign = PfsDesign.read(0xdeadbeef, pfsDesignDirName(lightSource))
                     fiberId = gfm[gfm.fiberHoleId.isin(pfsDesign.fiberId)].query(f'spectrographId=={spectrographId}').fiberId.to_numpy().astype('int32')
                     pfsDesign.fiberId = fiberId
                     pfsDesign.objId = fiberId
 
                 elif lightSource in {'dcb', 'dcb2'}:
-                    pfsDesign = PfsDesign.read(self.models[lightSource].keyVarDict['designId'].getValue(), dirName)
+                    pfsDesign = PfsDesign.read(self.models[lightSource].keyVarDict['designId'].getValue(), pfsDesignDirName(lightSource))
                     pfsDesign = pfsDesign[pfsDesign.spectrograph == spectrographId]
                     pfsDesign.targetType = np.repeat(TargetType.DCB, len(pfsDesign)).astype('int32')
 
