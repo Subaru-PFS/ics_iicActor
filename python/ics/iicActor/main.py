@@ -62,11 +62,11 @@ class IicActor(actorcore.ICC.ICC):
 
     def letsGetReadyToRumble(self):
         """"""
-        for actor in ['hub', 'sps']:
+        for actor in ['hub', 'sps', 'dcb', 'dcb2']:
             self.cmdr.bgCall(callFunc=None, actor=actor, cmdStr='status')
 
     def loadLightSources(self):
-        """"""
+        """Load persisted light sources for the four spectrographs."""
         lightSources = []
 
         spsKeys = self.actorData.loadKeys('sps')
@@ -81,7 +81,7 @@ class IicActor(actorcore.ICC.ICC):
         return lightSources
 
     def loadDcbDesignId(self, dcbName):
-        """"""
+        """Load persisted designId for a given dcb."""
         try:
             designId, = self.actorData.loadKeys(dcbName)['pfsDesignId']
         except:
@@ -90,30 +90,42 @@ class IicActor(actorcore.ICC.ICC):
         return int(designId, 16)
 
     def hasLightSourceChanged(self, keyVar):
-        """"""
+        """Callback called whenever sps.smXLightSource keyword is generated."""
         lightSources = self.loadLightSources()
+
+        # Checking newly persisted light sources against the buffered one.
         if lightSources != self.buffer['lightSources']:
-            # clearing pfsField
             self.buffer['lightSources'] = lightSources
+            # clearing pfsField
             self.updatePfsField()
 
     def hasDcbConfigChanged(self, keyVar):
-        """"""
+        """Callback called whenever dcb.designId is generated."""
         dcbName = keyVar.actor
         designId = self.loadDcbDesignId(dcbName)
 
+        # Checking newly persisted dcb pfsDesignId against the buffered one.
         if designId != self.buffer[f'{dcbName}DesignId']:
             self.buffer[f'{dcbName}DesignId'] = designId
             if dcbName in self.buffer['lightSources']:
                 self.updatePfsField()
 
     def updatePfsField(self):
+        """Called from sps.smXLightSource or dcb.designId callbacks, this reset the current field and attempt to
+        regenerate a new design file based on the current config."""
         # clearing pfsField
         self.engine.visitManager.finishField()
         self.genPfsDesignKey(self.bcast)
 
+        # There are basically two modes :
+        # When pfi is the only lightSource, in that case pfsDesignId is declared by users.
+        # When SuNSS &| DCB &| DCB2 are the light sources, since they are static, it can be generated automatically.
+
+        if set(self.buffer['lightSources']) - {None} == {'pfi'}:
+            return
+
         def genAutoDesign():
-            """"""
+            """Generate a merged PfsDesign when SuNSS, DCB, DCB2 are connected to different spectrographs."""
             gfm = pd.DataFrame(FiberIds().data)
             designToMerge = []
 
@@ -122,16 +134,16 @@ class IicActor(actorcore.ICC.ICC):
                     continue
 
                 spectrographId = specInd + 1
-                designId = 0xdeadbeef if lightSource == 'sunss' else self.models[lightSource].keyVarDict['designId'].getValue()
                 dirName = os.path.join(self.actorConfig['pfsDesign']['rootDir'], lightSource)
-                pfsDesign = PfsDesign.read(designId, dirName)
 
                 if lightSource == 'sunss':
+                    pfsDesign = PfsDesign.read(0xdeadbeef, dirName)
                     fiberId = gfm[gfm.fiberHoleId.isin(pfsDesign.fiberId)].query(f'spectrographId=={spectrographId}').fiberId.to_numpy().astype('int32')
                     pfsDesign.fiberId = fiberId
                     pfsDesign.objId = fiberId
 
                 elif lightSource in {'dcb', 'dcb2'}:
+                    pfsDesign = PfsDesign.read(self.models[lightSource].keyVarDict['designId'].getValue(), dirName)
                     pfsDesign = pfsDesign[pfsDesign.spectrograph == spectrographId]
                     pfsDesign.targetType = np.repeat(TargetType.DCB, len(pfsDesign)).astype('int32')
 
@@ -142,15 +154,15 @@ class IicActor(actorcore.ICC.ICC):
 
             return merge.mergeSunssAndDcbDesign(designToMerge)
 
-        if 'pfi' not in self.buffer['lightSources']:
-            design = genAutoDesign()
-            # check if designFile already exists.
-            if not os.path.isfile(os.path.join(self.actorConfig['pfsDesign']['rootDir'], design.filename)):
-                design.write(self.actorConfig['pfsDesign']['rootDir'])
+        # Proceed and generate the design automatically.
+        design = genAutoDesign()
+        # Check if designFile already exists.
+        if not os.path.isfile(os.path.join(self.actorConfig['pfsDesign']['rootDir'], design.filename)):
+            design.write(self.actorConfig['pfsDesign']['rootDir'])
 
-            # no visit0 concept in that case.
-            self.engine.visitManager.declareNewField(design.pfsDesignId, genVisit0=False)
-            self.genPfsDesignKey(self.bcast)
+        # No visit0 concept in that case.
+        self.engine.visitManager.declareNewField(design.pfsDesignId, genVisit0=False)
+        self.genPfsDesignKey(self.bcast)
 
     def genPfsDesignKey(self, cmd):
         """"""
