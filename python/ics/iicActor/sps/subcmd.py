@@ -68,41 +68,27 @@ class SpsExpose(VisitedCmd):
 
         lightSources = list(set([cam.lightSource for cam in self.sequence.cams]))
 
-        if len(lightSources) > 1:
-            return
+        if not self.visitManager.activeField:
+            raise RuntimeError('No pfsDesign declared as current !')
 
-        else:
-            [lightSource] = lightSources
+        if 'pfi' in lightSources:
+            # Bump up ag visit whenever sps is taking object.
+            if self.exptype == 'object':
+                self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
+            # make sure to create an associated pfsConfig file, if one is available.
+            if self.visitManager.activeField.pfsConfig0:
+                pfsConfig = self.visitManager.activeField.pfsConfig0.copy(visit=self.visitId)
+                # Write pfsConfig to disk.
+                pfsConfigUtils.writePfsConfig(pfsConfig)
+                # Insert pfs_config_sps.
+                opdbUtils.insertPfsConfigSps(pfs_visit_id=self.visitId, visit0=self.visitManager.activeField.visit0)
+                # Generate pfsConfig key.
+                self.iicActor.genPfsConfigKey(self.sequence.cmd, pfsConfig)
+                return
 
-        if lightSource == 'pfi':
-            if self.visitManager.activeField:
-                # Bump up ag visit whenever sps is taking object.
-                if self.exptype == 'object':
-                    self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
-                # make sure to create an associated pfsConfig file, if one is available.
-                if self.visitManager.activeField.pfsConfig0:
-                    pfsConfig = self.visitManager.activeField.pfsConfig0.copy(visit=self.visitId)
-                    # Write pfsConfig to disk.
-                    pfsConfigUtils.writePfsConfig(pfsConfig)
-                    # Insert pfs_config_sps.
-                    opdbUtils.insertPfsConfigSps(pfs_visit_id=self.visitId, visit0=self.visitManager.activeField.visit0)
-                    # Generate pfsConfig key.
-                    self.iicActor.genPfsConfigKey(self.sequence.cmd, pfsConfig)
-                    return
-                else:
-                    # I will just write a pfsConfig from pfsDesign directly in that case.
-                    dirName = self.iicActor.actorConfig['pfsDesign']['rootDir']
-                    designId = self.visitManager.getCurrentDesignId()
-            else:
-                raise RuntimeError('No pfsDesign declared as current !')
-
-        elif lightSource in {'sunss', 'dcb', 'dcb2'}:
-            # Construct dirName from pfsDesign root directory and lightSource.
-            dirName = os.path.join(self.iicActor.actorConfig['pfsDesign']['rootDir'], lightSource)
-            designId = 0xdeadbeef if lightSource == 'sunss' else self.iicActor.models[lightSource].keyVarDict['designId'].getValue()
-
-        else:
-            raise ValueError(f'unknown lightSource : {lightSource}')
+        # I will just write a pfsConfig from pfsDesign directly in that case.
+        dirName = self.iicActor.actorConfig['pfsDesign']['rootDir']
+        designId = self.visitManager.getCurrentDesignId()
 
         # Write pfsConfig directly from PfsDesign.
         pfsConfig = pfsConfigUtils.writePfsConfigFromDesign(self.visitId, designId, dirName=dirName)
