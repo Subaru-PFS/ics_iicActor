@@ -144,7 +144,8 @@ class IicActor(actorcore.ICC.ICC):
 
                 if lightSource == 'sunss':
                     pfsDesign = PfsDesign.read(0xdeadbeef, pfsDesignDirName(lightSource))
-                    fiberId = gfm[gfm.fiberHoleId.isin(pfsDesign.fiberId)].query(f'spectrographId=={spectrographId}').fiberId.to_numpy().astype('int32')
+                    fiberHoleId = gfm[gfm.fiberId.isin(pfsDesign.fiberId)].fiberHoleId
+                    fiberId = gfm[gfm.fiberHoleId.isin(fiberHoleId)].query(f'spectrographId=={spectrographId}').fiberId.to_numpy().astype('int32')
                     pfsDesign.fiberId = fiberId
                     pfsDesign.objId = fiberId
 
@@ -158,7 +159,7 @@ class IicActor(actorcore.ICC.ICC):
 
                 designToMerge.append(pfsDesign)
 
-            return merge.mergeSunssAndDcbDesign(designToMerge)
+            return merge.mergeSuNSSAndDcbDesign(designToMerge)
 
         # Proceed and generate the design automatically.
         design = genAutoDesign()
