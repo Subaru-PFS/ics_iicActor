@@ -53,6 +53,7 @@ class IicActor(actorcore.ICC.ICC):
             self.logger.info(f'site :{self.site}')
 
             for spectrographId in range(1, 5):
+                self.addModels([f'enu_sm{spectrographId}'])
                 self.models['sps'].keyVarDict[f'sm{spectrographId}LightSource'].addCallback(self.hasLightSourceChanged)
 
             for dcb in {'dcb', 'dcb2'}:

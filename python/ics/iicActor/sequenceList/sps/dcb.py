@@ -8,7 +8,7 @@ class DitheredFlats(SpsSequence):
     """ Dithered Flats sequence """
     seqtype = 'ditheredFlats'
 
-    def __init__(self, cams, exptime, dcbOn, dcbOff, positions, duplicate, **seqKeys):
+    def __init__(self, cams, exptime, dcbOn, dcbOff, positions, duplicate, hexapodOff, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         # adding dcbOn and dcbOff commands.
@@ -18,8 +18,11 @@ class DitheredFlats(SpsSequence):
         if any(dcbOff.values()):
             self.tail.add('dcb', 'lamps', **dcbOff)
 
-        # taking a trace before starting hexapod.
-        self.expose('flat', exptime, cams, duplicate=duplicate)
+        # taking a trace before starting hexapod, (only for the one that were off in the first place).
+        cameraWithHexapodPowerCycled = [cam for cam in cams if cam.specName in hexapodOff]
+        if cameraWithHexapodPowerCycled:
+            self.expose('flat', exptime, cameraWithHexapodPowerCycled, duplicate=duplicate)
+
         self.add('sps', 'slit start', cams=cams)
 
         # taking a trace in home to start.
@@ -34,9 +37,10 @@ class DitheredFlats(SpsSequence):
         self.add('sps', 'slit home', cams=cams)
         self.expose('flat', exptime, cams, duplicate=duplicate)
 
-        # taking a trace after the hexapod is turned back off.
-        self.add('sps', 'slit stop', cams=cams)
-        self.expose('flat', exptime, cams, duplicate=duplicate)
+        # taking a trace after the hexapod is turned back off (only for the one that were off in the first place).
+        if cameraWithHexapodPowerCycled:
+            self.add('sps', 'slit stop', cams=cameraWithHexapodPowerCycled)
+            self.expose('flat', exptime, cameraWithHexapodPowerCycled, duplicate=duplicate)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -48,8 +52,9 @@ class DitheredFlats(SpsSequence):
         positions = translate.ditheredFlatsKeys(cmdKeys)
 
         cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
+        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
-        return cls(cams, exptime, dcbOn, dcbOff, positions, duplicate, **seqKeys)
+        return cls(cams, exptime, dcbOn, dcbOff, positions, duplicate, hexapodOff, **seqKeys)
 
 
 class Arcs(SpsSequence):
@@ -127,7 +132,7 @@ class DitheredArcs(SpsSequence):
     """ Dithered Arcs sequence """
     seqtype = 'ditheredArcs'
 
-    def __init__(self, cams, exptime, dcbOn, dcbOff, duplicate, pixelStep, **seqKeys):
+    def __init__(self, cams, exptime, dcbOn, dcbOff, duplicate, pixelStep, hexapodOff, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         # adding dcbOn and dcbOff commands.
@@ -151,7 +156,9 @@ class DitheredArcs(SpsSequence):
 
         # move back home and stop hexapod.
         self.add('sps', 'slit home', cams=cams)
-        self.add('sps', 'slit stop', cams=cams)
+        # Turn hexapod off only if it was off in the first place.
+        if hexapodOff:
+            self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -163,8 +170,9 @@ class DitheredArcs(SpsSequence):
         pixelStep = cmdKeys['pixelStep'].values[0]
 
         cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
+        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
-        return cls(cams, exptime, dcbOn, dcbOff, duplicate, pixelStep, **seqKeys)
+        return cls(cams, exptime, dcbOn, dcbOff, duplicate, pixelStep, hexapodOff, **seqKeys)
 
 
 class DetThroughFocus(SpsSequence):
@@ -204,7 +212,7 @@ class DefocusedArcs(SpsSequence):
     """ Defocus sequence """
     seqtype = 'defocusedArcs'
 
-    def __init__(self, cams, exptime, dcbOn, dcbOff, duplicate, positions, **seqKeys):
+    def __init__(self, cams, exptime, dcbOn, dcbOff, duplicate, positions, hexapodOff, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         # adding dcbOn and dcbOff commands.
@@ -226,9 +234,11 @@ class DefocusedArcs(SpsSequence):
             self.add('sps', 'slit', focus=position, abs=True, cams=cams)
             self.expose('arc', scaled, cams, duplicate=duplicate)
 
-        # move back home and stop hexapod.
+        # move back home.
         self.add('sps', 'slit home', cams=cams)
-        self.add('sps', 'slit stop', cams=cams)
+        # Turn hexapod off only if it was off in the first place.
+        if hexapodOff:
+            self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -242,5 +252,6 @@ class DefocusedArcs(SpsSequence):
         positions = np.linspace(start, stop, num=int(num)).round(6)
 
         cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
+        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
-        return cls(cams, exptime, dcbOn, dcbOff, duplicate, positions, **seqKeys)
+        return cls(cams, exptime, dcbOn, dcbOff, duplicate, positions, hexapodOff, **seqKeys)

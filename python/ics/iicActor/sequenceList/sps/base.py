@@ -118,7 +118,7 @@ class DitheredArcs(TimedLampsSequence):
     """ Dithered Arcs sequence """
     seqtype = 'ditheredArcs'
 
-    def __init__(self, cams, lampsKeys, duplicate, pixelStep, **seqKeys):
+    def __init__(self, cams, lampsKeys, duplicate, pixelStep, hexapodOff, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
         # start hexapod and move home.
         self.add('sps', 'slit start', cams=cams)
@@ -134,7 +134,9 @@ class DitheredArcs(TimedLampsSequence):
 
         # move back home and stop hexapod.
         self.add('sps', 'slit home', cams=cams)
-        self.add('sps', 'slit stop', cams=cams)
+        # Turn hexapod off only if it was off in the first place.
+        if hexapodOff:
+            self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -146,15 +148,16 @@ class DitheredArcs(TimedLampsSequence):
         pixelStep = cmdKeys['pixelStep'].values[0]
 
         cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
+        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
-        return cls(cams, lampsKeys, duplicate, pixelStep, **seqKeys)
+        return cls(cams, lampsKeys, duplicate, pixelStep, hexapodOff, **seqKeys)
 
 
 class DefocusedArcs(TimedLampsSequence):
     """ Defocus sequence """
     seqtype = 'defocusedArcs'
 
-    def __init__(self, cams, lampsKeys, duplicate, positions, **seqKeys):
+    def __init__(self, cams, lampsKeys, duplicate, positions, hexapodOff, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
         # start hexapod and move home.
         self.add('sps', 'slit start', cams=cams)
@@ -170,7 +173,9 @@ class DefocusedArcs(TimedLampsSequence):
 
         # move back home and stop hexapod.
         self.add('sps', 'slit home', cams=cams)
-        self.add('sps', 'slit stop', cams=cams)
+        # Turn hexapod off only if it was off in the first place.
+        if hexapodOff:
+            self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -183,5 +188,6 @@ class DefocusedArcs(TimedLampsSequence):
         positions = np.linspace(start, stop, num=int(num)).round(6)
 
         cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
+        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
-        return cls(cams, lampsKeys, duplicate, positions, **seqKeys)
+        return cls(cams, lampsKeys, duplicate, positions, hexapodOff, **seqKeys)

@@ -8,7 +8,7 @@ class HexapodStability(SpsSequence):
     """ hexapod stability sequence """
     seqtype = 'hexapodStability'
 
-    def __init__(self, cams, lampsKeys, duplicate, positions, **seqKeys):
+    def __init__(self, cams, lampsKeys, duplicate, positions, hexapodOff, **seqKeys):
         """Acquire a hexapod repeatability grid.
 
         Args
@@ -27,8 +27,12 @@ class HexapodStability(SpsSequence):
 
         """
         SpsSequence.__init__(self, cams, **seqKeys)
-        # taking an exposure before turning on slit
-        self.expose('arc', lampsKeys, cams, duplicate=duplicate)
+
+        # taking an exposure before starting hexapod, (only for the one that were off in the first place).
+        cameraWithHexapodPowerCycled = [cam for cam in cams if cam.specName in hexapodOff]
+        if cameraWithHexapodPowerCycled:
+            self.expose('arc', lampsKeys, cameraWithHexapodPowerCycled, duplicate=duplicate)
+
         self.add('sps', 'slit start', cams=cams)
 
         # taking one exposure in home.
@@ -46,9 +50,10 @@ class HexapodStability(SpsSequence):
         self.add('sps', 'slit home', cams=cams)
         self.expose('arc', lampsKeys, cams, duplicate=duplicate)
 
-        # taking an exposure after hexapod is turned back off.
-        self.add('sps', 'slit stop', cams=cams)
-        self.expose('arc', lampsKeys, cams, duplicate=duplicate)
+        # taking an exposure after the hexapod is turned back off (only for the one that were off in the first place).
+        if cameraWithHexapodPowerCycled:
+            self.add('sps', 'slit stop', cams=cameraWithHexapodPowerCycled)
+            self.expose('arc', lampsKeys, cameraWithHexapodPowerCycled, duplicate=duplicate)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -66,8 +71,9 @@ class HexapodStability(SpsSequence):
         positions = np.arange(start, stop, step)[::-1]
 
         cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
+        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
-        return cls(cams, lampsKeys, duplicate, positions, **seqKeys)
+        return cls(cams, lampsKeys, duplicate, positions, hexapodOff, **seqKeys)
 
 
 class RdaMove(Sequence):

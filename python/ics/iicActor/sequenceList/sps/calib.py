@@ -32,11 +32,14 @@ class DitheredFlats(TimedLampsSequence):
     """ Dithered Flats sequence """
     seqtype = 'ditheredFlats'
 
-    def __init__(self, cams, lampsKeys, positions, duplicate, **seqKeys):
+    def __init__(self, cams, lampsKeys, positions, duplicate, hexapodOff, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
-        # taking a trace before starting hexapod.
-        self.expose('flat', lampsKeys, cams, duplicate=duplicate)
+        # taking a trace before starting hexapod, (only for the one that were off in the first place).
+        cameraWithHexapodPowerCycled = [cam for cam in cams if cam.specName in hexapodOff]
+        if cameraWithHexapodPowerCycled:
+            self.expose('flat', lampsKeys, cameraWithHexapodPowerCycled, duplicate=duplicate)
+
         self.add('sps', 'slit start', cams=cams)
 
         # taking a trace in home to start.
@@ -51,9 +54,10 @@ class DitheredFlats(TimedLampsSequence):
         self.add('sps', 'slit home', cams=cams)
         self.expose('flat', lampsKeys, cams, duplicate=duplicate)
 
-        # taking a trace after the hexapod is turned back off.
-        self.add('sps', 'slit stop', cams=cams)
-        self.expose('flat', lampsKeys, cams, duplicate=duplicate)
+        # taking a trace after the hexapod is turned back off (only for the one that were off in the first place).
+        if cameraWithHexapodPowerCycled:
+            self.add('sps', 'slit stop', cams=cameraWithHexapodPowerCycled)
+            self.expose('flat', lampsKeys, cameraWithHexapodPowerCycled, duplicate=duplicate)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -65,8 +69,9 @@ class DitheredFlats(TimedLampsSequence):
         positions = translate.ditheredFlatsKeys(cmdKeys)
 
         cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
+        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
-        return cls(cams, lampsKeys, positions, duplicate, **seqKeys)
+        return cls(cams, lampsKeys, positions, duplicate, hexapodOff, **seqKeys)
 
 
 class ScienceArc(Arcs):

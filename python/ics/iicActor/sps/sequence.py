@@ -18,7 +18,7 @@ class SpsSequence(sequence.Sequence):
         self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
 
     def getLightSource(self, cams):
-        """ Get light source from our sets of specs. """
+        """Get light source from our sets of specs."""
         # easy in that case.
         if not self.lightBeam:
             return 'None'
