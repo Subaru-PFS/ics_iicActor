@@ -48,7 +48,7 @@ class DitheredFlats(SpsSequence):
         seqKeys = translate.seqKeys(cmdKeys)
         identKeys = translate.identKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
-        dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
+        dcbOn, dcbOff = translate.dcbKeys(cmdKeys, forceHalogen=True)
         positions = translate.ditheredFlatsKeys(cmdKeys)
 
         cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
