@@ -34,6 +34,7 @@ class IicActor(actorcore.ICC.ICC):
 
         self.buffer = dict()
         self.buffer['lightSources'] = self.loadLightSources()
+
         self.buffer['dcbDesignId'] = self.loadDcbDesignId('dcb')
         self.buffer['dcb2DesignId'] = self.loadDcbDesignId('dcb2')
 
@@ -122,7 +123,7 @@ class IicActor(actorcore.ICC.ICC):
         # When pfi is the only lightSource, in that case pfsDesignId is declared by users.
         # When SuNSS &| DCB &| DCB2 are the light sources, since they are static, it can be generated automatically.
 
-        if set(self.buffer['lightSources']) - {None} == {'pfi'}:
+        if 'pfi' in self.buffer['lightSources']:
             return
 
         def genAutoDesign():
@@ -135,15 +136,16 @@ class IicActor(actorcore.ICC.ICC):
             designToMerge = []
 
             for specInd, lightSource in enumerate(self.buffer['lightSources']):
-                if lightSource is None:
-                    continue
 
                 spectrographId = specInd + 1
                 # adding engineering fibers.
                 engDesign = PfsDesign.read(0xfacefeeb, pfsDesignDirName('engFibers'))
                 designToMerge.append(engDesign[engDesign.spectrograph == spectrographId])
 
-                if lightSource == 'sunss':
+                if lightSource is None:
+                    continue  # just adding engineering fibers in that case.
+
+                elif lightSource == 'sunss':
                     pfsDesign = PfsDesign.read(0xdeadbeef, pfsDesignDirName(lightSource))
                     fiberHoleId = gfm[gfm.fiberId.isin(pfsDesign.fiberId)].fiberHoleId
                     fiberId = gfm[gfm.fiberHoleId.isin(fiberHoleId)].query(f'spectrographId=={spectrographId}').fiberId.to_numpy().astype('int32')
