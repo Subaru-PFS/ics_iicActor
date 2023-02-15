@@ -20,11 +20,12 @@ class AcquireField(AgSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'acquireField'
 
-    def __init__(self, designId, exptime, guide, magnitude, dryRun, **seqKeys):
+    def __init__(self, designId, exptime, guide, magnitude, fit_dScale, dryRun, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
         self.add('ag', 'acquire_field', parseVisit=True,
-                 design_id=designId, exposure_time=exptime, guide=guide, magnitude=magnitude, dry_run=dryRun)
+                 design_id=designId, exposure_time=exptime, guide=guide, magnitude=magnitude, fit_dscale=fit_dScale,
+                 dry_run=dryRun)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -35,6 +36,7 @@ class AcquireField(AgSequence):
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
         guide = 'no' if 'guideOff' in cmdKeys else None
         dryRun = 'yes' if 'dryRun' in cmdKeys else None
+        fit_dScale = 'yes' if iicActor.actorConfig['ag']['fit_dScale'] else 'no'
 
         # get provided designId or get current one.
         if 'designId' in cmdKeys:
@@ -42,19 +44,19 @@ class AcquireField(AgSequence):
         else:
             designId = iicActor.engine.visitManager.getCurrentDesignId()
 
-        return cls(designId, exptime, guide, magnitude, dryRun, **seqKeys)
+        return cls(designId, exptime, guide, magnitude, fit_dScale, dryRun, **seqKeys)
 
 
 class AutoguideStart(AgSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'autoguideStart'
 
-    def __init__(self, designId, exptime, fromSky, cadence, center, magnitude, dryRun, **seqKeys):
+    def __init__(self, designId, exptime, fromSky, cadence, center, magnitude, fit_dScale, dryRun, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
         self.add('ag', 'autoguide start', parseVisit=True,
                  design_id=designId, exposure_time=exptime, from_sky=fromSky, cadence=cadence, center=center,
-                 magnitude=magnitude, dry_run=dryRun)
+                 magnitude=magnitude, fit_dscale=fit_dScale, dry_run=dryRun)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -65,6 +67,7 @@ class AutoguideStart(AgSequence):
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
         fromSky = 'yes' if 'fromSky' in cmdKeys else None
         dryRun = 'yes' if 'dryRun' in cmdKeys else None
+        fit_dScale = 'yes' if iicActor.actorConfig['ag']['fit_dScale'] else 'no'
 
         # get provided designId or get current one.
         if 'designId' in cmdKeys:
@@ -72,7 +75,7 @@ class AutoguideStart(AgSequence):
         else:
             designId = iicActor.engine.visitManager.getCurrentDesignId()
 
-        return cls(designId, exptime, fromSky, cadence, center, magnitude, dryRun, **seqKeys)
+        return cls(designId, exptime, fromSky, cadence, center, magnitude, fit_dScale, dryRun, **seqKeys)
 
 
 class AutoguideStop(Sequence):
