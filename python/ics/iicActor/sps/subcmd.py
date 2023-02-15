@@ -1,5 +1,3 @@
-import os.path
-
 import ics.iicActor.utils.opdb as opdbUtils
 import ics.utils.cmd as cmdUtils
 import pfs.utils.pfsConfigUtils as pfsConfigUtils
@@ -124,8 +122,10 @@ class LampsCmd(SubCmd):
     """ Placeholder to handle lamps command specificities"""
 
     def __init__(self, sequence, actor, *args, **kwargs):
-        lampsActor = sequence.lightSource.lampsActor
-        SubCmd.__init__(self, sequence, lampsActor, *args, **kwargs)
+        if not sequence.lightSource.lampsActor:
+            raise RuntimeError(f'cannot control lampActor for lightSource={sequence.lightSource} !')
+
+        SubCmd.__init__(self, sequence, sequence.lightSource.lampsActor, *args, **kwargs)
 
     def abort(self, cmd):
         """ Abort warmup """
