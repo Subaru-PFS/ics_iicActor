@@ -193,6 +193,9 @@ class DetThroughFocus(SpsSequence):
             self.add('sps', 'ccdMotors move', a=motorA, b=motorB, c=motorC, microns=True, abs=True, cams=cams)
             self.expose('arc', exptime, cams, duplicate=duplicate)
 
+        # moving back to focus at the end.
+        self.tail.add('sps', 'ccdMotors toFocus', cams=cams)
+
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
