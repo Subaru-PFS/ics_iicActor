@@ -1,5 +1,6 @@
 import ics.iicActor.utils.opdb as opdbUtils
 import ics.utils.cmd as cmdUtils
+import ics.utils.sps.fits as fits
 import pfs.utils.pfsConfigUtils as pfsConfigUtils
 import pfscore.gen2 as gen2
 from ics.iicActor.utils.subcmd import SubCmd, CmdRet
@@ -69,29 +70,22 @@ class SpsExpose(VisitedCmd):
         if not self.visitManager.activeField:
             raise RuntimeError('No pfsDesign declared as current !')
 
-        if 'pfi' in lightSources:
+        if 'pfi' in lightSources and self.exptype == 'object':
             # Bump up ag visit whenever sps is taking object.
-            if self.exptype == 'object':
-                self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
-            # make sure to create an associated pfsConfig file, if one is available.
-            if self.visitManager.activeField.pfsConfig0:
-                pfsConfig = self.visitManager.activeField.pfsConfig0.copy(visit=self.visitId)
-                # Write pfsConfig to disk.
-                pfsConfigUtils.writePfsConfig(pfsConfig)
-                # Insert pfs_config_sps.
-                opdbUtils.insertPfsConfigSps(pfs_visit_id=self.visitId, visit0=self.visitManager.activeField.visit0)
-                # Generate pfsConfig key.
-                self.iicActor.genPfsConfigKey(self.sequence.cmd, pfsConfig)
-                return
+            self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
 
-        # I will just write a pfsConfig from pfsDesign directly in that case.
-        dirName = self.iicActor.actorConfig['pfsDesign']['rootDir']
-        designId = self.visitManager.getCurrentDesignId()
-
-        # Write pfsConfig directly from PfsDesign.
-        pfsConfig = pfsConfigUtils.writePfsConfigFromDesign(self.visitId, designId, dirName=dirName)
+        # Grab additional pfsConfig cards.
+        cards = fits.getPfsConfigCards(actor=self.iicActor, cmd=self.sequence.cmd, visit=self.visitId)
+        # Create the pfsConfig associated with the visit.
+        pfsConfig = self.visitManager.activeField.getPfsConfig(self.visitId, cards=cards)
+        # Write pfsConfig to disk.
+        pfsConfigUtils.writePfsConfig(pfsConfig)
         # Generate pfsConfig key.
         self.iicActor.genPfsConfigKey(self.sequence.cmd, pfsConfig)
+
+        # Insert pfs_config_sps.
+        if self.visitManager.activeField.pfsConfig0:
+            opdbUtils.insertPfsConfigSps(pfs_visit_id=self.visitId, visit0=self.visitManager.activeField.visit0)
 
     def abort(self, cmd):
         """ Abort current exposure """
