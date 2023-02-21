@@ -80,12 +80,10 @@ class SpsExpose(VisitedCmd):
         pfsConfig = self.visitManager.activeField.getPfsConfig(self.visitId, cards=cards)
         # Write pfsConfig to disk.
         pfsConfigUtils.writePfsConfig(pfsConfig)
+        # Insert pfs_config_sps.
+        opdbUtils.insertPfsConfigSps(pfs_visit_id=self.visitId, visit0=self.visitManager.activeField.visit0)
         # Generate pfsConfig key.
         self.iicActor.genPfsConfigKey(self.sequence.cmd, pfsConfig)
-
-        # Insert pfs_config_sps.
-        if self.visitManager.activeField.pfsConfig0:
-            opdbUtils.insertPfsConfigSps(pfs_visit_id=self.visitId, visit0=self.visitManager.activeField.visit0)
 
     def abort(self, cmd):
         """ Abort current exposure """
