@@ -226,8 +226,6 @@ class FpsCmd(object):
             genStatus('text="Cobra convergence not completed, stopping here."')
             return
 
-        self.visitManager.activeField.loadPfsConfig0()
-
         cmd.finish()
 
     def moveToHome(self, cmd):

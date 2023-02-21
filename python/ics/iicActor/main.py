@@ -4,9 +4,11 @@ import os
 
 import actorcore.ICC
 import iicActor.utils.mergePfsDesign as merge
+import iicActor.utils.pfsDesign as pfsDesignUtils
 import numpy as np
 import pandas as pd
 import pfs.utils.pfsConfigUtils as pfsConfigUtils
+from ics.utils.sps.config import LightSource
 from ics.utils.sps.spectroIds import getSite
 from iicActor.utils import engine
 from pfs.datamodel.pfsConfig import PfsDesign, TargetType
@@ -60,6 +62,8 @@ class IicActor(actorcore.ICC.ICC):
             for dcb in {'dcb', 'dcb2'}:
                 self.models[dcb].keyVarDict['designId'].addCallback(self.hasDcbConfigChanged)
 
+            self.models['fps'].keyVarDict['pfsConfig'].addCallback(self.fpsConfig)
+
             reactor.callLater(1, self.letsGetReadyToRumble)
 
     def letsGetReadyToRumble(self):
@@ -74,11 +78,11 @@ class IicActor(actorcore.ICC.ICC):
         spsKeys = self.actorData.loadKeys('sps')
         for spectrographId in range(1, 5):
             try:
-                lightSource, = spsKeys[f'sm{spectrographId}LightSource']
+                sourceName, = spsKeys[f'sm{spectrographId}LightSource']
             except:
-                lightSource = None
+                sourceName = None
 
-            lightSources.append(lightSource)
+            lightSources.append(LightSource(sourceName))
 
         return lightSources
 
@@ -112,6 +116,18 @@ class IicActor(actorcore.ICC.ICC):
             if dcbName in self.buffer['lightSources']:
                 self.updatePfsField()
 
+    def fpsConfig(self, keyVar):
+        """Callback called whenever fps.pfsConfig is generated."""
+        try:
+            designId, visit0, status = keyVar.getValue()
+        except ValueError:
+            return
+
+        self.logger.info(f'fpsConfig={designId},{visit0},{status}')
+
+        if status == 'Done' and self.engine.visitManager.activeField:
+            self.engine.visitManager.activeField.loadPfsConfig0(designId, visit0)
+
     def updatePfsField(self):
         """Called from sps.smXLightSource or dcb.designId callbacks, this reset the current field and attempt to
         regenerate a new design file based on the current config."""
@@ -134,26 +150,31 @@ class IicActor(actorcore.ICC.ICC):
 
             gfm = pd.DataFrame(FiberIds().data)
             designToMerge = []
+            designNames = []
 
             for specInd, lightSource in enumerate(self.buffer['lightSources']):
-
                 spectrographId = specInd + 1
                 # adding engineering fibers.
                 engDesign = PfsDesign.read(0xfacefeeb, pfsDesignDirName('engFibers'))
                 designToMerge.append(engDesign[engDesign.spectrograph == spectrographId])
 
-                if lightSource is None:
+                if lightSource == 'none':
+                    designNames.append('None')
                     continue  # just adding engineering fibers in that case.
 
                 elif lightSource == 'sunss':
+                    designNames.append('SuNSS.0xdeadbeef')
                     pfsDesign = PfsDesign.read(0xdeadbeef, pfsDesignDirName(lightSource))
                     fiberHoleId = gfm[gfm.fiberId.isin(pfsDesign.fiberId)].fiberHoleId
-                    fiberId = gfm[gfm.fiberHoleId.isin(fiberHoleId)].query(f'spectrographId=={spectrographId}').fiberId.to_numpy().astype('int32')
+                    allSpectro = gfm[gfm.fiberHoleId.isin(fiberHoleId)]
+                    fiberId = allSpectro.query(f'spectrographId=={spectrographId}').fiberId.to_numpy().astype('int32')
                     pfsDesign.fiberId = fiberId
                     pfsDesign.objId = fiberId
 
                 elif lightSource in {'dcb', 'dcb2'}:
-                    pfsDesign = PfsDesign.read(self.models[lightSource].keyVarDict['designId'].getValue(), pfsDesignDirName(lightSource))
+                    designId = self.models[lightSource].keyVarDict['designId'].getValue()
+                    designNames.append(f'{lightSource}.0x{designId:016x}')
+                    pfsDesign = PfsDesign.read(designId, pfsDesignDirName(lightSource))
                     pfsDesign = pfsDesign[pfsDesign.spectrograph == spectrographId]
                     pfsDesign.targetType = np.repeat(TargetType.DCB, len(pfsDesign)).astype('int32')
 
@@ -162,7 +183,7 @@ class IicActor(actorcore.ICC.ICC):
 
                 designToMerge.append(pfsDesign)
 
-            return merge.mergeSuNSSAndDcbDesign(designToMerge)
+            return merge.mergeSuNSSAndDcbDesign(designToMerge, designName=','.join(designNames))
 
         # Proceed and generate the design automatically.
         design = genAutoDesign()
@@ -172,6 +193,8 @@ class IicActor(actorcore.ICC.ICC):
 
         # No visit0 concept in that case.
         self.engine.visitManager.declareNewField(design.pfsDesignId, genVisit0=False)
+        # Ingest merged design.
+        pfsDesignUtils.PfsDesignHandler.ingest(self.bcast, design, designed_at='now', to_be_observed_at='now')
         self.genPfsDesignKey(self.bcast)
 
     def genPfsDesignKey(self, cmd):

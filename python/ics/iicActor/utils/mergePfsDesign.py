@@ -47,14 +47,14 @@ def sortFieldsByFiberId(kwargs):
     return kwargs
 
 
-def mergeSuNSSAndDcbDesign(designToMerge):
+def mergeSuNSSAndDcbDesign(pfsDesigns, designName):
     """Merge SuNSS and DCB PfsDesign."""
     kwargs = dict(pfsDesignId=0, raBoresight=100, decBoresight=100, posAng=0, arms='brn', guideStars=None,
-                  designName="mergedSunSSAndDCB", variant=0, designId0=0)
+                  designName=designName, variant=0, designId0=0)
     keywords = PfsDesign._keywords + PfsDesign._scalars + ['fiberStatus']
 
     # Just append field on top of each other.
-    for design in designToMerge:
+    for design in pfsDesigns:
         for keyword in keywords:
             array = getattr(design, keyword)
 
