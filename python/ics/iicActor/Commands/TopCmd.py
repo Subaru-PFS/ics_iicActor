@@ -73,7 +73,6 @@ class TopCmd(object):
         self.actor.sendVersionKey(cmd)
 
         self.actor.genPfsDesignKey(cmd)
-        self.actor.genPfsConfig0Key(cmd)
 
         cmd.finish()
 
@@ -93,7 +92,6 @@ class TopCmd(object):
         # invalidating previous pfsDesign keyword
         self.visitManager.finishField()
         self.actor.genPfsDesignKey(cmd)
-        self.actor.genPfsConfig0Key(cmd)
 
         cmd.finish()
 

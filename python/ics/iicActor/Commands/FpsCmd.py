@@ -2,7 +2,6 @@ from importlib import reload
 
 import ics.iicActor.sequenceList.fps as fpsSequence
 import ics.iicActor.utils.lib as iicUtils
-
 import iicActor.utils.pfsDesign as pfsDesignUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
@@ -34,7 +33,9 @@ class FpsCmd(object):
             ('abortBoresightAcquisition', '', self.abortBoresightAcquisition),
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
 
-            ('moveToPfsDesign', f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [<nIteration>] [<tolerance>] {seqArgs}', self.moveToPfsDesign),
+            ('moveToPfsDesign',
+             f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [<nIteration>] [<tolerance>] {seqArgs}',
+             self.moveToPfsDesign),
             ('moveToHome', f'[@(all)] [<exptime>] [<designId>] [<maskFile>] {seqArgs}', self.moveToHome),
 
             ('movePhiToAngle', f'<angle> <nIteration> {seqArgs}', self.movePhiToAngle),
@@ -226,7 +227,6 @@ class FpsCmd(object):
             return
 
         self.visitManager.activeField.loadPfsConfig0()
-        self.actor.genPfsConfig0Key(cmd)
 
         cmd.finish()
 
