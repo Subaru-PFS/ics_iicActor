@@ -213,7 +213,7 @@ class FpsCmd(object):
 
         # then declare new design.
         if 'designId' in cmdKeys:
-            pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.visitManager)
+            self.actor.declareFpsDesign(cmd)
 
         designId = self.visitManager.getCurrentDesignId()
 
@@ -249,7 +249,7 @@ class FpsCmd(object):
         else:
             designId = pfsDesignUtils.PfsDesignHandler.latestDesignIdMatchingName("cobraHome")
 
-        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.visitManager, designId=designId)
+        self.actor.declareFpsDesign(cmd, designId=designId)
 
         moveToHome = fpsSequence.MoveToHome.fromCmdKeys(self.actor, cmdKeys)
         self.engine.runInThread(cmd, moveToHome)
