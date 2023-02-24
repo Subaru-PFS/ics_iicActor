@@ -2,13 +2,13 @@ from importlib import reload
 
 import ics.iicActor.sequenceList.misc as misc
 import ics.iicActor.utils.lib as iicUtils
-import iicActor.utils.pfsDesign as pfsDesignUtils
+import iicActor.utils.pfsDesign.opdb as designDB
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.utils.threading import singleShot
 
 reload(iicUtils)
-reload(pfsDesignUtils)
+reload(designDB)
 reload(misc)
 
 
@@ -81,7 +81,7 @@ class MiscCmd(object):
         if 'designId' in cmdKeys:
             designId = cmdKeys['designId'].values[0]
         else:
-            designId = pfsDesignUtils.PfsDesignHandler.latestDesignIdMatchingName(designName)
+            designId = designDB.latestDesignIdMatchingName(designName)
 
         # declare/insert current design as nearDotDesign.
         self.actor.declareFpsDesign(cmd, designId=designId)

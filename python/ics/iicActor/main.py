@@ -3,12 +3,11 @@
 import os
 
 import actorcore.ICC
-import iicActor.utils.mergePfsDesign as merge
-import iicActor.utils.pfsDesign as pfsDesignUtils
+import iicActor.utils.pfsDesign.merge as mergeDesign
 import numpy as np
 import pandas as pd
 import pfs.utils.pfsConfigUtils as pfsConfigUtils
-from ics.iicActor.utils.pfsDesign import PfsDesignHandler
+import ics.iicActor.utils.pfsDesign.opdb as designDB
 from ics.utils.sps.spectroIds import getSite
 from iicActor.utils import engine
 from iicActor.utils import keyBuffer
@@ -87,7 +86,7 @@ class IicActor(actorcore.ICC.ICC):
             self.genPfsDesignKey(cmd)
             return
 
-        designId, designed_at = self.mergePfsDesignFromCurrentSetup()
+        designId, designed_at = self.mergeDesignFromCurrentSetup()
 
         # if pfi is connected, you do not want to declare a new field, unless you specifically asked for it.
         if self.pfiConnected and not genVisit0:
@@ -97,9 +96,9 @@ class IicActor(actorcore.ICC.ICC):
         pfsDesign, visit0 = self.visitManager.declareNewField(designId, genVisit0=genVisit0)
         self.genPfsDesignKey(cmd)
         # Ingest design.
-        pfsDesignUtils.PfsDesignHandler.ingest(cmd, pfsDesign, designed_at=designed_at, to_be_observed_at='now')
+        designDB.ingest(cmd, pfsDesign, designed_at=designed_at, to_be_observed_at='now')
 
-    def mergePfsDesignFromCurrentSetup(self):
+    def mergeDesignFromCurrentSetup(self):
         """ Merge design given the current setup, there are basically two modes :
         When pfi is the only lightSource, in that case pfsDesignId is declared by users.
         When SuNSS &| DCB &| DCB2 are the light sources, since they are static, it can be generated automatically."""
@@ -146,7 +145,7 @@ class IicActor(actorcore.ICC.ICC):
 
                 designToMerge.append(pfsDesign)
 
-            return merge.mergeSuNSSAndDcbDesign(designToMerge, designName=','.join(designNames))
+            return mergeDesign.mergeSuNSSAndDcb(designToMerge, designName=','.join(designNames))
 
         designed_at = None
 
@@ -179,14 +178,14 @@ class IicActor(actorcore.ICC.ICC):
         return self.actorData.persistKey('fpsDesignId', designId)
 
     def declareFpsDesign(self, cmd, designId=None, variant=0):
-        """"""
+        """Declare current FpsDesignId, note that if only pfi is connected FpsDesignId==PfsDesignId."""
         cmdKeys = cmd.cmd.keywords
         designId = cmdKeys['designId'].values[0] if designId is None else designId
         variant = cmdKeys['variant'].values[0] if 'variant' in cmdKeys else variant
 
         # get actual pfsDesignId from designId0 and variant.
         if variant:
-            designId = PfsDesignHandler.designIdFromVariant(designId0=designId, variant=variant)
+            designId = designDB.designIdFromVariant(designId0=designId, variant=variant)
 
         if not self.pfiConnected:
             raise RuntimeError('pfi is not connected, design will not declared as current.')

@@ -47,7 +47,7 @@ def sortFieldsByFiberId(kwargs):
     return kwargs
 
 
-def mergeSuNSSAndDcbDesign(pfsDesigns, designName):
+def mergeSuNSSAndDcb(pfsDesigns, designName):
     """Merge SuNSS and DCB PfsDesign."""
     kwargs = dict(pfsDesignId=0, raBoresight=100, decBoresight=100, posAng=0, arms='brn', guideStars=None,
                   designName=designName, variant=0, designId0=0)

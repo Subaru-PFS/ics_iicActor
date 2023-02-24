@@ -2,14 +2,14 @@ from importlib import reload
 
 import ics.iicActor.sequenceList.fps as fpsSequence
 import ics.iicActor.utils.lib as iicUtils
-import iicActor.utils.pfsDesign as pfsDesignUtils
+import iicActor.utils.pfsDesign.opdb as designDB
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.utils.threading import singleShot
 
 reload(fpsSequence)
 reload(iicUtils)
-reload(pfsDesignUtils)
+reload(designDB)
 
 
 class FpsCmd(object):
@@ -247,7 +247,7 @@ class FpsCmd(object):
         if 'designId' in cmdKeys:
             designId = cmdKeys['designId'].values[0]
         else:
-            designId = pfsDesignUtils.PfsDesignHandler.latestDesignIdMatchingName("cobraHome")
+            designId = designDB.latestDesignIdMatchingName("cobraHome")
 
         self.actor.declareFpsDesign(cmd, designId=designId)
 

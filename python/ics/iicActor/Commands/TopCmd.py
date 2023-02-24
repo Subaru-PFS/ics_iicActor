@@ -1,13 +1,13 @@
 from importlib import reload
 
-import iicActor.utils.pfsDesign as pfsDesignUtils
+import iicActor.utils.pfsDesign.opdb as designDB
 import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from pfs.datamodel import PfsDesign
 from pfs.utils.pfsDesignVariants import makeVariantDesign
 
-reload(pfsDesignUtils)
-PfsDesignHandler = pfsDesignUtils.PfsDesignHandler
+reload(designDB)
 
 
 class TopCmd(object):
@@ -66,14 +66,14 @@ class TopCmd(object):
         cmd.finish("text='Present and (probably) well'")
 
     def status(self, cmd):
-        """Report camera status and actor version. """
+        """Report camera status and actor version."""
         self.actor.sendVersionKey(cmd)
         self.actor.genPfsDesignKey(cmd)
 
         cmd.finish()
 
     def declareCurrentPfsDesign(self, cmd):
-        """Report camera status and actor version. """
+        """Declare current FpsDesignId, note that if only pfi is connected FpsDesignId==PfsDesignId."""
         self.actor.declareFpsDesign(cmd)
 
         # setting grating to design.
@@ -82,7 +82,7 @@ class TopCmd(object):
         cmd.finish()
 
     def finishField(self, cmd):
-        """Report camera status and actor version. """
+        """Reset current PfsField."""
         # invalidating previous pfsDesign keyword
         self.visitManager.finishField()
         self.actor.genPfsDesignKey(cmd)
@@ -90,6 +90,7 @@ class TopCmd(object):
         cmd.finish()
 
     def createVariants(self, cmd):
+        """Create PfsDesign variants given a designId0."""
         cmdKeys = cmd.cmd.keywords
 
         sigma = cmdKeys['sigma'].values[0] if 'sigma' in cmdKeys else 1
@@ -98,14 +99,14 @@ class TopCmd(object):
 
         if 'nVariants' in cmdKeys:
             # make sure no variants already exist.
-            if PfsDesignHandler.getAllVariants(designId0).size:
+            if designDB.getAllVariants(designId0).size:
                 cmd.fail('text="there is already variants matching that designId0, use addVariants instead."')
                 return
             # variant starts at 1.
             variants = np.array(list(range(cmdKeys['nVariants'].values[0]))) + 1
 
         elif 'addVariants' in cmdKeys:
-            maxVariant = PfsDesignHandler.maxVariantMatchingDesignId0(designId0)
+            maxVariant = designDB.maxVariantMatchingDesignId0(designId0)
             variants = np.array(list(range(cmdKeys['addVariants'].values[0]))) + maxVariant + 1
 
         else:
@@ -113,60 +114,59 @@ class TopCmd(object):
             return
 
         # Reading design0 file.
-        pfsDesign0 = PfsDesignHandler.read(designId0, dirName=self.pfsDesignRootDir)
+        pfsDesign0 = PfsDesign.read(designId0, dirName=self.pfsDesignRootDir)
 
         for variant in variants:
-            cmd.inform(f'text="creating variant %d for designId0 0x%016x"' % (variant, designId0))
+            cmd.inform(f'text="creating variant {variant} for designId0 0x{designId0:016x}"')
             pfsDesignVariant = makeVariantDesign(pfsDesign0, variant=variant, sigma=sigma, doHex=doHex)
             # writing to disk
             pfsDesignVariant.write(dirName=self.pfsDesignRootDir)
             # Ingesting into opdb.
-            PfsDesignHandler.ingest(cmd, pfsDesignVariant, designed_at='now', to_be_observed_at='now')
+            designDB.ingest(cmd, pfsDesignVariant, designed_at='now', to_be_observed_at='now')
 
         cmd.finish()
 
     def getAllVariants(self, cmd):
-        """"""
+        """Get all variant PfsDesign(nVariant,designId) given a designId0."""
         cmdKeys = cmd.cmd.keywords
 
         designId0 = cmdKeys['designId0'].values[0]
-        allVariants = PfsDesignHandler.getAllVariants(designId0)
+        allVariants = designDB.getAllVariants(designId0)
 
         if not allVariants.size:
-            cmd.fail(f'text="have not found any variants matching designId0:0x%016x' % designId0)
+            cmd.fail(f'text="have not found any variants matching designId0 0x{designId0:016x}"')
             return
 
         for designId, variant in allVariants:
-            cmd.inform(f'text="designId0:0x%016x found variant %d designId:0x%016x' % (designId0, variant, designId))
+            cmd.inform(f'text="designId0 0x{designId0:016x} found variant {variant} designId 0x{designId0:016x}"')
 
         cmd.finish()
 
     def getMaxVariants(self, cmd):
-        """"""
+        """Get max nVariant PfsDesign(nVariant,designId) given a designId0."""
         cmdKeys = cmd.cmd.keywords
 
         designId0 = cmdKeys['designId0'].values[0]
-        allVariants = PfsDesignHandler.getAllVariants(designId0)
+        allVariants = designDB.getAllVariants(designId0)
 
         if not allVariants.size:
-            cmd.fail(f'text="have not found any variants matching designId0:0x%016x' % designId0)
+            cmd.fail(f'text="have not found any variants matching designId0 0x{designId0:016x}"')
             return
 
         maxVariant = np.max(allVariants[:, 1])
 
-        cmd.finish(f'text="designId0:0x%016x maxVariant=%d"' % (designId0, maxVariant))
+        cmd.finish(f'text="designId0 0x{designId0:016x} maxVariant={maxVariant}"')
 
     def ingestPfsDesign(self, cmd):
-        """Report camera status and actor version. """
+        """Load and ingest a PfsDesign into opdb given a pfsDesignId."""
         cmdKeys = cmd.cmd.keywords
 
         designId = cmdKeys['designId'].values[0]
         designed_at = cmdKeys['designedAt'].values[0] if 'designedAt' in cmdKeys else None
         to_be_observed_at = cmdKeys['toBeObservedAt'].values[0] if 'toBeObservedAt' in cmdKeys else None
         # Reading design file.
-        pfsDesign = PfsDesignHandler.read(designId, dirName=self.pfsDesignRootDir)
+        pfsDesign = PfsDesign.read(designId, dirName=self.pfsDesignRootDir)
         # Ingesting into opdb.
-        PfsDesignHandler.ingest(cmd, pfsDesign,
-                                designed_at=designed_at, to_be_observed_at=to_be_observed_at)
+        designDB.ingest(cmd, pfsDesign, designed_at=designed_at, to_be_observed_at=to_be_observed_at)
 
         cmd.finish()
