@@ -74,7 +74,7 @@ class TopCmd(object):
 
     def declareCurrentPfsDesign(self, cmd):
         """Report camera status and actor version. """
-        pfsDesign, visit0 = self.actor.declareFpsDesign(cmd)
+        self.actor.declareFpsDesign(cmd)
 
         # setting grating to design.
         self.actor.cmdr.bgCall(None, 'iic', 'setGratingToDesign')

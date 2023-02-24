@@ -6,21 +6,9 @@ from pfs.datamodel import PfsDesign
 class PfsDesignHandler(object):
 
     @staticmethod
-    def declareCurrent(cmd, visitor, designId=None, variant=0):
-        """ """
-        cmdKeys = cmd.cmd.keywords
-        designId = cmdKeys['designId'].values[0] if designId is None else designId
-        variant = cmdKeys['variant'].values[0] if 'variant' in cmdKeys else variant
-
-        # get actual pfsDesignId from designId0 and variant.
-        if variant:
-            designId = PfsDesignHandler.designIdFromVariant(designId0=designId, variant=variant)
-
-        # declaring new field
-        pfsDesign, visit0 = visitor.declareNewField(designId)
-        # ingesting into opdb
-        PfsDesignHandler.ingest(cmd, pfsDesign, to_be_observed_at="now")
-        return pfsDesign, visit0
+    def read(pfsDesignId, dirName):
+        """Read PfsDesign from pfsDesignId"""
+        return PfsDesign.read(pfsDesignId, dirName=dirName)
 
     @staticmethod
     def ingest(cmd, pfsDesign, designed_at=None, to_be_observed_at=None):
@@ -35,11 +23,6 @@ class PfsDesignHandler(object):
                 cmd.warn(f'text="ingestPfsDesign failed with {str(e)}, ignoring for now..."')
         else:
             cmd.warn('text="pfsDesign-0x%016x already inserted in opdb..."' % pfsDesign.pfsDesignId)
-
-    @staticmethod
-    def read(pfsDesignId, dirName):
-        """Read PfsDesign from pfsDesignId"""
-        return PfsDesign.read(pfsDesignId, dirName=dirName)
 
     @staticmethod
     def latestDesignIdMatchingName(designName):
@@ -59,8 +42,8 @@ class PfsDesignHandler(object):
     @staticmethod
     def designIdFromVariant(designId0, variant):
         """Retrieve actual designId from designId0 and variant"""
+        fetched = opDB.fetchone( f'select pfs_design_id from pfs_design where design_id0={designId0} and variant={variant}')
 
-        fetched = opDB.fetchone(f'select pfs_design_id from pfs_design where design_id0={designId0} and variant={variant}')
         if not fetched:
             raise ValueError(f'could not retrieve variant {variant} where design_id0={designId0}')
 
@@ -71,8 +54,8 @@ class PfsDesignHandler(object):
     @staticmethod
     def maxVariantMatchingDesignId0(designId0):
         """Retrieve actual designId from designId0 and variant"""
-
         fetched = opDB.fetchone(f'select max(variant) from pfs_design where design_id0={designId0}')
+
         if not fetched:
             raise ValueError(f'could not retrieve pfs_design where design_id0={designId0}')
 
