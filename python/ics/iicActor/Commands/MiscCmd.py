@@ -84,7 +84,7 @@ class MiscCmd(object):
             designId = pfsDesignUtils.PfsDesignHandler.latestDesignIdMatchingName(designName)
 
         # declare/insert current design as nearDotDesign.
-        pfsDesignUtils.PfsDesignHandler.declareCurrent(cmd, self.engine.visitManager, designId=designId)
+        self.actor.declareFpsDesign(cmd, designId=designId)
 
         # run nearDotConvergence.
         nearDotConvergence = misc.NearDotConvergence.fromCmdKeys(self.actor, cmdKeys, designId=designId)

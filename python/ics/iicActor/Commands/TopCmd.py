@@ -63,27 +63,21 @@ class TopCmd(object):
 
     def ping(self, cmd):
         """Query the actor for liveness/happiness."""
-
-        cmd.warn("text='I am an empty and fake actor'")
         cmd.finish("text='Present and (probably) well'")
 
     def status(self, cmd):
         """Report camera status and actor version. """
-
         self.actor.sendVersionKey(cmd)
-
         self.actor.genPfsDesignKey(cmd)
 
         cmd.finish()
 
     def declareCurrentPfsDesign(self, cmd):
         """Report camera status and actor version. """
-        pfsDesign, visit0 = PfsDesignHandler.declareCurrent(cmd, self.visitManager)
+        self.actor.declareFpsDesign(cmd)
 
         # setting grating to design.
         self.actor.cmdr.bgCall(None, 'iic', 'setGratingToDesign')
-        # generating keywords
-        self.actor.genPfsDesignKey(cmd)
 
         cmd.finish()
 
