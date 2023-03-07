@@ -21,7 +21,7 @@ class KeyRepo(object):
 
     def hexapodPoweredOff(self, cams):
         """Return specName where the hexapod is powered off."""
-        return [specName for specName, (_, slitPowerState, _, _, _) in self.enuKeys(cams, 'pduPort3').items() if slitPowerState == 'off']
+        return [specName for specName, (_, state, _, _, _) in self.enuKeys(cams, 'pduPort3').items() if state == 'off']
 
 
 class Engine(object):
@@ -107,3 +107,21 @@ class Engine(object):
 
         # Or just create a fresh one.
         return opdbUtils.insertSequenceGroup(groupName)
+
+    def checkIn(self, cmd, sequence):
+        """Check resources for a given sequence and do basic startup, without executing any command yet."""
+        # make sure locked is always defined.
+        locked = None
+        # retrieving resources based on sequence.
+        resources = self.resourceManager.inspect(sequence)
+        try:
+            # checking if resources are available.
+            locked = self.resourceManager.request(resources)
+            # base insert and activate sequence.
+            sequence.startup(self, cmd=cmd)
+            # store in registry.
+            self.registry.register(sequence)
+
+        finally:
+            # I'm freeing but those will be locked in again when executing commands.
+            self.resourceManager.free(locked)

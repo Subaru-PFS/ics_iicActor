@@ -396,7 +396,17 @@ class SpsCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         exposureLoop = science.ScienceObjectLoop.fromCmdKeys(self.actor, cmdKeys)
-        self.engine.runInThread(cmd, exposureLoop)
+        # Check if resources are available, prepare sequence to be executed but do not fire *anything* yet.
+        try:
+            self.engine.checkIn(cmd, exposureLoop)
+        except Exception as e:
+            cmd.fail(f'text="{str(e)}"')
+            return
+
+        # Returning command right away.
+        cmd.finish()
+        # Running sequence in background.
+        self.engine.runInThread(self.actor.bcast, exposureLoop, mode='execute', doFinish=False)
 
     def erase(self, cmd):
         """

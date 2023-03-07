@@ -61,12 +61,13 @@ class SubCmd(object):
     def iicActor(self):
         return self.sequence.engine.actor
 
+    def forUserCmd(self, cmd):
+        cmd = None if cmd == self.iicActor.bcast else cmd
+        return cmd
+
     def build(self, cmd):
         """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs) """
-        return dict(actor=self.actor,
-                    cmdStr=self.cmdStr,
-                    forUserCmd=cmd,
-                    timeLim=self.timeLim)
+        return dict(actor=self.actor, cmdStr=self.cmdStr, forUserCmd=self.forUserCmd(cmd), timeLim=self.timeLim)
 
     def callAndUpdate(self, cmd):
         """"""
