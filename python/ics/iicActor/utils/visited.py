@@ -43,7 +43,7 @@ class VisitedCmd(SubCmd):
 
     def build(self, cmd):
         """ Build kwargs for actorcore.CmdrConnection.Cmdr.call(**kwargs), format with self.visitId """
-        return dict(actor=self.actor, cmdStr=self.cmdStrAndVisit, forUserCmd=cmd, timeLim=self.timeLim)
+        return dict(actor=self.actor, cmdStr=self.cmdStrAndVisit, forUserCmd=self.forUserCmd(cmd), timeLim=self.timeLim)
 
     def allocateFrameId(self):
         """Allocate frameId only once."""
