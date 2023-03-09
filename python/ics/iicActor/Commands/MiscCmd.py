@@ -6,6 +6,7 @@ import iicActor.utils.pfsDesign.opdb as designDB
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.utils.threading import singleShot
+from iicActor.utils.sequenceStatus import Flag
 
 reload(iicUtils)
 reload(designDB)
@@ -100,10 +101,10 @@ class MiscCmd(object):
 
         # converge to near dot in the first place.
         nearDotConvergence = self.nearDotConvergence(cmd, designName=cmdName, doFinish=False)
-        # something happened convergence did not complete, we need to stop here.
-        if nearDotConvergence.status.statusFlag != 0:
-            genStatus = cmd.finish if nearDotConvergence.status.statusStr == 'finished' else cmd.fail
-            genStatus('text="NearDotConvergence not completed, stopping here."')
+        # something happened, convergence did not complete, we need to stop here.
+        if nearDotConvergence.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="NearDotConvergence not completed, stopping here."')
             return
 
         # retrieving which crossing is required.

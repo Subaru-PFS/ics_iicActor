@@ -6,6 +6,7 @@ import iicActor.utils.pfsDesign.opdb as designDB
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.utils.threading import singleShot
+from iicActor.utils.engine import ExecMode
 
 reload(fpsSequence)
 reload(iicUtils)
@@ -127,11 +128,11 @@ class FpsCmd(object):
 
         # add position and run.
         self.boresightLoop.addPosition(cmd=cmd)
-        self.engine.run(cmd, self.boresightLoop, mode='commandOnly')
+        self.engine.run(cmd, self.boresightLoop, mode=ExecMode.EXECUTE)
 
-        # setting to active otherwise sequence is considered finished.
+        # setting sequence status back to ready.
         if self.boresightLoop:
-            self.boresightLoop.setStatus('active')
+            self.boresightLoop.status.amend()
 
     @singleShot
     def reduceBoresightData(self, cmd):
@@ -154,7 +155,7 @@ class FpsCmd(object):
 
         # adding calculateBoresight command.
         self.boresightLoop.addReduce(startFrame, endFrame, cmd=cmd)
-        self.engine.run(cmd, self.boresightLoop, mode='execute')
+        self.engine.run(cmd, self.boresightLoop, mode=ExecMode.CONCLUDE)
 
         # no further reference to the object.
         self.boresightLoop = None
@@ -193,7 +194,6 @@ class FpsCmd(object):
         FpsLoop = fpsSequence.FpsLoop.fromCmdKeys(self.actor, cmdKeys)
         self.engine.runInThread(cmd, FpsLoop)
 
-    @singleShot
     def moveToPfsDesign(self, cmd):
         """
         `iic moveToPfsDesign designId=??? [name=\"SSS\"] [comments=\"SSS\"]`
@@ -218,15 +218,7 @@ class FpsCmd(object):
         designId = self.visitManager.getCurrentDesignId()
 
         moveToDesign = fpsSequence.MoveToPfsDesign.fromCmdKeys(self.actor, cmdKeys, designId=designId)
-        self.engine.run(cmd, moveToDesign, doFinish=False)
-
-        # something happened convergence did not complete, we need to stop here.
-        if moveToDesign.status.statusFlag != 0:
-            genStatus = cmd.finish if moveToDesign.status.statusStr == 'finished' else cmd.fail
-            genStatus('text="Cobra convergence not completed, stopping here."')
-            return
-
-        cmd.finish()
+        self.engine.runInThread(cmd, moveToDesign)
 
     def moveToHome(self, cmd):
         """

@@ -6,6 +6,7 @@ import ics.iicActor.sequenceList.sps.engineering as eng
 import ics.iicActor.sequenceList.sps.science as science
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from iicActor.utils.engine import ExecMode
 
 reload(base)
 reload(calib)
@@ -397,16 +398,15 @@ class SpsCmd(object):
 
         exposureLoop = science.ScienceObjectLoop.fromCmdKeys(self.actor, cmdKeys)
         # Check if resources are available, prepare sequence to be executed but do not fire *anything* yet.
-        try:
-            self.engine.checkIn(cmd, exposureLoop)
-        except Exception as e:
-            cmd.fail(f'text="{str(e)}"')
+        self.engine.run(cmd, exposureLoop, mode=ExecMode.CHECKIN, doFinish=False)
+        # Sequence has been rejected, no need to go further.
+        if not cmd.alive:
             return
 
         # Returning command right away.
         cmd.finish()
         # Running sequence in background.
-        self.engine.runInThread(self.actor.bcast, exposureLoop, mode='execute', doFinish=False)
+        self.engine.runInThread(self.actor.bcast, exposureLoop, mode=ExecMode.CONCLUDE)
 
     def erase(self, cmd):
         """

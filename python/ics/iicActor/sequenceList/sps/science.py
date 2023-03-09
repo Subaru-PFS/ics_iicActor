@@ -1,5 +1,6 @@
 import iicActor.utils.translate as translate
 from ics.iicActor.sps.sequence import SpsSequence
+from iicActor.utils.sequenceStatus import Flag
 
 
 class ScienceObject(SpsSequence):
@@ -31,12 +32,15 @@ class ScienceObjectLoop(ScienceObject):
     def __init__(self, cams, exptime, duplicate, windowKeys, **seqKeys):
         ScienceObject.__init__(self, cams, exptime, 1, windowKeys, **seqKeys)
 
-    def setStatus(self, statusStr, *args, **kwargs):
+    def commandLogic(self, *args, **kwargs):
         """Declare sequence as complete, that is the nominal end for a sequence."""
+        ScienceObject.commandLogic(self, *args, **kwargs)
+
         # Loop until someone finish this sequence.
-        if self.status.statusStr == 'active' and statusStr == 'finish':
+        if self.status.flag == Flag.FINISHED:
             # append a copy of the first command.
             self.append(self[0].actor, self[0].cmdStr, timeLim=self[0].timeLim)
-            return
-
-        ScienceObject.setStatus(self, statusStr, *args, **kwargs)
+            # setting status back to ready.
+            self.status.amend()
+            # execute command again.
+            self.commandLogic(*args, **kwargs)
