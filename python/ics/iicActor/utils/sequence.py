@@ -4,7 +4,8 @@ import ics.utils.time as pfsTime
 from ics.iicActor.utils.lib import stripQuotes
 from ics.iicActor.utils.subcmd import SubCmd
 from iicActor.utils import exception
-from iicActor.utils import sequenceStatus
+from iicActor.utils.sequenceStatus import Status, Flag
+
 
 class Sequence(list):
     daysToDeclareObsolete = 7
@@ -27,7 +28,8 @@ class Sequence(list):
         self.cmdStr = None
 
         self.createdAt = pfsTime.Time.now()
-        self.status = sequenceStatus.Status.factory('init')
+        self.status = Status()
+        self.status.onchangestate = self.genKeys
 
     def __str__(self):
         return f'sequence={self.sequence_id},{self.group_id},{self.seqtype},"{self.name}","{self.comments}",' \
@@ -65,11 +67,7 @@ class Sequence(list):
         id = len(self.cmdList) - 1
         self[-1].init(id, cmd=cmd)
 
-    def setStatus(self, *args, **kwargs):
-        """Set status and generate sequence keyword."""
-        self.status = Status.factory(*args, **kwargs)
-
-    def genKeys(self, cmd=None):
+    def genKeys(self, *args, cmd=None):
         """Generate sequence keyword."""
         cmd = self.cmd if cmd is None else cmd
         cmd.inform(str(self))
@@ -88,12 +86,11 @@ class Sequence(list):
 
     def activate(self):
         """Declare sequence as active and generate sequence, subcmd keys."""
-        self.setStatus('active')
-        self.genKeys()
-
         # generate keywords for subCommand to come.
         for id, subCmd in enumerate(self.subCmds):
             subCmd.init(id, cmd=self.cmd)
+
+        self.status.ready()
 
     def getNextSubCmd(self):
         """Get next subCmd in the list."""
@@ -110,25 +107,25 @@ class Sequence(list):
             for subCmd in self.remainingCmds:
                 subCmd.cancel(cmd)
 
-        while self.status.isActive:
+        self.status.execute()
+
+        while not self.status.isFlagged and self.getNextSubCmd():
             # get next subCommand.
             next = self.getNextSubCmd()
-            # there is nothing left to do.
-            if not next:
-                self.setStatus('finish')
-                continue
 
             # call next command, raise exception and stop here if any failure.
             try:
                 next.callAndUpdate(cmd)
             except Exception as e:
                 cancelRemainings(cmd)
-                self.setStatus('fail', output=str(e))
+                self.status.conclude(failure=str(e))
                 raise
 
         # sequence could have been finished/aborted externally, so just clean the remaining ones.
         if self.remainingCmds:
             cancelRemainings(cmd)
+
+        self.status.conclude()
 
         # raise SequenceAborted in that case.
         if self.status.isAborted:
@@ -145,8 +142,6 @@ class Sequence(list):
             except Exception as e:
                 cmd.warn(str(e))
 
-        self.genKeys(cmd)
-
     def doAbort(self, cmd):
         """Aborting sequence now."""
         cmd.inform(f'text="aborting sequence({self.sequence_id}) !"')
@@ -155,7 +150,8 @@ class Sequence(list):
         if current:
             current.abort(cmd)
 
-        self.setStatus('abort')
+        # set flag to aborted and wait for the sequence to conclude.
+        self.status.setFlag(Flag.ABORTED, doWait=True)
 
     def doFinish(self, cmd, now=False):
         """Finishing sequence now."""
@@ -165,7 +161,8 @@ class Sequence(list):
         if current and now:
             current.finishNow(cmd)
 
-        self.setStatus('finishNow')
+        # set flag to aborted and wait for the sequence to conclude.
+        self.status.setFlag(Flag.FINISHNOW, doWait=True)
 
     def instantiate(self, actor, cmdStr, **kwargs):
         """Prototype"""
