@@ -15,12 +15,16 @@ class CmdRet(object):
         return f'{self.status},"{self.lastReply}"'
 
     @property
+    def succeed(self):
+        return self.status == 0
+
+    @property
     def didFail(self):
         return self.status == 1
 
     @property
     def wasCalled(self):
-        return self.status != -1
+        return self.status in [0, 1]
 
     @classmethod
     def fromCmdVar(cls, cmdVar):
@@ -29,7 +33,7 @@ class CmdRet(object):
 
     def cancel(self):
         """Set status and reply for keyword generation."""
-        self.status = 1
+        self.status = 2
         self.lastReply = 'cancelled'
 
 
