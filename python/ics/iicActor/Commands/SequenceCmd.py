@@ -16,6 +16,8 @@ class SequenceCmd(object):
         self.vocab = [
             ('sequence', '@abort [<id>]', self.abortSequence),
             ('sequence', '@finish [<id>] [@(now)]', self.finishSequence),
+            ('sequence', '@continue <id>', self.restartSequence),
+            ('sequence', '@copy <id>', self.restartSequence),
             ('sps', '@abortExposure [<id>]', self.abortSpsExposure),
             ('sps', '@finishExposure [@(now)] [<id>]', self.finishSpsExposure),
 
@@ -73,6 +75,36 @@ class SequenceCmd(object):
             return
 
         cmd.finish()
+
+    def restartSequence(self, cmd):
+        """
+        `iic sequence continue id=N`
+
+        continue/copy an iic sequence.
+
+        Parameters
+        ---------
+        id : `int`
+           optional sequenceId.
+        """
+        cmdKeys = cmd.cmd.keywords
+        sequenceId = int(cmdKeys['id'].values[0])
+
+        try:
+            sequence = self.engine.registry[sequenceId]
+        except KeyError:
+            raise RuntimeError(f'could not find sequence with sequenceId=={sequenceId}')
+
+        copy = sequence.fromCmdKeys(self.actor, sequence.cmdKeys)
+
+        if 'continue' in cmdKeys:
+            copy.comments += f' (continue {sequenceId})'
+            # in that case, do not re-execute already successful subcommands.
+            for i in range(len(sequence.cmdList)):
+                if sequence.cmdList[i].cmdRet.succeed:
+                    copy.cmdList[i].cmdRet.status = 0
+
+        self.engine.runInThread(cmd, copy)
 
     def abortSpsExposure(self, cmd):
         """

@@ -9,7 +9,7 @@ def seqKeys(cmdKeys):
     head = cmdKeys['head'].values if 'head' in cmdKeys else None
     tail = cmdKeys['tail'].values if 'tail' in cmdKeys else None
     groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
-    return dict(name=name, comments=comments, doTest=doTest, head=head, tail=tail, groupId=groupId)
+    return dict(name=name, comments=comments, doTest=doTest, head=head, tail=tail, groupId=groupId, cmdKeys=cmdKeys)
 
 
 def identKeys(cmdKeys):
