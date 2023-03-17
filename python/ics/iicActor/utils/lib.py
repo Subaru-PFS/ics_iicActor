@@ -1,6 +1,11 @@
 import ics.utils.cmd as cmdUtils
 
 
+def makeCmdStr(cmd):
+    """Reconstruct cmdStr stripping name and comments fields."""
+    return f"iic {stripQuotes(cmdUtils.stripCmdKey(cmdUtils.stripCmdKey(cmd.rawCmd, 'name'), 'comments'))}"
+
+
 def stripQuotes(txt):
     """ Strip quotes from string """
     return txt.replace('"', "'").strip()

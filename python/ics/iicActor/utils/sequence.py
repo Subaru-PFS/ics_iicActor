@@ -1,7 +1,6 @@
 import ics.iicActor.utils.opdb as opdbUtils
-import ics.utils.cmd as cmdUtils
 import ics.utils.time as pfsTime
-from ics.iicActor.utils.lib import stripQuotes
+from ics.iicActor.utils.lib import makeCmdStr
 from ics.iicActor.utils.subcmd import SubCmd
 from iicActor.utils import exception
 from iicActor.utils.sequenceStatus import Status, Flag
@@ -76,7 +75,7 @@ class Sequence(list):
         self.engine = engine
         self.cmd = cmd
         # strip name and comments from rawCmd since it is redundant opdb/keyword scheme.
-        self.cmdStr = f"iic {stripQuotes(cmdUtils.stripCmdKey(cmdUtils.stripCmdKey(cmd.rawCmd, 'name'), 'comments'))}"
+        self.cmdStr = makeCmdStr(cmd) if self.cmdStr is None else self.cmdStr
         # initial insert into opdb.
         self.sequence_id = opdbUtils.insertSequence(group_id=self.group_id, sequence_type=self.seqtype, name=self.name,
                                                     comments=self.comments, cmd_str=self.cmdStr)

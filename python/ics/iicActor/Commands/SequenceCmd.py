@@ -95,11 +95,16 @@ class SequenceCmd(object):
         except KeyError:
             raise RuntimeError(f'could not find sequence with sequenceId=={sequenceId}')
 
+        # make a copy using the saved cmdKeys and set the same cmdStr as the original.
         copy = sequence.fromCmdKeys(self.actor, sequence.cmdKeys)
+        copy.cmdStr = sequence.cmdStr
 
         if 'continue' in cmdKeys:
-            copy.comments += f' (continue {sequenceId})'
-            # in that case, do not re-execute already successful subcommands.
+            # indicate that this sequence is an extension.
+            copy.seqtype = f'{copy.seqtype}_continued'
+            copy.comments = f'continue {sequenceId}'
+
+            # do not re-execute already successful subcommands.
             for i in range(len(sequence.cmdList)):
                 if sequence.cmdList[i].cmdRet.succeed:
                     copy.cmdList[i].cmdRet.status = 0
