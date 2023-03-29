@@ -26,21 +26,21 @@ class Registry(dict):
         for sequenceId in obsoletes:
             self.pop(sequenceId, None)
 
-    def getActives(self, spsOnly=False):
+    def getActives(self, filter=''):
         """Return sequence_id for actives sequences."""
         # define sequence class.
-        seqObj = SpsSequence if spsOnly else (Sequence, SpsSequence, FpsSequence)
-        actives = [seq.sequence_id for seq in self.values() if isinstance(seq, seqObj) and seq.status.isActive]
+        actives = [seq.sequence_id for seq in self.values() if seq.match(filter) and seq.status.isActive]
         # no need to go further.
         if not actives:
             raise exception.SequenceIdentificationFailure(f'no sequence is currently active.')
 
         return actives
 
-    def identify(self, cmdKeys, spsOnly=False):
+    def identify(self, cmdKeys, filter=''):
         """Return the active sequence based on cmdKeys."""
         # get active sequence_ids
-        actives = self.getActives(spsOnly=spsOnly)
+
+        actives = self.getActives(filter=filter)
         # get sequence_id provided by the user.
         selected_id = int(cmdKeys['id'].values[0]) if 'id' in cmdKeys else None
 

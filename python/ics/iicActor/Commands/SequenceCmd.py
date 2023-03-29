@@ -18,8 +18,8 @@ class SequenceCmd(object):
             ('sequence', '@finish [<id>] [@(now)]', self.finishSequence),
             ('sequence', '@continue <id>', self.restartSequence),
             ('sequence', '@copy <id>', self.restartSequence),
-            ('sps', '@abortExposure [<id>]', self.abortSpsExposure),
-            ('sps', '@finishExposure [@(now)] [<id>]', self.finishSpsExposure),
+            ('sps', '@abortExposure [<id>] [@(sunss)]', self.abortSpsExposure),
+            ('sps', '@finishExposure [@(now)] [<id>] [@(sunss)]', self.finishSpsExposure),
 
             ('getGroupId', '<groupName> [(@continue)]', self.getGroupId)
         ]
@@ -122,8 +122,11 @@ class SequenceCmd(object):
         id : `int`
            optional sequenceId.
         """
+        cmdKeys = cmd.cmd.keywords
+        filter = 'sunss' if 'sunss' in cmdKeys else 'sps'
+
         try:
-            sequence = self.engine.registry.identify(cmd.cmd.keywords, spsOnly=True)
+            sequence = self.engine.registry.identify(cmdKeys, filter=filter)
             sequence.doAbort(cmd)
         except Exception as e:
             cmd.fail(f'text="{str(e)}"')
@@ -144,8 +147,10 @@ class SequenceCmd(object):
         """
         cmdKeys = cmd.cmd.keywords
         now = 'now' in cmdKeys
+        filter = 'sunss' if 'sunss' in cmdKeys else 'sps'
+
         try:
-            sequence = self.engine.registry.identify(cmd.cmd.keywords, spsOnly=True)
+            sequence = self.engine.registry.identify(cmdKeys, filter=filter)
             sequence.doFinish(cmd, now=now)
         except Exception as e:
             cmd.fail(f'text="{str(e)}"')
