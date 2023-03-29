@@ -12,23 +12,25 @@ class SpsSequence(sequence.Sequence):
 
     def __init__(self, cams, *args, isWindowed=False, **kwargs):
         self.cams = cams
-        self.lightSource = self.getLightSource(cams)
+        self.lightSource = self.getLightSource()
 
         sequence.Sequence.__init__(self, *args, **kwargs)
         self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
 
-    def getLightSource(self, cams):
+    @property
+    def allLightSources(self):
+        return list(set([cam.lightSource for cam in self.cams]))
+
+    def getLightSource(self):
         """Get light source from our sets of specs."""
         # easy in that case.
         if not self.lightBeam:
             return 'None'
 
-        try:
-            [lightSource] = list(set([cam.lightSource for cam in cams]))
-        except:
+        if len(self.allLightSources) > 1:
             raise RuntimeError('there can only be one light source for a given sequence')
 
-        return lightSource
+        return self.allLightSources[0]
 
     def expose(self, exptype, exptime, cams, duplicate=1, windowKeys=None):
         """Append duplicate * sps expose to sequence."""
@@ -73,3 +75,9 @@ class SpsSequence(sequence.Sequence):
             timeOffset = max(timeOffset, 120)
 
         return timeOffset
+
+    def match(self, filter):
+        """do that sequence match the filter."""
+        doMatch = 'sunss' in self.allLightSources if filter == 'sunss' else True
+
+        return doMatch

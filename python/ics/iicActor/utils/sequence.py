@@ -170,6 +170,11 @@ class Sequence(list):
         """Prototype"""
         return 0
 
+    def match(self, filter):
+        """do that sequence match the filter."""
+        doMatch = False if filter else True
+        return doMatch
+
 
 class CmdList(list):
     def __init__(self, sequence, cmdList):

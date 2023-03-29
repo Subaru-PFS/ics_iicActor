@@ -65,12 +65,10 @@ class SpsExpose(VisitedCmd):
         # Since you could have multiple designId for a given visit, and we don't support merging.
         # It does not probably matter in any case for biases and darks.
 
-        lightSources = list(set([cam.lightSource for cam in self.sequence.cams]))
-
         if not self.visitManager.activeField:
             raise RuntimeError('No pfsDesign declared as current !')
 
-        if 'pfi' in lightSources and self.exptype == 'object':
+        if 'pfi' in self.sequence.allLightSources and self.exptype == 'object':
             # Bump up ag visit whenever sps is taking object.
             self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
 
