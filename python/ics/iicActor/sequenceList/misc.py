@@ -1,7 +1,6 @@
 import os
 
 import iicActor.utils.translate as translate
-import numpy as np
 from ics.iicActor.sequenceList.fps import MoveToPfsDesign, FpsSequence
 from ics.iicActor.sps.sequence import SpsSequence
 
@@ -103,23 +102,42 @@ class DotRoach(SpsSequence):
     seqtype = 'dotRoach'
 
     @staticmethod
-    def calculateSteps(shapeF=-8, minStepIter=12, nSteps=30, step0=90):
-        x = np.arange(nSteps)
-        a = -shapeF / minStepIter
-        Y = 1 / 2 * a * x ** 2 + shapeF * x + step0
-        return np.ceil(Y).astype('int')
+    def calculateSteps(mode='fast'):
+        # x = np.arange(nSteps)
+        # a = -shapeF / minStepIter
+        # Y = 1 / 2 * a * x ** 2 + shapeF * x + step0
+        # return np.ceil(Y).astype('int')
+        # steps1 = DotRoach.calculateSteps(step0=116, minStepIter=5, nSteps=16, shapeF=-30)
+        # steps2 = DotRoach.calculateSteps(step0=30, minStepIter=1, nSteps=5, shapeF=-10)
 
-    def __init__(self, cams, exptime, windowKeys, maskFile, keepMoving, rootDir, stepSize, count, motor, **seqKeys):
+        #  vanilla values from iic_sequence_id 19106.
+        steps11 = [116, 89, 68, 53, 44, 41, 44, 53, 68, 89, 116, 149, 188, 233, 284, 341]
+        steps12 = [25, 35, 45, 55, 65, 75]
+
+        # safer scenario.
+        steps21 = [125, 95, 75, 60, 50, 45, 50, 60, 75, 95, 125, 160, 200, 245, 300, 360]
+        steps22 = [25, 32, 40, 50, 60, 70, 80]
+
+        # quicker scenario.
+        steps31 = [177, 133, 100, 76, 63, 62, 77, 102, 140, 192, 265, 362, 494]
+        steps32 = [30, 42, 56, 74, 100]
+
+        if mode == 'first':
+            return steps11, steps12
+        elif mode == 'safe':
+            return steps21, steps22
+        elif mode == 'fast':
+            return steps31, steps32
+        else:
+            raise ValueError(f'unknown mode : {mode}')
+
+    def __init__(self, cams, exptime, windowKeys, maskFile, keepMoving, mode, rootDir, stepSize, count, motor, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         dataRoot = os.path.join(rootDir, 'current')
         maskFilesRoot = os.path.join(dataRoot, 'maskFiles')
 
-        #steps1 = DotRoach.calculateSteps(step0=116, minStepIter=5, nSteps=16, shapeF=-30)
-        #steps2 = DotRoach.calculateSteps(step0=30, minStepIter=1, nSteps=5, shapeF=-10)
-
-        steps1 = [177, 133, 100, 76, 63, 62, 77, 102, 140, 192, 265, 362, 494]
-        steps2 = [30, 42, 56, 74, 100]
+        steps1, steps2 = DotRoach.calculateSteps(mode=mode)
 
         # use sps erase command to niet things up.
         self.add('sps', 'erase', cams=cams)
@@ -146,7 +164,7 @@ class DotRoach(SpsSequence):
 
         for iterNum, stepSize in enumerate(steps2):
             self.add('fps', f'cobraMoveSteps {motor}',
-                     stepsize=stepSize, maskFile=os.path.join(maskFilesRoot, f'iter{len(steps1)+iterNum}.csv'))
+                     stepsize=stepSize, maskFile=os.path.join(maskFilesRoot, f'iter{len(steps1) + iterNum}.csv'))
 
             # for the last iter, we declare that'll go reverse.
             if iterNum == len(steps2) - 1:
@@ -185,7 +203,8 @@ class DotRoach(SpsSequence):
         config.update(stepSize=stepSize, count=count, motor=motor)
 
         keepMoving = 'keepMoving' in cmdKeys
+        mode = cmdKeys['mode'].values[0] if 'mode' in cmdKeys else 'fast'
 
         cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
-        return cls(cams, exptime, windowedFlatConfig, maskFile, keepMoving, **config, **seqKeys)
+        return cls(cams, exptime, windowedFlatConfig, maskFile, keepMoving, mode, **config, **seqKeys)
