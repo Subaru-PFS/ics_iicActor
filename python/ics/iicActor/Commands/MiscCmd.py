@@ -34,9 +34,7 @@ class MiscCmd(object):
 
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
             ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] {seqArgs}', self.nearDotConvergenceCmd),
-            ('dotRoach',
-             f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] {identArgs} {seqArgs}',
-             self.dotRoach),
+            ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [<mode>] {identArgs} {seqArgs}', self.dotRoach),
         ]
 
         # Define typed command arguments for the above commands.
@@ -60,6 +58,7 @@ class MiscCmd(object):
                                         keys.Key('designId', types.Long(), help='selected nearDot designId'),
                                         keys.Key('fiberGroups', types.Int() * (1,),
                                                  help='which fiberGroups to identify 2->31'),
+                                        keys.Key('mode', types.String() * (1,), help='mode for dotRoach'),
                                         )
 
     @property
