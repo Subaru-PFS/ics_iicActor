@@ -8,7 +8,7 @@ class AgVisitedCmd(VisitedCmd):
 
 
 class AgSequence(VisitedSequence):
-    """Place holder for ag sequence."""
+    """Placeholder for ag sequence."""
     caller = 'ag'
 
     def instantiate(self, actor, cmdStr, parseVisit=False, parseFrameId=False, **kwargs):
@@ -20,12 +20,12 @@ class AcquireField(AgSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'acquireField'
 
-    def __init__(self, designId, exptime, guide, magnitude, fit_dScale, dryRun, **seqKeys):
+    def __init__(self, designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
         self.add('ag', 'acquire_field', parseVisit=True,
-                 design_id=designId, exposure_time=exptime, guide=guide, magnitude=magnitude, fit_dscale=fit_dScale,
-                 dry_run=dryRun)
+                 design_id=designId, exposure_time=exptime, guide=guide, magnitude=magnitude, dry_run=dryRun,
+                 fit_dscale=fit_dScale, fit_dinr=fit_dInR)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -33,10 +33,11 @@ class AcquireField(AgSequence):
         seqKeys = translate.seqKeys(cmdKeys)
 
         exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
-        magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
         guide = 'no' if 'guideOff' in cmdKeys else None
+        magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
         dryRun = 'yes' if 'dryRun' in cmdKeys else None
-        fit_dScale = 'yes' if iicActor.actorConfig['ag']['fit_dScale'] else 'no'
+        fit_dScale = cmdKeys['fit_dScale'].values[0] if 'fit_dScale' in cmdKeys else None
+        fit_dInR = cmdKeys['fit_dInR'].values[0] if 'fit_dInR' in cmdKeys else None
 
         # get provided designId or get current one.
         if 'designId' in cmdKeys:
@@ -44,30 +45,31 @@ class AcquireField(AgSequence):
         else:
             designId = iicActor.engine.visitManager.getCurrentDesignId()
 
-        return cls(designId, exptime, guide, magnitude, fit_dScale, dryRun, **seqKeys)
+        return cls(designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, **seqKeys)
 
 
 class AutoguideStart(AgSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'autoguideStart'
 
-    def __init__(self, designId, exptime, fromSky, cadence, center, magnitude, fit_dScale, dryRun, **seqKeys):
+    def __init__(self, designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
-        self.add('ag', 'autoguide start', parseVisit=True,
-                 design_id=designId, exposure_time=exptime, from_sky=fromSky, cadence=cadence, center=center,
-                 magnitude=magnitude, fit_dscale=fit_dScale, dry_run=dryRun)
+        self.add('ag', 'autoguide start', parseVisit=True, design_id=designId, exposure_time=exptime, cadence=cadence,
+                 center=center, magnitude=magnitude, from_sky=fromSky,  dry_run=dryRun,
+                 fit_dscale=fit_dScale, fit_dinr=fit_dInR )
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         seqKeys = translate.seqKeys(cmdKeys)
+        fromSky = 'yes' if 'fromSky' in cmdKeys else None
         exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
         cadence = cmdKeys['cadence'].values[0] if 'cadence' in cmdKeys else None
         center = cmdKeys['center'].values if 'center' in cmdKeys else None
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
-        fromSky = 'yes' if 'fromSky' in cmdKeys else None
         dryRun = 'yes' if 'dryRun' in cmdKeys else None
-        fit_dScale = 'yes' if iicActor.actorConfig['ag']['fit_dScale'] else 'no'
+        fit_dScale = cmdKeys['fit_dScale'].values[0] if 'fit_dScale' in cmdKeys else None
+        fit_dInR = cmdKeys['fit_dInR'].values[0] if 'fit_dInR' in cmdKeys else None
 
         # get provided designId or get current one.
         if 'designId' in cmdKeys:
@@ -75,7 +77,7 @@ class AutoguideStart(AgSequence):
         else:
             designId = iicActor.engine.visitManager.getCurrentDesignId()
 
-        return cls(designId, exptime, fromSky, cadence, center, magnitude, fit_dScale, dryRun, **seqKeys)
+        return cls(designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR, **seqKeys)
 
 
 class AutoguideStop(Sequence):

@@ -22,16 +22,13 @@ class AgCmd(object):
         #
         seqArgs = '[<name>] [<comments>] [@doTest] [<groupId>] [<head>] [<tail>]'
         self.vocab = [
-            ('acquireField',
-             f'[<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] {seqArgs}', self.acquireField),
-            ('autoguideStart',
-             f'[<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] [@(dryRun)] {seqArgs}',
-             self.autoguideStart),
+            ('acquireField', f'[<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] {seqArgs}', self.acquireField),
+            ('autoguideStart', f'[<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] {seqArgs}', self.autoguideStart),
             ('autoguideStop', '', self.autoguideStop),
         ]
 
         # Define typed command arguments for the above commands.
-        self.keys = keys.KeysDictionary("iic_fps", (1, 1),
+        self.keys = keys.KeysDictionary("iic_ag", (1, 1),
                                         keys.Key('name', types.String(), help='iic_sequence name'),
                                         keys.Key('comments', types.String(), help='iic_sequence comments'),
                                         keys.Key('groupId', types.Int(), help='optional groupId'),
@@ -43,6 +40,8 @@ class AgCmd(object):
                                         keys.Key("magnitude", types.Float()),
                                         keys.Key("cadence", types.Int()),
                                         keys.Key("center", types.Float() * (1, 3)),
+                                        keys.Key('fit_dScale', types.String(), help='do fit dScale (yes|no)'),
+                                        keys.Key('fit_dInR', types.String(), help='do fit dInR (yes|no)'),
                                         )
 
     @property
