@@ -73,7 +73,7 @@ class SpsExpose(VisitedCmd):
             self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
 
         # Grab additional pfsConfig cards.
-        cards = fits.getPfsConfigCards(actor=self.iicActor, cmd=self.sequence.cmd, visit=self.visitId)
+        cards = fits.getPfsConfigCards(self.iicActor, self.sequence.cmd, self.visitId, expType=self.exptype)
         # Create the pfsConfig associated with the visit.
         pfsConfig = self.visitManager.activeField.getPfsConfig(self.visitId, cards=cards)
         # Write pfsConfig to disk.
