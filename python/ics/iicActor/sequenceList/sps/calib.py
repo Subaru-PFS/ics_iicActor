@@ -32,32 +32,31 @@ class DitheredFlats(TimedLampsSequence):
     """ Dithered Flats sequence """
     seqtype = 'ditheredFlats'
 
-    def __init__(self, cams, lampsKeys, positions, duplicate, hexapodOff, **seqKeys):
+    def __init__(self, cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
-        # taking a trace before starting hexapod, (only for the one that were off in the first place).
+        # taking a trace before starting hexapod, (for the one that were off in the first place).
         cameraWithHexapodPowerCycled = [cam for cam in cams if cam.specName in hexapodOff]
         if cameraWithHexapodPowerCycled:
-            self.expose('flat', lampsKeys, cameraWithHexapodPowerCycled, duplicate=duplicate)
-
-        self.add('sps', 'slit start', cams=cams)
+            self.takeOneDuplicate(lampsKeys, cameraWithHexapodPowerCycled, duplicate, interleaveDark)
 
         # taking a trace in home to start.
+        self.add('sps', 'slit start', cams=cams)
         self.add('sps', 'slit home', cams=cams)
-        self.expose('flat', lampsKeys, cams, duplicate=duplicate)
+        self.takeOneDuplicate(lampsKeys, cams, duplicate, interleaveDark)
 
         for position in positions:
             self.add('sps', 'slit dither', x=position, pixels=True, abs=True, cams=cams)
-            self.expose('flat', lampsKeys, cams, duplicate=duplicate)
+            self.takeOneDuplicate(lampsKeys, cams, duplicate, interleaveDark)
 
         # taking a trace in home to end.
         self.add('sps', 'slit home', cams=cams)
-        self.expose('flat', lampsKeys, cams, duplicate=duplicate)
+        self.takeOneDuplicate(lampsKeys, cams, duplicate, interleaveDark)
 
-        # taking a trace after the hexapod is turned back off (only for the one that were off in the first place).
+        # taking a trace after the hexapod is turned back off (for the one that were off in the first place).
         if cameraWithHexapodPowerCycled:
             self.add('sps', 'slit stop', cams=cameraWithHexapodPowerCycled)
-            self.expose('flat', lampsKeys, cameraWithHexapodPowerCycled, duplicate=duplicate)
+            self.takeOneDuplicate(lampsKeys, cameraWithHexapodPowerCycled, duplicate, interleaveDark)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -70,8 +69,19 @@ class DitheredFlats(TimedLampsSequence):
 
         cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
         hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
+        interleaveDark = cmdKeys['interleaveDark'].values[0] if 'interleaveDark' in cmdKeys else False
 
-        return cls(cams, lampsKeys, positions, duplicate, hexapodOff, **seqKeys)
+        return cls(cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, **seqKeys)
+
+    def takeOneDuplicate(self, lampsKeys, cams, duplicate, interleaveDark):
+        """take one duplicate, interleave for nir arm if necessary."""
+        nirCam = [cam for cam in cams if cam.arm == 'n']
+
+        for i in range(duplicate):
+            self.expose('flat', lampsKeys, cams, duplicate=1)
+            # interleave dark for nir.
+            if nirCam and interleaveDark:
+                SpsSequence.expose(self, 'dark', interleaveDark, nirCam, duplicate=1)
 
 
 class ScienceArc(Arcs):
