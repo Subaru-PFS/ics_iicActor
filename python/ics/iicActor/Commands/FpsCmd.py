@@ -1,5 +1,5 @@
 from importlib import reload
-
+import os
 import ics.iicActor.sequenceList.fps as fpsSequence
 import ics.iicActor.utils.lib as iicUtils
 import iicActor.utils.pfsDesign.opdb as designDB
@@ -7,7 +7,7 @@ import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.utils.threading import singleShot
 from iicActor.utils.engine import ExecMode
-
+import ics.utils.cmd as cmdUtils
 reload(fpsSequence)
 reload(iicUtils)
 reload(designDB)
@@ -235,15 +235,21 @@ class FpsCmd(object):
         """
         cmdKeys = cmd.cmd.keywords
 
-        # get designId from opdb or provided one.
-        if 'designId' in cmdKeys:
-            designId = cmdKeys['designId'].values[0]
+        if 'maskFile' in cmdKeys:
+            maskFile = cmdKeys['maskFile'].values[0]
+            maskFile = os.path.join(self.actor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
         else:
-            designId = designDB.latestDesignIdMatchingName("cobraHome")
+            maskFile = ''
+
+        maskFile = f'maskFile={maskFile}' if maskFile else ''
+
+        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=f'createHomeDesign {maskFile}'.strip(), timeLim=10)
+        keys = cmdUtils.cmdVarToKeys(cmdVar)
+        designId = int(keys['fpsDesignId'].values[0], 16)
 
         self.actor.declareFpsDesign(cmd, designId=designId)
 
-        moveToHome = fpsSequence.MoveToHome.fromCmdKeys(self.actor, cmdKeys)
+        moveToHome = fpsSequence.MoveToHome.fromCmdKeys(self.actor, cmdKeys, designId=designId)
         self.engine.runInThread(cmd, moveToHome)
 
     def movePhiToAngle(self, cmd):
