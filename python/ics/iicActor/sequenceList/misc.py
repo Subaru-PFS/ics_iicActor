@@ -17,6 +17,9 @@ class NearDotConvergence(MoveToPfsDesign):
         config = iicActor.actorConfig['nearDotConvergence']
         config.update(exptime=exptime)
 
+        # construct maskFile path.
+        maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{cmdKeys["maskFile"].values[0]}.csv') if 'maskFile' in cmdKeys else False
+
         return cls(designId, maskFile=maskFile, goHome=True, **config, **seqKeys)
 
 
