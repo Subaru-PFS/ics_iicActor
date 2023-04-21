@@ -194,7 +194,7 @@ class DotRoach(TimedLampsSequence):
         windowedFlatConfig = iicActor.actorConfig['windowedFlat']['pfiLamps'].copy()
         exptime = windowedFlatConfig.pop('exptime')
         exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else exptime
-        exptime = dict(halogen=exptime, shutterTiming=False)
+        exptime = dict(halogen=int(exptime), shutterTiming=False)
 
         # construct maskFile path.
         maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'SM13_moveAll'
