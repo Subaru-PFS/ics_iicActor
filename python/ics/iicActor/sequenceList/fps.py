@@ -115,30 +115,24 @@ class MoveToHome(FpsSequence):
     """ fps MoveToHome command."""
     seqtype = 'moveToHome'
 
-    def __init__(self, exptime, maskFile, **seqKeys):
+    def __init__(self, exptime, designId, **seqKeys):
         FpsSequence.__init__(self, **seqKeys)
 
         # turning illuminators on
         self.add('sps', 'bia on')
         self.add('peb', 'led on')
         # move cobras to home, not supposed to, but meh.
-        self.add('fps', 'moveToHome all', parseVisit=True, exptime=exptime, maskFile=maskFile, timeLim=600)
+        self.add('fps', 'moveToHome all', parseVisit=True, exptime=exptime, designId=designId, timeLim=120)
         # turning illuminators off
         self.tail.add('sps', 'bia off')
         self.tail.add('peb', 'led off')
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmdKeys, designId):
         seqKeys = translate.seqKeys(cmdKeys)
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
 
-        if 'maskFile' in cmdKeys:
-            maskFile = cmdKeys['maskFile'].values[0]
-            maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
-        else:
-            maskFile = False
-
-        return cls(exptime, maskFile, **seqKeys)
+        return cls(exptime, designId, **seqKeys)
 
 
 #
