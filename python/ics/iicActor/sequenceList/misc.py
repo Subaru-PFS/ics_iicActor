@@ -149,7 +149,7 @@ class DotRoach(TimedLampsSequence):
         self.add('drp', 'startDotRoach', dataRoot=dataRoot, maskFile=maskFile, keepMoving=keepMoving)
 
         # initial exposure
-        self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
+        self.expose('flat', exptime, cams, windowKeys=windowKeys)
         self.add('drp', 'processDotRoach')
         # first image takes longer to process because of fiberTraces
         self.add('sps', 'erase', cams=cams)
@@ -163,7 +163,7 @@ class DotRoach(TimedLampsSequence):
                 self.add('drp', 'dotRoach phase2')
 
             # expose and process.
-            self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
+            self.expose('flat', exptime, cams, windowKeys=windowKeys)
             self.add('drp', 'processDotRoach')
 
         for iterNum, stepSize in enumerate(steps2):
@@ -175,7 +175,7 @@ class DotRoach(TimedLampsSequence):
                 self.add('drp', 'dotRoach phase3')
 
             # expose and process.
-            self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
+            self.expose('flat', exptime, cams, windowKeys=windowKeys)
             self.add('drp', 'processDotRoach')
 
         self.add('fps', f'cobraMoveSteps {motor}',
