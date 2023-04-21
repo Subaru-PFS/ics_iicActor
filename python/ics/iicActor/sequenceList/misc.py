@@ -3,6 +3,7 @@ import os
 import iicActor.utils.translate as translate
 from ics.iicActor.sequenceList.fps import MoveToPfsDesign, FpsSequence
 from ics.iicActor.sps.sequence import SpsSequence
+from ics.iicActor.sps.timedLamps import TimedLampsSequence
 
 
 class NearDotConvergence(MoveToPfsDesign):
@@ -97,7 +98,7 @@ class FiberIdentification(SpsSequence):
         return cls(cams, exptime, windowedFlatConfig, maskFilesRoot, fiberGroups, **seqKeys)
 
 
-class DotRoach(SpsSequence):
+class DotRoach(TimedLampsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'dotRoach'
 
@@ -132,7 +133,7 @@ class DotRoach(SpsSequence):
             raise ValueError(f'unknown mode : {mode}')
 
     def __init__(self, cams, exptime, windowKeys, maskFile, keepMoving, mode, rootDir, stepSize, count, motor, **seqKeys):
-        SpsSequence.__init__(self, cams, **seqKeys)
+        TimedLampsSequence.__init__(self, cams, **seqKeys)
 
         dataRoot = os.path.join(rootDir, 'current')
         maskFilesRoot = os.path.join(dataRoot, 'maskFiles')
@@ -186,9 +187,11 @@ class DotRoach(SpsSequence):
         seqKeys = translate.seqKeys(cmdKeys)
         identKeys = translate.identKeys(cmdKeys)
 
-        # we are using hsc ring lamps.
-        windowedFlatConfig = iicActor.actorConfig['windowedFlat']['hscLamps'].copy()
+        # we are using pfi lamps.
+        windowedFlatConfig = iicActor.actorConfig['windowedFlat']['pfiLamps'].copy()
         exptime = windowedFlatConfig.pop('exptime')
+        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else exptime
+        exptime = dict(halogen=exptime, shutterTiming=False)
 
         # construct maskFile path.
         maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'SM13_moveAll'
