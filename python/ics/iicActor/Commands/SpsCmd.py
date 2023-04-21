@@ -29,7 +29,7 @@ class SpsCmd(object):
         self.vocab = [
             ('masterBiases', f'{commonArgs}', self.masterBiases),
             ('masterDarks', f'[<exptime>] {commonArgs}', self.masterDarks),
-            ('ditheredFlats', f'{timedFlatArgs} [<pixelRange>] {commonArgs}', self.ditheredFlats),
+            ('ditheredFlats', f'{timedFlatArgs} [<pixelRange>] [<interleaveDark>] {commonArgs}', self.ditheredFlats),
             ('scienceArc', f'{timedArcArgs} {commonArgs}', self.scienceArc),
             ('scienceTrace', f'{timedFlatArgs} {windowingArgs} {commonArgs}', self.scienceTrace),
             ('domeFlat', f'<exptime> {windowingArgs} {commonArgs}', self.domeFlat),
@@ -87,6 +87,8 @@ class SpsCmd(object):
                                                  help='first row, total number of rows to read'),
                                         keys.Key("redWindow", types.Int() * (1, 2),
                                                  help='first row, total number of rows to read'),
+                                        keys.Key('interleaveDark', types.Float(),
+                                                 help='darkTime for interleaved darks)'),
                                         )
 
     @property
