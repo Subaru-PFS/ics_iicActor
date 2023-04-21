@@ -29,7 +29,7 @@ class SpsExpose(VisitedCmd):
         return visitId
 
     @classmethod
-    def specify(cls, sequence, exptype, exptime, cams, timeOffset=90, **kwargs):
+    def specify(cls, sequence, exptype, exptime, cams, timeOffset=120, **kwargs):
         timeLim = timeOffset + exptime
         exptime = exptime if exptime else None
         return cls(sequence, 'sps', f'expose {exptype}', exptime=exptime, cams=cams, timeLim=timeLim, **kwargs)
