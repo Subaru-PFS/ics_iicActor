@@ -135,7 +135,29 @@ class MoveToHome(FpsSequence):
         return cls(exptime, designId, **seqKeys)
 
 
-#
+class GenBlackDotsConfig(FpsSequence):
+    """ fps MoveToPfsDesign command. """
+    seqtype = 'genBlackDotsPfsConfig'
+
+    def __init__(self, exptime, designId, **seqKeys):
+        FpsSequence.__init__(self, **seqKeys)
+
+        # turning on the illuminators
+        self.add('sps', 'bia on')
+        self.add('mcs', 'expose object', exptime=exptime, parseFrameId=True, doFibreId=True)
+        self.add('fps', 'genPfsConfigFromMcs', parseVisit=True, designId=designId)
+        # turning off the illuminators
+        self.tail.add('sps', 'bia off')
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys, designId):
+        """Defining rules to construct DotCrossing object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+        exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
+
+        return cls(exptime, designId, **seqKeys)
+
+
 class MovePhiToAngle(FpsSequence):
     """ fps MovePhiToAngle command. """
     seqtype = 'movePhiToAngle'
