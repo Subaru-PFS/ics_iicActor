@@ -182,7 +182,7 @@ class DotRoach(TimedLampsSequence):
                  stepsize=-20, maskFile=os.path.join(maskFilesRoot, f'iter{len(steps1) + len(steps2)}.csv'))
 
         # turning drp processing off
-        self.tail.add('drp', 'stopDotRoach')
+        self.add('drp', 'stopDotRoach')
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
