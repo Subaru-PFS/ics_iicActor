@@ -34,7 +34,7 @@ class MiscCmd(object):
 
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
             ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] {seqArgs}', self.nearDotConvergenceCmd),
-            ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [<mode>] {identArgs} {seqArgs}', self.dotRoach),
+            ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [@(hscLamps)] [<mode>] {identArgs} {seqArgs}', self.dotRoach),
         ]
 
         # Define typed command arguments for the above commands.
@@ -124,5 +124,8 @@ class MiscCmd(object):
         """"""
         cmdKeys = cmd.cmd.keywords
 
-        dotRoach = misc.DotRoach.fromCmdKeys(self.actor, cmdKeys)
+        # use pfiLamps by default.
+        roaching = misc.DotRoach if 'hscLamps' in cmdKeys else misc.DotRoachPfiLamps
+
+        dotRoach = roaching.fromCmdKeys(self.actor, cmdKeys)
         self.engine.runInThread(cmd, dotRoach)

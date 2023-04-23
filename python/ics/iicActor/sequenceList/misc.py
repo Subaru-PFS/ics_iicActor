@@ -3,7 +3,7 @@ import os
 import iicActor.utils.translate as translate
 from ics.iicActor.sequenceList.fps import MoveToPfsDesign, FpsSequence
 from ics.iicActor.sps.sequence import SpsSequence
-
+from ics.iicActor.sps.timedLamps import TimedLampsSequence
 
 class NearDotConvergence(MoveToPfsDesign):
     seqtype = 'nearDotConvergence'
@@ -89,7 +89,8 @@ class FiberIdentification(SpsSequence):
         windowedFlatConfig = iicActor.actorConfig['windowedFlat']['hscLamps'].copy()
         exptime = windowedFlatConfig.pop('exptime')
         # group 25 does not exist.
-        fiberGroups = cmdKeys['fiberGroups'].values if 'fiberGroups' in cmdKeys else list(set(range(2, 32)) - {25})
+        default = list(set(range(2, 32)) - {25})
+        fiberGroups = cmdKeys['fiberGroups'].values if 'fiberGroups' in cmdKeys else default
         maskFilesRoot = iicActor.actorConfig['maskFiles']['rootDir']
 
         cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
@@ -100,9 +101,10 @@ class FiberIdentification(SpsSequence):
 class DotRoach(SpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'dotRoach'
+    useLamps = 'hscLamps'
 
     @staticmethod
-    def calculateSteps(mode='fast'):
+    def calculateSteps(mode='safe'):
         # x = np.arange(nSteps)
         # a = -shapeF / minStepIter
         # Y = 1 / 2 * a * x ** 2 + shapeF * x + step0
@@ -131,40 +133,46 @@ class DotRoach(SpsSequence):
         else:
             raise ValueError(f'unknown mode : {mode}')
 
-    def __init__(self, cams, exptime, windowKeys, maskFile, keepMoving, mode, rootDir, stepSize, count, motor, **seqKeys):
+    def __init__(self, cams, exptime, windowKeys, maskFile, keepMoving, mode, rootDir, stepSize, count, motor,
+                 **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         dataRoot = os.path.join(rootDir, 'current')
         maskFilesRoot = os.path.join(dataRoot, 'maskFiles')
 
+        def maskFilePath(iterNum):
+            return os.path.join(maskFilesRoot, f'iter{iterNum}.csv')
+
         steps1, steps2 = DotRoach.calculateSteps(mode=mode)
 
-        # use sps erase command to niet things up.
-        self.add('sps', 'erase', cams=cams)
         # turning drp processing on
         self.add('drp', 'startDotRoach', dataRoot=dataRoot, maskFile=maskFile, keepMoving=keepMoving)
 
-        # initial exposure
-        self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-        self.add('drp', 'processDotRoach')
-        # first image takes longer to process because of fiberTraces
+        # use sps erase command to niet things up.
         self.add('sps', 'erase', cams=cams)
 
-        for iterNum, stepSize in enumerate(steps1):
-            self.add('fps', f'cobraMoveSteps {motor}',
-                     stepsize=-stepSize, maskFile=os.path.join(maskFilesRoot, f'iter{iterNum}.csv'))
+        # initial exposure
+        self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
+        self.add('drp', 'processDotRoach', iteration=0)
 
+        for iterNum, stepSize in enumerate(steps1):
+            self.add('fps', f'cobraMoveSteps {motor}', stepsize=-stepSize, maskFile=maskFilePath(iterNum))
+
+            # first image takes longer to process because of fiberTraces preparation.
+            if iterNum == 0:
+                self.add('sps', 'erase', cams=cams)
             # for the last iter, we declare that'll go reverse.
-            if iterNum == len(steps1) - 1:
+            elif iterNum == len(steps1) - 1:
                 self.add('drp', 'dotRoach phase2')
 
             # expose and process.
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-            self.add('drp', 'processDotRoach')
+            self.add('drp', 'processDotRoach', iteration=iterNum + 1)
 
+        maskNumOffset = len(steps1)
         for iterNum, stepSize in enumerate(steps2):
-            self.add('fps', f'cobraMoveSteps {motor}',
-                     stepsize=stepSize, maskFile=os.path.join(maskFilesRoot, f'iter{len(steps1) + iterNum}.csv'))
+            maskFileNum = maskNumOffset + iterNum
+            self.add('fps', f'cobraMoveSteps {motor}', stepsize=stepSize, maskFile=maskFilePath(maskFileNum))
 
             # for the last iter, we declare that'll go reverse.
             if iterNum == len(steps2) - 1:
@@ -172,13 +180,13 @@ class DotRoach(SpsSequence):
 
             # expose and process.
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-            self.add('drp', 'processDotRoach')
+            self.add('drp', 'processDotRoach', iteration=maskFileNum + 1)
 
-        self.add('fps', f'cobraMoveSteps {motor}',
-                 stepsize=-20, maskFile=os.path.join(maskFilesRoot, f'iter{len(steps1) + len(steps2)}.csv'))
+        maskFileNum = len(steps1) + len(steps2)
+        self.add('fps', f'cobraMoveSteps {motor}', stepsize=-20, maskFile=maskFilePath(maskFileNum))
 
         # turning drp processing off
-        self.tail.add('drp', 'stopDotRoach')
+        self.add('drp', 'stopDotRoach')
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -186,9 +194,10 @@ class DotRoach(SpsSequence):
         seqKeys = translate.seqKeys(cmdKeys)
         identKeys = translate.identKeys(cmdKeys)
 
-        # we are using hsc ring lamps.
-        windowedFlatConfig = iicActor.actorConfig['windowedFlat']['hscLamps'].copy()
+        windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps].copy()
         exptime = windowedFlatConfig.pop('exptime')
+        # overriding using user provided exptime.
+        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else exptime
 
         # construct maskFile path.
         maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'SM13_moveAll'
@@ -208,3 +217,13 @@ class DotRoach(SpsSequence):
         cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, exptime, windowedFlatConfig, maskFile, keepMoving, mode, **config, **seqKeys)
+
+
+class DotRoachPfiLamps(DotRoach, TimedLampsSequence):
+    useLamps = 'pfiLamps'
+
+    # initial exposure
+    def expose(self, exptype, exptime, cams, **windowKeys):
+        exptime = dict(halogen=int(exptime), shutterTiming=False)
+
+        TimedLampsSequence.expose(self, 'flat', exptime, cams, **windowKeys)
