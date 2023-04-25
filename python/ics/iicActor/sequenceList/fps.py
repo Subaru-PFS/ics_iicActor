@@ -144,10 +144,14 @@ class GenBlackDotsConfig(FpsSequence):
 
         # turning on the illuminators
         self.add('sps', 'bia on')
+        self.add('peb', 'led on')
+
         self.add('mcs', 'expose object', exptime=exptime, parseFrameId=True, doFibreId=True)
         self.add('fps', 'genPfsConfigFromMcs', parseVisit=True, designId=designId)
+
         # turning off the illuminators
         self.tail.add('sps', 'bia off')
+        self.tail.add('peb', 'led off')
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
