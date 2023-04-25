@@ -5,16 +5,23 @@ from ics.iicActor.sequenceList.fps import MoveToPfsDesign, FpsSequence
 from ics.iicActor.sps.sequence import SpsSequence
 from ics.iicActor.sps.timedLamps import TimedLampsSequence
 
+
 class NearDotConvergence(MoveToPfsDesign):
     seqtype = 'nearDotConvergence'
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys, designId, maskFile=False):
+    def fromCmdKeys(cls, iicActor, cmdKeys, designId):
         """Defining rules to construct NearDotConvergence object."""
         seqKeys = translate.seqKeys(cmdKeys)
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
         config = iicActor.actorConfig['nearDotConvergence']
         config.update(exptime=exptime)
+
+        if 'maskFile' in cmdKeys:
+            maskFile = cmdKeys['maskFile'].values[0]
+            maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
+        else:
+            maskFile = False
 
         return cls(designId, maskFile=maskFile, goHome=True, **config, **seqKeys)
 

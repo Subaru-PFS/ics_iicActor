@@ -33,7 +33,7 @@ class MiscCmd(object):
             ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {translate.seqArgs}', self.dotCrossing),
 
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
-            ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] {translate.seqArgs}', self.nearDotConvergenceCmd),
+            ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] [<maskFile>] {translate.seqArgs}', self.nearDotConvergenceCmd),
             ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [@(hscLamps)] [<mode>] {identArgs} {translate.seqArgs}', self.dotRoach),
         ]
 
