@@ -1,6 +1,9 @@
 import numpy as np
 
 
+seqArgs = '[<name>] [<comments>] [@doTest] [@noDeps] [<groupId>] [<head>] [<tail>]'
+
+
 def seqKeys(cmdKeys):
     """ Identify which spectrograph(cameras) is required to take data. """
     name = cmdKeys['name'].values[0] if 'name' in cmdKeys else ''
@@ -9,7 +12,8 @@ def seqKeys(cmdKeys):
     head = cmdKeys['head'].values if 'head' in cmdKeys else None
     tail = cmdKeys['tail'].values if 'tail' in cmdKeys else None
     groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
-    return dict(name=name, comments=comments, doTest=doTest, head=head, tail=tail, groupId=groupId, cmdKeys=cmdKeys)
+    noDeps = 'noDeps' in cmdKeys
+    return dict(name=name, comments=comments, doTest=doTest, noDeps=noDeps, head=head, tail=tail, groupId=groupId, cmdKeys=cmdKeys)
 
 
 def identKeys(cmdKeys):

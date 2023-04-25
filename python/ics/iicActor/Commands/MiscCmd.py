@@ -2,6 +2,7 @@ from importlib import reload
 
 import ics.iicActor.sequenceList.misc as misc
 import ics.iicActor.utils.lib as iicUtils
+import ics.iicActor.utils.translate as translate
 import iicActor.utils.pfsDesign.opdb as designDB
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
@@ -24,17 +25,16 @@ class MiscCmd(object):
         # associated methods when matched. The callbacks will be
         # passed a single argument, the parsed and typed command.
         #
-        seqArgs = '[<name>] [<comments>] [@doTest] [<groupId>] [<head>] [<tail>]'
         identArgs = '[<cam>] [<arm>] [<specNum>]'
-        commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
+        commonArgs = f'{identArgs} [<duplicate>] {translate.seqArgs}'
 
         self.vocab = [
-            ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
-            ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {seqArgs}', self.dotCrossing),
+            ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {translate.seqArgs}', self.dotCrossing),
+            ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {translate.seqArgs}', self.dotCrossing),
 
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
-            ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] {seqArgs}', self.nearDotConvergenceCmd),
-            ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [@(hscLamps)] [<mode>] {identArgs} {seqArgs}', self.dotRoach),
+            ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] {translate.seqArgs}', self.nearDotConvergenceCmd),
+            ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [@(hscLamps)] [<mode>] {identArgs} {translate.seqArgs}', self.dotRoach),
         ]
 
         # Define typed command arguments for the above commands.

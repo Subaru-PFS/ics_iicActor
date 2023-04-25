@@ -144,12 +144,15 @@ class ResourceManager(object):
 
                 allDeps.append('mcs')
 
-        # sps is somehow peculiar because it's not driving hardware directly just actors (enu, xcu, hx, ccd, ...).
+        # sps is somehow peculiar because it's not driving hardware directly just actors (enu, xcu, ccd...).
         if 'sps' in allDeps:
             allDeps.remove('sps')
             if isinstance(sequence, SpsSequence):
-                # dependencies are derived from cams.
-                deps = list(set(map(str, sum([cam.dependencies(sequence) for cam in sequence.cams], []))))
+                if sequence.noDeps:  # just cams
+                    deps = list(map(str, sequence.cams))
+                else:
+                    # dependencies are derived from cams.
+                    deps = list(set(map(str, sum([cam.dependencies(sequence) for cam in sequence.cams], []))))
                 allDeps.extend(deps)
             else:
                 for spsCommand in list(set([subCmd for subCmd in sequence.subCmds if subCmd.actor == 'sps'])):
