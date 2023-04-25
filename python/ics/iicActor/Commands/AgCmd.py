@@ -2,6 +2,7 @@ from importlib import reload
 
 import ics.iicActor.sequenceList.ag as agSequence
 import ics.iicActor.utils.lib as iicUtils
+import ics.iicActor.utils.translate as translate
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 
@@ -20,10 +21,9 @@ class AgCmd(object):
         # associated methods when matched. The callbacks will be
         # passed a single argument, the parsed and typed command.
         #
-        seqArgs = '[<name>] [<comments>] [@doTest] [<groupId>] [<head>] [<tail>]'
         self.vocab = [
-            ('acquireField', f'[<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] {seqArgs}', self.acquireField),
-            ('autoguideStart', f'[<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] {seqArgs}', self.autoguideStart),
+            ('acquireField', f'[<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] {translate.seqArgs}', self.acquireField),
+            ('autoguideStart', f'[<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] {translate.seqArgs}', self.autoguideStart),
             ('autoguideStop', '', self.autoguideStop),
         ]
 

@@ -4,6 +4,7 @@ import ics.iicActor.sequenceList.sps.base as base
 import ics.iicActor.sequenceList.sps.calib as calib
 import ics.iicActor.sequenceList.sps.engineering as eng
 import ics.iicActor.sequenceList.sps.science as science
+import ics.iicActor.utils.translate as translate
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from iicActor.utils.engine import ExecMode
@@ -19,9 +20,8 @@ class SpsCmd(object):
     def __init__(self, actor):
         # This lets us access the rest of the actor.
         self.actor = actor
-        seqArgs = '[<name>] [<comments>] [@doTest] [<groupId>] [<head>] [<tail>]'
         identArgs = '[<cam>] [<arm>] [<specNum>]'
-        commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
+        commonArgs = f'{identArgs} [<duplicate>] {translate.seqArgs}'
         timedArcArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>] [@doShutterTiming]'
         timedFlatArgs = '[<halogen>] [@doShutterTiming]'
         windowingArgs = '[<window>] [<blueWindow>] [<redWindow>]'

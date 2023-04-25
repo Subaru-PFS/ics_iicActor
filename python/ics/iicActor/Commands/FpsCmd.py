@@ -2,6 +2,7 @@ from importlib import reload
 import os
 import ics.iicActor.sequenceList.fps as fpsSequence
 import ics.iicActor.utils.lib as iicUtils
+import ics.iicActor.utils.translate as translate
 import iicActor.utils.pfsDesign.opdb as designDB
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
@@ -26,7 +27,6 @@ class FpsCmd(object):
         # associated methods when matched. The callbacks will be
         # passed a single argument, the parsed and typed command.
         #
-        seqArgs = '[<name>] [<comments>] [@doTest] [<groupId>] [<head>] [<tail>]'
         self.vocab = [
             ('startBoresightAcquisition', '[<expTime>] [<nExposures>]', self.startBoresightAcquisition),
             ('addBoresightPosition', '', self.addBoresightPosition),
@@ -35,20 +35,20 @@ class FpsCmd(object):
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
 
             ('moveToPfsDesign',
-             f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [<nIteration>] [<tolerance>] {seqArgs}',
+             f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [<nIteration>] [<tolerance>] {translate.seqArgs}',
              self.moveToPfsDesign),
-            ('moveToHome', f'[@(all)] [<exptime>] [<designId>] [<maskFile>] {seqArgs}', self.moveToHome),
+            ('moveToHome', f'[@(all)] [<exptime>] [<designId>] [<maskFile>] {translate.seqArgs}', self.moveToHome),
             ('genBlackDotsConfig', '[<maskFile>]', self.genBlackDotsConfig),
 
-            ('movePhiToAngle', f'<angle> <nIteration> {seqArgs}', self.movePhiToAngle),
-            ('moveToSafePosition', f'{seqArgs}', self.moveToSafePosition),
-            ('gotoVerticalFromPhi60', f'{seqArgs}', self.gotoVerticalFromPhi60),
-            ('makeMotorMap', f'@(phi|theta) <stepsize> <repeat> [@slowOnly] {seqArgs}', self.makeMotorMap),
-            ('makeOntimeMap', f'@(phi|theta) {seqArgs}', self.makeOntimeMap),
-            ('angleConvergenceTest', f'@(phi|theta) <angleTargets> {seqArgs}', self.angleConvergenceTest),
-            ('targetConvergenceTest', f'@(ontime|speed) <totalTargets> <maxsteps> {seqArgs}',
+            ('movePhiToAngle', f'<angle> <nIteration> {translate.seqArgs}', self.movePhiToAngle),
+            ('moveToSafePosition', f'{translate.seqArgs}', self.moveToSafePosition),
+            ('gotoVerticalFromPhi60', f'{translate.seqArgs}', self.gotoVerticalFromPhi60),
+            ('makeMotorMap', f'@(phi|theta) <stepsize> <repeat> [@slowOnly] {translate.seqArgs}', self.makeMotorMap),
+            ('makeOntimeMap', f'@(phi|theta) {translate.seqArgs}', self.makeOntimeMap),
+            ('angleConvergenceTest', f'@(phi|theta) <angleTargets> {translate.seqArgs}', self.angleConvergenceTest),
+            ('targetConvergenceTest', f'@(ontime|speed) <totalTargets> <maxsteps> {translate.seqArgs}',
              self.targetConvergenceTest),
-            ('motorOntimeSearch', f'@(phi|theta) {seqArgs}', self.motorOntimeSearch),
+            ('motorOntimeSearch', f'@(phi|theta) {translate.seqArgs}', self.motorOntimeSearch),
 
         ]
 

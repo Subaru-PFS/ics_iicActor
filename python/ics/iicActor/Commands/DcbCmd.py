@@ -1,6 +1,7 @@
 from importlib import reload
 
 import ics.iicActor.sequenceList.sps.dcb as dcb
+import ics.iicActor.utils.translate as translate
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 
@@ -12,9 +13,8 @@ class DcbCmd(object):
     def __init__(self, actor):
         # This lets us access the rest of the actor.
         self.actor = actor
-        seqArgs = '[<name>] [<comments>] [@doTest] [<groupId>] [<head>] [<tail>]'
         identArgs = '[<cam>] [<arm>] [<specNum>]'
-        commonArgs = f'{identArgs} [<duplicate>] {seqArgs}'
+        commonArgs = f'{identArgs} [<duplicate>] {translate.seqArgs}'
         arcArgs = f'<exptime> [<switchOn>] [<switchOff>] [<warmingTime>] [force]'
         flatArgs = f'<exptime> [noLampCtl] [switchOff] [<warmingTime>] [force]'
         windowingArgs = '[<window>] [<blueWindow>] [<redWindow>]'

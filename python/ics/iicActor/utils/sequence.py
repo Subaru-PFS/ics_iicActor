@@ -10,11 +10,12 @@ class Sequence(list):
     daysToDeclareObsolete = 7
     seqtype = 'sequence'
 
-    def __init__(self, name="", comments="", doTest=False, head=None, tail=None, groupId=None, cmdKeys=None):
+    def __init__(self, name="", comments="", doTest=False, noDeps=False, head=None, tail=None, groupId=None, cmdKeys=None):
         super().__init__()
         self.name = name
         self.comments = comments
         self.doTest = doTest
+        self.noDeps = noDeps
         self.head = CmdList(self, head)
         self.tail = CmdList(self, tail)
         self.group_id = groupId
