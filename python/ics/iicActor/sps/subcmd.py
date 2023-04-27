@@ -17,8 +17,9 @@ class SpsExpose(VisitedCmd):
 
     def __init__(self, *args, **kwargs):
         # always parse visit
-        VisitedCmd.__init__(self, *args, parseVisit=True, **kwargs)
+        VisitedCmd.__init__(self, *args, parseVisit=True, parseDesignId=True, **kwargs)
         self.visit = None
+        self.designId = None
 
         __, exptype, __ = self.cmdStr.split(' ', 2)
         self.exptype = exptype.strip()
@@ -32,7 +33,8 @@ class SpsExpose(VisitedCmd):
     def specify(cls, sequence, exptype, exptime, cams, timeOffset=120, **kwargs):
         timeLim = timeOffset + exptime
         exptime = exptime if exptime else None
-        return cls(sequence, 'sps', f'expose {exptype}', exptime=exptime, cams=cams, timeLim=timeLim, **kwargs)
+        return cls(sequence, 'sps', f'expose {exptype}', exptime=exptime, cams=cams, timeLim=timeLim,
+                   **kwargs)
 
     def call(self, cmd):
         """getVisitedCall get the visit and parse it, but SubCmd.call() must always return a CmdRet object."""
@@ -47,7 +49,9 @@ class SpsExpose(VisitedCmd):
         """Get and attach your visit, then parse it, insert into visit_set to finish."""
         with self.visitManager.getVisit(caller='sps') as visit:
             # set new visit
-            self.freshNewVisit(visit)
+            self.designId = self.freshNewVisit(visit)
+            # regenerating updated keywords.
+            self.genKeys(self.sequence.cmd)
             # regular visitedCall which will parse the fresh new visit.
             cmdRet = VisitedCmd.call(self, cmd)
             # insert into visit_set
@@ -58,7 +62,6 @@ class SpsExpose(VisitedCmd):
     def freshNewVisit(self, visit):
         """Set the visit and generate keys."""
         self.visit = visit
-        self.genKeys(self.sequence.cmd)
 
         # lightSources can be a bit tricky, sequence member is actually set to None for biases and darks.
         # For those it's possible to have multiple lightSources, not sure what to do in that case.
@@ -82,6 +85,8 @@ class SpsExpose(VisitedCmd):
         opdbUtils.insertPfsConfigSps(pfs_visit_id=self.visitId, visit0=self.visitManager.activeField.visit0)
         # Generate pfsConfig key.
         self.iicActor.genPfsConfigKey(self.sequence.cmd, pfsConfig)
+        # return designId
+        return pfsConfig.pfsDesignId
 
     def abort(self, cmd):
         """ Abort current exposure """
