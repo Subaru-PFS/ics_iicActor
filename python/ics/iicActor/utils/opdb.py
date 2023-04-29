@@ -3,6 +3,8 @@ import logging
 import iicActor.utils.lib as iicUtils
 from ics.utils.opdb import opDB
 from iicActor.utils import exception
+import psycopg2
+import time
 
 
 def fetchOneEntry(query):
@@ -46,12 +48,23 @@ def insertIntoOpDB(tablename, **kwargs):
         raise exception.OpdbInsertFailed(tablename, e)
 
 
-def insertSequence(group_id, sequence_type, name, comments, cmd_str):
+def insertSequence(group_id, sequence_type, name, comments, cmd_str, doRetry=True, waitBetweenAttempt=1):
     """Insert into iic_sequence table. """
     # new_sequence_id = last + 1
     new_sequence_id = fetchLastSequenceId() + 1
-    insertIntoOpDB('iic_sequence', iic_sequence_id=new_sequence_id, group_id=group_id, sequence_type=sequence_type,
-                   name=name, comments=comments, cmd_str=cmd_str, created_at='now')
+
+    try:
+        opDB.insert('iic_sequence', iic_sequence_id=new_sequence_id, group_id=group_id,
+                    sequence_type=sequence_type,  name=name, comments=comments, cmd_str=cmd_str,
+                    created_at='now')
+    # concurrent insert can fail.
+    except psycopg2.errors.UniqueViolation as e:
+        if doRetry:
+            time.sleep(waitBetweenAttempt)
+            return insertSequence(group_id, sequence_type, name, comments, cmd_str, doRetry=False)
+
+        raise exception.OpdbInsertFailed('iic_sequence', e)
+
     return new_sequence_id
 
 
