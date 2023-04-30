@@ -38,7 +38,7 @@ class FpsCmd(object):
              f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [<nIteration>] [<tolerance>] {translate.seqArgs}',
              self.moveToPfsDesign),
             ('moveToHome', f'[@(all)] [<exptime>] [<designId>] [<maskFile>] {translate.seqArgs}', self.moveToHome),
-            ('genBlackDotsConfig', '[<maskFile>]', self.genBlackDotsConfig),
+            ('genBlackDotsConfig', f'[<maskFile>] {translate.seqArgs}', self.genBlackDotsConfig),
 
             ('movePhiToAngle', f'<angle> <nIteration> {translate.seqArgs}', self.movePhiToAngle),
             ('moveToSafePosition', f'{translate.seqArgs}', self.moveToSafePosition),
