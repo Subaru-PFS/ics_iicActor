@@ -127,13 +127,13 @@ class FpsCmd(object):
             cmd.fail('text="no boresight loop to add to"')
             return
 
+        # setting sequence status back to ready, hard amend because flexibility.
+        if self.boresightLoop:
+            self.boresightLoop.status.hardAmend()
+
         # add position and run.
         self.boresightLoop.addPosition(cmd=cmd)
         self.engine.run(cmd, self.boresightLoop, mode=ExecMode.EXECUTE)
-
-        # setting sequence status back to ready.
-        if self.boresightLoop:
-            self.boresightLoop.status.amend()
 
     @singleShot
     def reduceBoresightData(self, cmd):

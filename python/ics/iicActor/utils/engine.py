@@ -76,10 +76,8 @@ class Engine(object):
             sequence.commandLogic(cmd)
         finally:
             # not need to finalize in that mode.
-            if mode == ExecMode.EXECUTE:
-                return
-
-            sequence.finalize(cmd)
+            if mode != ExecMode.EXECUTE:
+                sequence.finalize(cmd)
 
     def requestGroupId(self, groupName, doContinue=False):
         """Request groupId given the groupName"""
