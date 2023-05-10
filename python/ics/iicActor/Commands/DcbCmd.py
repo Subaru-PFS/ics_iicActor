@@ -28,6 +28,7 @@ class DcbCmd(object):
             ('expose', f'flat {flatArgs} {windowingArgs} {commonArgs}', self.doFlat),
 
             ('detector', f'throughfocus {arcArgs} <position> [<tilt>] {commonArgs}', self.detThroughFocus),
+            ('slit', f'throughfocus {arcArgs} <position> {commonArgs}', self.slitThroughFocus),
             ('ditheredArcs', f'{arcArgs} <pixelStep> {commonArgs}', self.ditheredArcs),
             ('defocusedArcs', f'{arcArgs} <position> {commonArgs}', self.defocusedArcs),
 
@@ -347,6 +348,53 @@ class DcbCmd(object):
 
         detThroughFocus = dcb.DetThroughFocus.fromCmdKeys(self.actor, cmdKeys)
         self.engine.runInThread(cmd, detThroughFocus)
+
+    def slitThroughFocus(self, cmd):
+        """
+        `iic slit throughfocus exptime=??? position=??? [switchOn=???] [switchOff=???]
+        [warmingTime=FF.F] [force] [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"]
+        [@doTest] [head=???] [tail=???]`
+
+        Take Arc dataset through focus using the slit hexapod .
+        Sequence is referenced in opdb as iic_sequence.seqtype=slitThroughFocus.
+
+        Parameters
+        ---------
+        exptime : `float`
+            shutter exposure time.
+        position: `float`, `float`, `int`
+            slit position constructor, same logic as np.linspace(start, stop, num).
+        switchOn : list of `str`
+           list of dcb lamp to turn on before the exposure(s).
+        switchOff : list of `str`
+           list of dcb lamp to turn off after the exposure(s).
+        warmingTime : `float`
+            optional lamp warming time.
+        force : `bool`
+            skip any lamp warmup logic.
+        cam : list of `str`
+           List of camera to expose, default=all
+        arm : list of `str`
+           List of arm to expose, default=all
+        specNum : list of `int`
+           List of spectrograph module to expose, default=all
+        duplicate : `int`
+           Number of exposure, default=1
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        head : list of `str`
+            list of command to be launched before the sequence.
+        tail : list of `str`
+            list of command to be launched after the sequence.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=arc.
+        """
+        cmdKeys = cmd.cmd.keywords
+
+        slitThroughFocus = dcb.SlitThroughFocus.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, slitThroughFocus)
 
     def ditheredArcs(self, cmd):
         """

@@ -1,6 +1,5 @@
 import numpy as np
 
-
 seqArgs = '[<name>] [<comments>] [@doTest] [@noDeps] [<groupId>] [<head>] [<tail>]'
 
 
@@ -13,7 +12,8 @@ def seqKeys(cmdKeys):
     tail = cmdKeys['tail'].values if 'tail' in cmdKeys else None
     groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
     noDeps = 'noDeps' in cmdKeys
-    return dict(name=name, comments=comments, doTest=doTest, noDeps=noDeps, head=head, tail=tail, groupId=groupId, cmdKeys=cmdKeys)
+    return dict(name=name, comments=comments, doTest=doTest, noDeps=noDeps,
+                head=head, tail=tail, groupId=groupId, cmdKeys=cmdKeys)
 
 
 def identKeys(cmdKeys):
@@ -56,14 +56,14 @@ def windowKeys(cmdKeys):
 def lampsKeys(cmdKeys):
     lampNames = 'halogen', 'hgcd', 'hgar', 'argon', 'neon', 'krypton', 'xenon'
     doShutterTiming = 'doShutterTiming' in cmdKeys
-    timingOverHead = 5 if doShutterTiming else 0
+    overHead = 5 if doShutterTiming else 0
 
-    keys = {name: int(round(cmdKeys[name].values[0]) + timingOverHead) for name in lampNames if name in cmdKeys}
+    keys = {name: int(round(cmdKeys[name].values[0]) + overHead) for name in lampNames if name in cmdKeys}
 
     if not keys:
         raise ValueError('no lamps has been specified')
 
-    keys['shutterTiming'] = max(keys.values()) - timingOverHead if doShutterTiming else 0
+    keys['shutterTiming'] = max(keys.values()) - overHead if doShutterTiming else 0
 
     return keys
 
@@ -107,3 +107,9 @@ def detThroughFocusKeys(cmdKeys):
     tilt = np.array(cmdKeys['tilt'].values) if 'tilt' in cmdKeys else np.zeros(3)
     positions = np.array([np.linspace(start, stop - np.max(tilt), num=int(num)), ] * 3).transpose() + tilt
     return positions.round(2)
+
+
+def slitThroughFocusKeys(cmdKeys):
+    [start, stop, num] = cmdKeys['position'].values
+    positions = np.linspace(start, stop, int(num)).round(2)
+    return positions

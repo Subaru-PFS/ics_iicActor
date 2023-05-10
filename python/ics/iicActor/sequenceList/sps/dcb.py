@@ -211,6 +211,42 @@ class DetThroughFocus(SpsSequence):
         return cls(cams, exptime, dcbOn, dcbOff, duplicate, positions, **seqKeys)
 
 
+class SlitThroughFocus(SpsSequence):
+    """Slit through focus sequence."""
+    seqtype = 'slitThroughFocus'
+
+    def __init__(self, cams, exptime, dcbOn, dcbOff, duplicate, positions, **seqKeys):
+        SpsSequence.__init__(self, cams, **seqKeys)
+
+        # adding dcbOn and dcbOff commands.
+        if any(dcbOn.values()):
+            self.head.add('dcb', 'lamps', **dcbOn)
+
+        if any(dcbOff.values()):
+            self.tail.add('dcb', 'lamps', **dcbOff)
+
+        for focus in positions:
+            self.add('sps', 'slit', focus=focus, abs=True, cams=cams)
+            self.expose('arc', exptime, cams, duplicate=duplicate)
+
+        # moving back to focus at the end.
+        self.tail.add('sps', 'slit', focus=0, abs=True, cams=cams)
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct ScienceObject object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+        identKeys = translate.identKeys(cmdKeys)
+        exptime, duplicate = translate.spsExposureKeys(cmdKeys)
+        dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
+        # translating from given position and tilt.
+        positions = translate.slitThroughFocusKeys(cmdKeys)
+
+        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
+
+        return cls(cams, exptime, dcbOn, dcbOff, duplicate, positions, **seqKeys)
+
+
 class DefocusedArcs(SpsSequence):
     """ Defocus sequence """
     seqtype = 'defocusedArcs'
