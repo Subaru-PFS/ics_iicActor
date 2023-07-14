@@ -4,6 +4,7 @@ from pfs.datamodel.pfsConfig import PfsDesign
 from pfs.datamodel.utils import calculate_pfsDesignId
 from pfs.utils.fiberids import FiberIds
 
+fakeRa, fakeDec = 100, -89
 
 def fakePfiNominal(fiberId):
     """Fake PfiNominal from fiberId, basically take x,y from GFM."""
@@ -17,8 +18,8 @@ def fakePfiNominal(fiberId):
 
 def fakeDesignIFromFiberId(fiberId, pfiNominal):
     """Fake ra and dec from pfiNominal and re-calculate pfsDesignId."""
-    ra = 100 + 1e-3 * pfiNominal[:, 0]
-    dec = 100 + 1e-3 * pfiNominal[:, 1]
+    ra = fakeRa + 1e-3 * pfiNominal[:, 0]
+    dec = fakeDec + 1e-3 * pfiNominal[:, 1]
 
     pfsDesignId = calculate_pfsDesignId(fiberId, ra, dec)
 
@@ -49,7 +50,7 @@ def sortFieldsByFiberId(kwargs):
 
 def mergeSuNSSAndDcb(pfsDesigns, designName):
     """Merge SuNSS and DCB PfsDesign."""
-    kwargs = dict(pfsDesignId=0, raBoresight=100, decBoresight=100, posAng=0, arms='brn', guideStars=None,
+    kwargs = dict(pfsDesignId=0, raBoresight=fakeRa, decBoresight=fakeDec, posAng=0, arms='brn', guideStars=None,
                   designName=designName, variant=0, designId0=0)
     keywords = PfsDesign._keywords + PfsDesign._scalars + ['fiberStatus']
 
