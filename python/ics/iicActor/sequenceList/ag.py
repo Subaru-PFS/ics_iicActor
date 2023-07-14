@@ -20,12 +20,13 @@ class AcquireField(AgSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'acquireField'
 
-    def __init__(self, otf, designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, **seqKeys):
+    def __init__(self, otf, designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, exposure_delay, tec_off,
+                 **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
         self.add('ag', 'acquire_field', parseVisit=True, otf=otf,
                  design_id=designId, exposure_time=exptime, guide=guide, magnitude=magnitude, dry_run=dryRun,
-                 fit_dscale=fit_dScale, fit_dinr=fit_dInR)
+                 fit_dscale=fit_dScale, fit_dinr=fit_dInR, exposure_delay=exposure_delay, tec_off=tec_off)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -39,6 +40,8 @@ class AcquireField(AgSequence):
         dryRun = 'yes' if 'dryRun' in cmdKeys else None
         fit_dScale = cmdKeys['fit_dScale'].values[0] if 'fit_dScale' in cmdKeys else None
         fit_dInR = cmdKeys['fit_dInR'].values[0] if 'fit_dInR' in cmdKeys else None
+        exposure_delay = cmdKeys['exposure_delay'].values[0] if 'exposure_delay' in cmdKeys else None
+        tec_off = cmdKeys['tec_off'].values[0] if 'tec_off' in cmdKeys else None
 
         # get provided designId or get current one.
         if 'designId' in cmdKeys:
@@ -46,23 +49,27 @@ class AcquireField(AgSequence):
         else:
             designId = iicActor.engine.visitManager.getCurrentDesignId()
 
-        return cls(otf, designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, **seqKeys)
+        return cls(otf, designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, exposure_delay, tec_off,
+                   **seqKeys)
 
 
 class AutoguideStart(AgSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'autoguideStart'
 
-    def __init__(self, otf, designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR, **seqKeys):
+    def __init__(self, otf, designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR,
+                 exposure_delay, tec_off, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
         self.add('ag', 'autoguide start', parseVisit=True, otf=otf,
                  design_id=designId, exposure_time=exptime, cadence=cadence, center=center, magnitude=magnitude,
-                 from_sky=fromSky,  dry_run=dryRun, fit_dscale=fit_dScale, fit_dinr=fit_dInR)
+                 from_sky=fromSky,  dry_run=dryRun, fit_dscale=fit_dScale, fit_dinr=fit_dInR,
+                 exposure_delay=exposure_delay, tec_off=tec_off)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         seqKeys = translate.seqKeys(cmdKeys)
+
         otf = True if 'otf' in cmdKeys else False
         fromSky = 'yes' if 'fromSky' in cmdKeys else None
         exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
@@ -72,6 +79,8 @@ class AutoguideStart(AgSequence):
         dryRun = 'yes' if 'dryRun' in cmdKeys else None
         fit_dScale = cmdKeys['fit_dScale'].values[0] if 'fit_dScale' in cmdKeys else None
         fit_dInR = cmdKeys['fit_dInR'].values[0] if 'fit_dInR' in cmdKeys else None
+        exposure_delay = cmdKeys['exposure_delay'].values[0] if 'exposure_delay' in cmdKeys else None
+        tec_off = cmdKeys['tec_off'].values[0] if 'tec_off' in cmdKeys else None
 
         # get provided designId or get current one.
         if 'designId' in cmdKeys:
@@ -79,7 +88,8 @@ class AutoguideStart(AgSequence):
         else:
             designId = iicActor.engine.visitManager.getCurrentDesignId()
 
-        return cls(otf, designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR, **seqKeys)
+        return cls(otf, designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR,
+                   exposure_delay, tec_off, **seqKeys)
 
 
 class AutoguideStop(Sequence):
