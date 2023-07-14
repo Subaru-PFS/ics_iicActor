@@ -22,8 +22,8 @@ class AgCmd(object):
         # passed a single argument, the parsed and typed command.
         #
         self.vocab = [
-            ('acquireField', f'[@(otf)] [<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] {translate.seqArgs}', self.acquireField),
-            ('autoguideStart', f'[@(otf)] [<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] {translate.seqArgs}', self.autoguideStart),
+            ('acquireField', f'[@(otf)] [<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] [<tec_off>] {translate.seqArgs}', self.acquireField),
+            ('autoguideStart', f'[@(otf)] [<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] [<tec_off>] {translate.seqArgs}', self.autoguideStart),
             ('autoguideStop', '', self.autoguideStop),
         ]
 
@@ -42,8 +42,8 @@ class AgCmd(object):
                                         keys.Key("center", types.Float() * (1, 3)),
                                         keys.Key('fit_dScale', types.String(), help='do fit dScale (yes|no)'),
                                         keys.Key('fit_dInR', types.String(), help='do fit dInR (yes|no)'),
-                                        )
-
+                                        keys.Key("exposure_delay", types.Float(), help='delay in milliseconds between AG cameras'),
+                                        keys.Key('tec_off', types.String(), help='AG cameras thermoelectric coolers turned off'))
     @property
     def engine(self):
         return self.actor.engine
