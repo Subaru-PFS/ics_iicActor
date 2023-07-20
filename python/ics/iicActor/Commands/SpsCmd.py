@@ -45,6 +45,7 @@ class SpsCmd(object):
 
             ('ditheredArcs', f'{timedArcArgs} <pixelStep> {commonArgs}', self.ditheredArcs),
             ('defocusedArcs', f'{timedArcArgs} <position> {commonArgs}', self.defocusedArcs),
+            ('fpa', f'throughfocus <micronsRange> {timedArcArgs} {commonArgs}', self.fpaThroughFocus),
             ('test', f'hexapodStability {timedArcArgs} [<position>] {commonArgs}', self.hexapodStability),
 
             ('sps', 'rdaMove (low|med) [<specNum>]', self.rdaMove),
@@ -80,6 +81,8 @@ class SpsCmd(object):
                                                  help='pixel step for ditheredArcs'),
                                         keys.Key('position', types.Float() * (1, 3),
                                                  help='slit position(start, stop, step) for defocusedArcs'),
+                                        keys.Key('micronsRange', types.Float() * (1, 3),
+                                                 help='fpa range from focus(start, stop, nPosition)'),
 
                                         keys.Key("window", types.Int() * (1, 2),
                                                  help='first row, total number of rows to read'),
@@ -711,6 +714,59 @@ class SpsCmd(object):
 
         defocusedArcs = base.DefocusedArcs.fromCmdKeys(self.actor, cmdKeys)
         self.engine.runInThread(cmd, defocusedArcs)
+
+    def fpaThroughFocus(self, cmd):
+        """
+        `iic fpaThroughFocus [hgar=FF.F] [hgcd=FF.F] [argon=FF.F] [neon=FF.F] [krypton=FF.F] [xenon=FF.F]
+        [@doShutterTiming] micronsRange=??? [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"]
+        [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
+
+        Take Arc dataset through focus, with respect to tilt, using fpa motors.
+        Sequence is referenced in opdb as iic_sequence.seqtype=fpaThroughFocus.
+
+        Parameters
+        ---------
+        hgar : `float`
+            number of second to trigger mercury-argon lamp.
+        hgcd : `float`
+            number of second to trigger mercury-cadmium lamp.
+        argon : `float`
+            number of second to trigger argon lamp.
+        neon : `float`
+            number of second to trigger neon lamp.
+        krypton : `float`
+            number of second to trigger krypton lamp.
+        xenon : `float`
+            number of second to trigger xenon lamp.
+        doShutterTiming : `bool`
+           if True, use the shutters to control exposure time, ie fire the lamps before opening the shutters.
+        micronsRange: `float`, `float`, `int`
+            fpa position constructor, same logic as np.linspace(start, stop, num).
+        cam : list of `str`
+           List of camera to expose, default=all
+        arm : list of `str`
+           List of arm to expose, default=all
+        specNum : list of `int`
+           List of spectrograph module to expose, default=all
+        duplicate : `int`
+           Number of exposure, default=1
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=arc.
+        head : list of `str`
+            list of command to be launched before the sequence.
+        tail : list of `str`
+            list of command to be launched after the sequence.
+        groupId : `int`
+           optional sequence group id.
+        """
+        cmdKeys = cmd.cmd.keywords
+
+        fpaThroughFocus = base.FpaThroughFocus.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, fpaThroughFocus)
 
     def hexapodStability(self, cmd):
         """

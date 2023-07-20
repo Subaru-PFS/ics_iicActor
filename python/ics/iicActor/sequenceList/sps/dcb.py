@@ -194,7 +194,7 @@ class DetThroughFocus(SpsSequence):
             self.expose('arc', exptime, cams, duplicate=duplicate)
 
         # moving back to focus at the end.
-        self.tail.add('sps', 'ccdMotors toFocus', cams=cams)
+        self.tail.add('sps', 'fpa toFocus', cams=cams)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
