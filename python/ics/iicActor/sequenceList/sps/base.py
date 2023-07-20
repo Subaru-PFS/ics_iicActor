@@ -191,3 +191,32 @@ class DefocusedArcs(TimedLampsSequence):
         hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
         return cls(cams, lampsKeys, duplicate, positions, hexapodOff, **seqKeys)
+
+
+class FpaThroughFocus(TimedLampsSequence):
+    """ FpaThroughFocus sequence. """
+    seqtype = 'fpaThroughFocus'
+
+    def __init__(self, cams, lampsKeys, duplicate, positions, **seqKeys):
+        SpsSequence.__init__(self, cams, **seqKeys)
+
+        for microns in positions:
+            self.add('sps', 'fpa moveFocus', microns=microns, abs=True, cams=cams)
+            self.expose('arc', lampsKeys, cams, duplicate=duplicate)
+
+        # moving back to focus at the end.
+        self.tail.add('sps', 'fpa toFocus', cams=cams)
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct ScienceObject object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+        identKeys = translate.identKeys(cmdKeys)
+        __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
+        lampsKeys = translate.lampsKeys(cmdKeys)
+        start, stop, num = cmdKeys['micronsRange'].values
+        positions = np.linspace(start, stop, num=int(num)).round(6)
+
+        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
+
+        return cls(cams, lampsKeys, duplicate, positions, **seqKeys)
