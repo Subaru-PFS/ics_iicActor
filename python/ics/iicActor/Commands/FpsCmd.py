@@ -35,7 +35,7 @@ class FpsCmd(object):
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
 
             ('moveToPfsDesign',
-             f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [<nIteration>] [<tolerance>] {translate.seqArgs}',
+             f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [@(noTweak)] [<nIteration>] [<tolerance>] {translate.seqArgs}',
              self.moveToPfsDesign),
             ('moveToHome', f'[@(all)] [<exptime>] [<designId>] [<maskFile>] {translate.seqArgs}', self.moveToHome),
             ('genBlackDotsConfig', f'[<maskFile>] {translate.seqArgs}', self.genBlackDotsConfig),
