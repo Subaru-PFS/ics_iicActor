@@ -23,7 +23,7 @@ class NearDotConvergence(MoveToPfsDesign):
         else:
             maskFile = False
 
-        return cls(designId, maskFile=maskFile, goHome=True, **config, **seqKeys)
+        return cls(designId, maskFile=maskFile, goHome=True, noTweak=True, **config, **seqKeys)
 
 
 class DotCrossing(FpsSequence):
