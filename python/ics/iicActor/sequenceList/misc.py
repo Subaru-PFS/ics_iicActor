@@ -33,9 +33,10 @@ class DotCrossing(FpsSequence):
     def __init__(self, stepSize, count, exptime, **seqKeys):
         FpsSequence.__init__(self, **seqKeys)
 
-        # turning on the illuminators
+        # turning illuminators on
         self.add('sps', 'bia on')
         self.add('peb', 'led on')
+        self.add('dcb', 'power on cableB')
 
         self.add('mcs', 'expose object', parseFrameId=True, exptime=exptime, doFibreId=True)
 
@@ -43,9 +44,11 @@ class DotCrossing(FpsSequence):
             self.add('fps', f'cobraMoveSteps {self.motor}', stepsize=stepSize)
             self.add('mcs', 'expose object', parseFrameId=True, exptime=exptime, doFibreId=True)
 
-        # turning off the illuminators
+        # turning illuminators off
         self.tail.add('sps', 'bia off')
         self.tail.add('peb', 'led off')
+        self.tail.add('dcb', 'power off cableB')
+
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):

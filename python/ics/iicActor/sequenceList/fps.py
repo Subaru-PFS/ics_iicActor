@@ -83,6 +83,7 @@ class MoveToPfsDesign(FpsSequence):
         # turning illuminators on
         self.add('sps', 'bia on')
         self.add('peb', 'led on')
+        self.add('dcb', 'power on cableB')
 
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
@@ -92,6 +93,7 @@ class MoveToPfsDesign(FpsSequence):
         # turning illuminators off
         self.tail.add('sps', 'bia off')
         self.tail.add('peb', 'led off')
+        self.tail.add('dcb', 'power off cableB')
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -122,11 +124,15 @@ class MoveToHome(FpsSequence):
         # turning illuminators on
         self.add('sps', 'bia on')
         self.add('peb', 'led on')
+        self.add('dcb', 'power on cableB')
+
         # move cobras to home, not supposed to, but meh.
         self.add('fps', 'moveToHome all', parseVisit=True, exptime=exptime, designId=designId, timeLim=120)
+
         # turning illuminators off
         self.tail.add('sps', 'bia off')
         self.tail.add('peb', 'led off')
+        self.tail.add('dcb', 'power off cableB')
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -143,16 +149,18 @@ class GenBlackDotsConfig(FpsSequence):
     def __init__(self, exptime, designId, **seqKeys):
         FpsSequence.__init__(self, **seqKeys)
 
-        # turning on the illuminators
+        # turning illuminators on
         self.add('sps', 'bia on')
         self.add('peb', 'led on')
+        self.add('dcb', 'power on cableB')
 
         self.add('mcs', 'expose object', exptime=exptime, parseFrameId=True, doFibreId=True)
         self.add('fps', 'genPfsConfigFromMcs', parseVisit=True, designId=designId)
 
-        # turning off the illuminators
+        # turning illuminators off
         self.tail.add('sps', 'bia off')
         self.tail.add('peb', 'led off')
+        self.tail.add('dcb', 'power off cableB')
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
