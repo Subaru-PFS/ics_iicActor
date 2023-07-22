@@ -43,6 +43,7 @@ class SpsCmd(object):
             ('expose', f'arc {timedArcArgs} {commonArgs}', self.doArc),
             ('expose', f'flat {timedFlatArgs} {windowingArgs} {commonArgs}', self.doFlat),
 
+            ('driftFlats', f'{timedFlatArgs} [<pixelRange>] [@(keepHexapodOn)] {commonArgs}', self.driftFlats),
             ('ditheredArcs', f'{timedArcArgs} <pixelStep> {commonArgs}', self.ditheredArcs),
             ('defocusedArcs', f'{timedArcArgs} <position> {commonArgs}', self.defocusedArcs),
             ('fpa', f'throughfocus <micronsRange> {timedArcArgs} {commonArgs}', self.fpaThroughFocus),
@@ -605,6 +606,40 @@ class SpsCmd(object):
 
         flats = base.Flats.fromCmdKeys(self.actor, cmdKeys)
         self.engine.runInThread(cmd, flats)
+
+    def driftFlats(self, cmd):
+        """
+        `iic driftFlats halogen=FF.F [pixelRange=FF.F,FF.F,FF.F] [@keepHexapodOn] [cam=???] [arm=???] [specNum=???]
+        [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+
+        Take a set of drift fiberTrace with a given pixelRange (default -6,6,1)
+        Sequence is referenced in opdb as iic_sequence.seqtype=driftFlats.
+
+        Parameters
+        ---------
+        halogen : `float`
+            number of second to trigger continuum lamp.
+        pixelRange : `float`,`float`
+            pixels array : start, end, step (default: -6, 6, 1).
+        cam : list of `str`
+           List of camera to expose, default=all.
+        arm : list of `str`
+           List of arm to expose, default=all.
+        specNum : list of `int`
+           List of spectrograph module to expose, default=all.
+        duplicate : `int`
+           Number of exposure, default=1.
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=flat.
+        """
+        cmdKeys = cmd.cmd.keywords
+
+        driftFlats = calib.DriftFlats.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.runInThread(cmd, driftFlats)
 
     def ditheredArcs(self, cmd):
         """
