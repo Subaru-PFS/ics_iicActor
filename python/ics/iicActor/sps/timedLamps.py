@@ -5,7 +5,7 @@ from ics.iicActor.sps.subcmd import SpsExpose
 class TimedLampsSequence(SpsSequence):
     shutterRequired = False
 
-    def expose(self, exptype, lampKeys, cams, duplicate=1, windowKeys=None):
+    def expose(self, exptype, lampKeys, cams, duplicate=1, windowKeys=None, slideSlit=None):
         """Override expose function to handle dcb/pfilamps lampKeys arguments."""
         windowKeys = dict() if windowKeys is None else windowKeys
 
@@ -40,5 +40,6 @@ class TimedLampsSequence(SpsSequence):
             # creating SpsExpose command object.
             spsExpose = SpsExpose.specify(self, exptype, exptime, cams,
                                           doLamps=True, doShutterTiming=doShutterTiming, timeOffset=timeOffset,
-                                          doTest=self.doTest, doScienceCheck=self.doScienceCheck, **windowKeys)
+                                          doTest=self.doTest, doScienceCheck=self.doScienceCheck, slideSlit=slideSlit,
+                                          **windowKeys)
             list.append(self, spsExpose)
