@@ -49,6 +49,9 @@ class AcquireField(AgSequence):
         else:
             designId = iicActor.engine.visitManager.getCurrentDesignId()
 
+        # override designId if otf.
+        designId = False if otf else designId
+
         return cls(otf, designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, exposure_delay, tec_off,
                    **seqKeys)
 
@@ -63,7 +66,7 @@ class AutoguideStart(AgSequence):
 
         self.add('ag', 'autoguide start', parseVisit=True, otf=otf,
                  design_id=designId, exposure_time=exptime, cadence=cadence, center=center, magnitude=magnitude,
-                 from_sky=fromSky,  dry_run=dryRun, fit_dscale=fit_dScale, fit_dinr=fit_dInR,
+                 from_sky=fromSky, dry_run=dryRun, fit_dscale=fit_dScale, fit_dinr=fit_dInR,
                  exposure_delay=exposure_delay, tec_off=tec_off)
 
     @classmethod
@@ -87,6 +90,9 @@ class AutoguideStart(AgSequence):
             designId = cmdKeys['designId'].values[0]
         else:
             designId = iicActor.engine.visitManager.getCurrentDesignId()
+
+        # override designId if otf.
+        designId = False if otf else designId
 
         return cls(otf, designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR,
                    exposure_delay, tec_off, **seqKeys)
