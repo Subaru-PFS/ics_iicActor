@@ -1,14 +1,16 @@
-from importlib import reload
 import os
+from importlib import reload
+
 import ics.iicActor.sequenceList.fps as fpsSequence
 import ics.iicActor.utils.lib as iicUtils
 import ics.iicActor.utils.translate as translate
+import ics.utils.cmd as cmdUtils
 import iicActor.utils.pfsDesign.opdb as designDB
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.utils.threading import singleShot
 from iicActor.utils.engine import ExecMode
-import ics.utils.cmd as cmdUtils
+
 reload(fpsSequence)
 reload(iicUtils)
 reload(designDB)
@@ -38,7 +40,6 @@ class FpsCmd(object):
              f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [@(noTweak)] [<nIteration>] [<tolerance>] {translate.seqArgs}',
              self.moveToPfsDesign),
             ('moveToHome', f'[@(all)] [<exptime>] [<designId>] [<maskFile>] {translate.seqArgs}', self.moveToHome),
-            ('genBlackDotsConfig', f'[<maskFile>] {translate.seqArgs}', self.genBlackDotsConfig),
 
             ('movePhiToAngle', f'<angle> <nIteration> {translate.seqArgs}', self.movePhiToAngle),
             ('moveToSafePosition', f'{translate.seqArgs}', self.moveToSafePosition),
@@ -252,27 +253,6 @@ class FpsCmd(object):
 
         moveToHome = fpsSequence.MoveToHome.fromCmdKeys(self.actor, cmdKeys, designId=designId)
         self.engine.runInThread(cmd, moveToHome)
-
-    def genBlackDotsConfig(self, cmd):
-        """"""
-        cmdKeys = cmd.cmd.keywords
-
-        if 'maskFile' in cmdKeys:
-            maskFile = cmdKeys['maskFile'].values[0]
-            maskFile = os.path.join(self.actor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
-        else:
-            maskFile = ''
-
-        maskFile = f'maskFile={maskFile}' if maskFile else ''
-
-        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=f'createBlackDotDesign {maskFile}'.strip(), timeLim=10)
-        keys = cmdUtils.cmdVarToKeys(cmdVar)
-        designId = int(keys['fpsDesignId'].values[0], 16)
-
-        self.actor.declareFpsDesign(cmd, designId=designId)
-
-        genBlackDotsConfig = fpsSequence.GenBlackDotsConfig.fromCmdKeys(self.actor, cmdKeys, designId=designId)
-        self.engine.runInThread(cmd, genBlackDotsConfig)
 
     def movePhiToAngle(self, cmd):
         """
