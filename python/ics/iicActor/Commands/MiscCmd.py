@@ -1,8 +1,11 @@
+import os
 from importlib import reload
 
+import ics.iicActor.sequenceList.fps as fpsSequence
 import ics.iicActor.sequenceList.misc as misc
 import ics.iicActor.utils.lib as iicUtils
 import ics.iicActor.utils.translate as translate
+import ics.utils.cmd as cmdUtils
 import iicActor.utils.pfsDesign.opdb as designDB
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
@@ -34,6 +37,7 @@ class MiscCmd(object):
 
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
             ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] [<maskFile>] {translate.seqArgs}', self.nearDotConvergenceCmd),
+            ('genBlackDotsConfig', f'[<maskFile>] {translate.seqArgs}', self.genBlackDotsConfigCmd),
             ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [@(hscLamps)] [<mode>] {identArgs} {translate.seqArgs}', self.dotRoach),
         ]
 
@@ -120,6 +124,33 @@ class MiscCmd(object):
         fiberIdentification = misc.FiberIdentification.fromCmdKeys(self.actor, cmdKeys)
         self.engine.runInThread(cmd, fiberIdentification)
 
+    @singleShot
+    def genBlackDotsConfigCmd(self, cmd):
+        """Needs a dedicated command function for threading."""
+        return self.genBlackDotsConfig(cmd)
+
+    def genBlackDotsConfig(self, cmd):
+        """"""
+        cmdKeys = cmd.cmd.keywords
+
+        if 'maskFile' in cmdKeys:
+            maskFile = cmdKeys['maskFile'].values[0]
+            maskFile = os.path.join(self.actor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
+        else:
+            maskFile = ''
+
+        maskFile = f'maskFile={maskFile}' if maskFile else ''
+
+        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=f'createBlackDotDesign {maskFile}'.strip(), timeLim=10)
+        keys = cmdUtils.cmdVarToKeys(cmdVar)
+        designId = int(keys['fpsDesignId'].values[0], 16)
+
+        self.actor.declareFpsDesign(cmd, designId=designId)
+
+        genBlackDotsConfig = fpsSequence.GenBlackDotsConfig.fromCmdKeys(self.actor, cmdKeys, designId=designId)
+        self.engine.run(cmd, genBlackDotsConfig)
+
+    @singleShot
     def dotRoach(self, cmd):
         """"""
         cmdKeys = cmd.cmd.keywords
@@ -128,4 +159,11 @@ class MiscCmd(object):
         roaching = misc.DotRoach if 'hscLamps' in cmdKeys else misc.DotRoachPfiLamps
 
         dotRoach = roaching.fromCmdKeys(self.actor, cmdKeys)
-        self.engine.runInThread(cmd, dotRoach)
+        self.engine.run(cmd, dotRoach, doFinish=False)
+
+        if dotRoach.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="dotRoach not completed, stopping here."')
+            return
+
+        self.genBlackDotsConfig(cmd)
