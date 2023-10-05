@@ -1,5 +1,5 @@
 import numpy as np
-
+import ics.utils.sps.lamps.utils.lampState as lampState
 seqArgs = '[<name>] [<comments>] [@doTest] [@noDeps] [<groupId>] [<head>] [<tail>]'
 
 
@@ -54,11 +54,10 @@ def windowKeys(cmdKeys):
 
 
 def lampsKeys(cmdKeys):
-    lampNames = 'halogen', 'hgcd', 'hgar', 'argon', 'neon', 'krypton', 'xenon'
     doShutterTiming = 'doShutterTiming' in cmdKeys
     overHead = 5 if doShutterTiming else 0
 
-    keys = {name: int(round(cmdKeys[name].values[0]) + overHead) for name in lampNames if name in cmdKeys}
+    keys = {name: int(round(cmdKeys[name].values[0]) + overHead) for name in lampState.allLamps if name in cmdKeys}
 
     if not keys:
         raise ValueError('no lamps has been specified')

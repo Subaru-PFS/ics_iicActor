@@ -1,6 +1,6 @@
 from ics.iicActor.sps.sequence import SpsSequence
 from ics.iicActor.sps.subcmd import SpsExpose
-
+import ics.utils.sps.lamps.utils.lampState as lampState
 
 class TimedLampsSequence(SpsSequence):
     shutterRequired = False
@@ -13,7 +13,7 @@ class TimedLampsSequence(SpsSequence):
             exptime = 0.0
             lamps = []
 
-            for lamp in ['argon', 'hgcd', 'hgar', 'krypton', 'neon', 'xenon', 'halogen']:
+            for lamp in lampState.allLamps:
                 # ignore lampTime set to 0.0
                 if lamp in timedLamps.keys() and timedLamps[lamp]:
                     exptime = max(exptime, timedLamps[lamp])
