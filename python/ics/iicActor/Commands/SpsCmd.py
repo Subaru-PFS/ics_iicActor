@@ -23,7 +23,7 @@ class SpsCmd(object):
         identArgs = '[<cam>] [<arm>] [<specNum>]'
         commonArgs = f'{identArgs} [<duplicate>] {translate.seqArgs}'
         timedArcArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>] [@doShutterTiming]'
-        timedFlatArgs = '[<halogen>] [@doShutterTiming]'
+        timedFlatArgs = '[<halogen>] [<allFiberLamp>] [@doShutterTiming]'
         windowingArgs = '[<window>] [<blueWindow>] [<redWindow>]'
 
         self.vocab = [
@@ -74,6 +74,7 @@ class SpsCmd(object):
                                         keys.Key('krypton', types.Float(), help='Kr lamp on time'),
                                         keys.Key('hgcd', types.Float(), help='HgCd lamp on time'),
                                         keys.Key('xenon', types.Float(), help='Xenon lamp on time'),
+                                        keys.Key('allFiberLamp', types.Float(), help='allFiberLamp on time'),
 
                                         keys.Key('pixelRange', types.Float() * (1, 3),
                                                  help='pixels array(start, stop, step) for ditheredFlats'
