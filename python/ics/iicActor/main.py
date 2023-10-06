@@ -109,6 +109,15 @@ class IicActor(actorcore.ICC.ICC):
             def pfsDesignDirName(lightSource):
                 return os.path.join(self.actorConfig['pfsDesign']['rootDir'], lightSource)
 
+            def getAflDesignId(lightSource, spectrographId):
+                """Return correct designId for all fiber lamp."""
+                if lightSource == 'afl9mtp':
+                    return 0x0010000000000000
+                elif lightSource == 'afl12mtp' and spectrographId in [1, 2]:
+                    return 0x0100000000000000
+                elif lightSource == 'afl12mtp' and spectrographId in [3, 4]:
+                    return 0x1000000000000000
+
             gfm = pd.DataFrame(FiberIds().data)
             designToMerge = []
             designNames = []
@@ -132,13 +141,20 @@ class IicActor(actorcore.ICC.ICC):
                     pfsDesign.fiberId = fiberId
                     pfsDesign.objId = fiberId
 
-                elif lightSource in {'dcb', 'dcb2'}:
-                    designId = self.models[lightSource].keyVarDict['designId'].getValue()
-                    bundleNames = self.models[lightSource].keyVarDict['fiberConfig'].getValue()
-                    designNames.append(f'{lightSource}({bundleNames})')
+                elif lightSource in {'dcb', 'dcb2', 'afl9mtp', 'afl12mtp'}:
+                    if 'dcb' in lightSource:
+                        designId = self.models[lightSource].keyVarDict['designId'].getValue()
+                        designName = f'{lightSource}({self.models[lightSource].keyVarDict["fiberConfig"].getValue()})'
+                        targetType = TargetType.DCB
+                    else:
+                        designId = getAflDesignId(lightSource, spectrographId)
+                        designName = lightSource
+                        targetType = TargetType.AFL
+
+                    designNames.append(designName)
                     pfsDesign = PfsDesign.read(designId, pfsDesignDirName(lightSource))
                     pfsDesign = pfsDesign[pfsDesign.spectrograph == spectrographId]
-                    pfsDesign.targetType = np.repeat(TargetType.DCB, len(pfsDesign)).astype('int32')
+                    pfsDesign.targetType = np.repeat(targetType, len(pfsDesign)).astype('int32')
 
                 else:
                     raise ValueError(f'cannot merge design for {lightSource}')

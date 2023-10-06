@@ -130,7 +130,7 @@ class LampsCmd(SubCmd):
 
 class DcbCmd(LampsCmd):
     def __init__(self, sequence, *args, **kwargs):
-        if not sequence.lightSource.isDcb:
+        if not sequence.lightSource.useDcbActor:
             raise RuntimeError('this command has been designed for dcb only')
 
         LampsCmd.__init__(self, sequence, *args, **kwargs)
