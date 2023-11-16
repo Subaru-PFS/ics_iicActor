@@ -12,7 +12,6 @@ class SpsSequence(sequence.Sequence):
 
     def __init__(self, cams, *args, isWindowed=False, **kwargs):
         self.cams = cams
-        self.lightSource = self.getLightSource()
 
         sequence.Sequence.__init__(self, *args, **kwargs)
         self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
@@ -21,12 +20,9 @@ class SpsSequence(sequence.Sequence):
     def allLightSources(self):
         return list(set([cam.lightSource for cam in self.cams]))
 
-    def getLightSource(self):
+    @property
+    def lightSource(self):
         """Get light source from our sets of specs."""
-        # easy in that case.
-        if not self.lightBeam:
-            return 'None'
-
         if len(self.allLightSources) > 1:
             raise RuntimeError('there can only be one light source for a given sequence')
 

@@ -1,6 +1,7 @@
+import ics.utils.sps.lamps.utils.lampState as lampState
 from ics.iicActor.sps.sequence import SpsSequence
 from ics.iicActor.sps.subcmd import SpsExpose
-import ics.utils.sps.lamps.utils.lampState as lampState
+
 
 class TimedLampsSequence(SpsSequence):
     shutterRequired = False
@@ -19,9 +20,14 @@ class TimedLampsSequence(SpsSequence):
                     exptime = max(exptime, timedLamps[lamp])
                     lamps.append(f"{lamp}={timedLamps[lamp]}")
 
-            return exptime, f'prepare {" ".join(lamps)}'
+            return len(lamps) != 0, exptime, f'prepare {" ".join(lamps)}'
 
-        maxLampOnTime, lampsCmdStr = doTimedLamps(lampKeys)
+        # retrieving iis keys.
+        iisKeys = lampKeys.pop('iis', None)
+
+        doIIS, maxIisLampOnTime, IisCmdStr = doTimedLamps(iisKeys)
+        doLamps, maxLampOnTime, lampsCmdStr = doTimedLamps(lampKeys)
+
         # small note here, the longer wait will happen in the expose command, not prepare.
         # pfilamps.waitForReadySignal() is where its happening, ~2s for qth, immediate for neon,krypton,argon,xenon.
         # for hgcd can take up to 2 minutes ! It won't work on n arm with the current scheme, but I think most hgcd
@@ -32,14 +38,20 @@ class TimedLampsSequence(SpsSequence):
             exptime = lampKeys['shutterTiming']
             doShutterTiming = True
         else:
-            exptime = maxLampOnTime
+            exptime = max(maxLampOnTime, maxIisLampOnTime)
             doShutterTiming = False
 
         for nExposure in range(duplicate):
-            self.add(actor='lamps', cmdStr=lampsCmdStr)
+            # adding iis and lamps prepare commands.
+            if doIIS:
+                self.add(actor='sps', cmdStr=f'iis {IisCmdStr}', cams=cams)
+            if doLamps:
+                self.add(actor='lamps', cmdStr=lampsCmdStr)
+
             # creating SpsExpose command object.
             spsExpose = SpsExpose.specify(self, exptype, exptime, cams,
-                                          doLamps=True, doShutterTiming=doShutterTiming, timeOffset=timeOffset,
+                                          doLamps=doLamps, doIIS=doIIS,
+                                          doShutterTiming=doShutterTiming, timeOffset=timeOffset,
                                           doTest=self.doTest, doScienceCheck=self.doScienceCheck, slideSlit=slideSlit,
                                           **windowKeys)
             list.append(self, spsExpose)

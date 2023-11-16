@@ -1,5 +1,6 @@
-import numpy as np
 import ics.utils.sps.lamps.utils.lampState as lampState
+import numpy as np
+
 seqArgs = '[<name>] [<comments>] [@doTest] [@noDeps] [<groupId>] [<head>] [<tail>]'
 
 
@@ -54,15 +55,20 @@ def windowKeys(cmdKeys):
 
 
 def lampsKeys(cmdKeys):
+    def toIisArg(name):
+        return f'iis{name.capitalize()}'
+
     doShutterTiming = 'doShutterTiming' in cmdKeys
     overHead = 5 if doShutterTiming else 0
 
     keys = {name: int(round(cmdKeys[name].values[0]) + overHead) for name in lampState.allLamps if name in cmdKeys}
+    iisKeys = {name: int(round(cmdKeys[toIisArg(name)].values[0]) + overHead) for name in lampState.allLamps if toIisArg(name) in cmdKeys}
 
-    if not keys:
+    if not (keys or iisKeys):
         raise ValueError('no lamps has been specified')
 
-    keys['shutterTiming'] = max(keys.values()) - overHead if doShutterTiming else 0
+    keys['shutterTiming'] = max(list(keys.values()) + list(iisKeys.values())) - overHead if doShutterTiming else 0
+    keys['iis'] = iisKeys
 
     return keys
 

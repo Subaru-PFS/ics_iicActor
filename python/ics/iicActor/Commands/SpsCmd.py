@@ -22,8 +22,9 @@ class SpsCmd(object):
         self.actor = actor
         identArgs = '[<cam>] [<arm>] [<specNum>]'
         commonArgs = f'{identArgs} [<duplicate>] {translate.seqArgs}'
-        timedArcArgs = '[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>] [@doShutterTiming]'
-        timedFlatArgs = '[<halogen>] [<allFiberLamp>] [@doShutterTiming]'
+        timedIisArgs = '[<iisArgon>] [<iisHgar>] [<iisNeon>] [<iisKrypton>]'
+        timedArcArgs = f'[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>] {timedIisArgs} [@doShutterTiming]'
+        timedFlatArgs = '[<halogen>] [<allFiberLamp>] [<iisHalogen>] [@doShutterTiming]'
         windowingArgs = '[<window>] [<blueWindow>] [<redWindow>]'
 
         self.vocab = [
@@ -94,6 +95,18 @@ class SpsCmd(object):
                                                  help='first row, total number of rows to read'),
                                         keys.Key('interleaveDark', types.Float(),
                                                  help='darkTime for interleaved darks)'),
+
+                                        keys.Key('iisHalogen', types.Float(),
+                                                 help='IIS quartz halogen lamp on time'),
+                                        keys.Key('iisArgon', types.Float(),
+                                                 help='IIS Ar lamp on time'),
+                                        keys.Key('iisHgar', types.Float(),
+                                                 help='IIS HgAr lamp on time'),
+                                        keys.Key('iisNeon', types.Float(),
+                                                 help='IIS lamp on time'),
+                                        keys.Key('iisKrypton', types.Float(),
+                                                 help='IIS Kr lamp on time'),
+
                                         )
 
     @property
