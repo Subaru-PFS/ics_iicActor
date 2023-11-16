@@ -7,20 +7,35 @@ from iicActor.utils import exception
 
 
 class Resource(object):
+    default = 'nominal'
+
     def __init__(self, name):
         self.name = name
         self.available = True
+        self.state = Resource.default
 
-    def lock(self):
+    def isAvailable(self, state):
+        if state != Resource.default and self.state == state:
+            return True
+
+        return self.available
+
+    def lock(self, state):
         """"""
         if not self.available:
+            # no need to lock since it's already locked
+            if state != Resource.default and self.state == state:
+                return
+
             raise exception.ResourceIsBusy(f'{self.name} already busy.')
 
         self.available = False
+        self.state = state
 
     def free(self):
         """"""
         self.available = True
+        self.state = Resource.default
 
 
 class ResourceManager(object):
@@ -92,16 +107,29 @@ class ResourceManager(object):
 
     def request(self, resources):
         """Requesting and locking given resources."""
+
+        def translate(resourceName):
+            """Adding a special case for shutter closed basically."""
+            state = Resource.default
+            # special case when required shutters closed
+            if '.closed' in required:
+                resourceName, state = required.split('.')
+
+            return resourceName, state
+
         notConnected = []
         isBusy = []
+        locked = []
 
         for required in resources:
+            required, state = translate(required)
+
             # checking for unconnected resources.
             if required not in self.resources:
                 notConnected.append(required)
                 continue
-            # checking for unavailable resources.
-            if not self.resources[required].available:
+            # checking for unavailable resources.self.res
+            if not self.resources[required].isAvailable(state):
                 isBusy.append(required)
 
         if notConnected:
@@ -112,10 +140,14 @@ class ResourceManager(object):
 
         # all tests have passed we can lock everything down
         self.logger.info(f'locking resources : {",".join(resources)}')
-        for required in resources:
-            self.resources[required].lock()
 
-        return resources
+        for required in resources:
+            required, state = translate(required)
+            self.resources[required].lock(state)
+            # keeping only the locked resources.
+            locked.append(required)
+
+        return locked
 
     def free(self, locked):
         """Freeing resources."""
