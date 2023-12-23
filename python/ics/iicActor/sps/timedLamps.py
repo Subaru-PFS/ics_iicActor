@@ -23,7 +23,13 @@ class TimedLampsSequence(SpsSequence):
             return len(lamps) != 0, exptime, f'prepare {" ".join(lamps)}'
 
         # retrieving iis keys.
-        iisKeys = lampKeys.pop('iis', None)
+        # This feels lie it should be something like:
+        #iisKeys = dict()
+        #for key in lampKeys.keys():
+        #    if key.startswith('iis'):
+        #        iisKeys[key[3:]] = lampKeys.pop(key)
+        # but I don't want to figure out the details.
+        iisKeys = lampKeys.pop('iis', dict())
 
         doIIS, maxIisLampOnTime, IisCmdStr = doTimedLamps(iisKeys)
         doLamps, maxLampOnTime, lampsCmdStr = doTimedLamps(lampKeys)
