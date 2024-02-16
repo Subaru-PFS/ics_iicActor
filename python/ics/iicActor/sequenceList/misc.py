@@ -47,7 +47,6 @@ class DotCrossing(FpsSequence):
         self.tail.add('sps', 'bia off')
         self.tail.add('peb', 'led off')
 
-
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct DotCrossing object."""
@@ -83,7 +82,7 @@ class FiberIdentification(SpsSequence):
 
         for groupId in fiberGroups:
             self.add('fps', f'cobraMoveSteps phi',
-                     stepsize=3000, maskFile=os.path.join(maskFilesRoot, f'group{groupId}.csv'))
+                     stepsize=3000, maskFile=os.path.join(maskFilesRoot, f'mtpGroup{str(groupId).zfill(2)}.csv'))
             # use sps erase command to niet things up.
             self.add('sps', 'erase', cams=cams)
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
