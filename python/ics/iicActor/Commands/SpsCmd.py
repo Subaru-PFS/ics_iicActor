@@ -45,6 +45,7 @@ class SpsCmd(object):
             ('expose', f'flat {timedFlatArgs} {windowingArgs} {commonArgs}', self.doFlat),
 
             ('driftFlats', f'{timedFlatArgs} [<pixelRange>] [@(keepHexapodOn)] {commonArgs}', self.driftFlats),
+            ('driftFlats', f'<exptime> [<pixelRange>] [@(keepHexapodOn)] {commonArgs}', self.driftFlats),
             ('ditheredArcs', f'{timedArcArgs} <pixelStep> {commonArgs}', self.ditheredArcs),
             ('defocusedArcs', f'{timedArcArgs} <position> {commonArgs}', self.defocusedArcs),
             ('fpa', f'throughfocus <micronsRange> {timedArcArgs} {commonArgs}', self.fpaThroughFocus),
@@ -652,7 +653,10 @@ class SpsCmd(object):
         """
         cmdKeys = cmd.cmd.keywords
 
-        driftFlats = calib.DriftFlats.fromCmdKeys(self.actor, cmdKeys)
+        # selecting shutter driven or lamp driven drift flats.
+        DriftFlatsClass = calib.ShutterDriftFlats if 'exptime' in cmdKeys else calib.DriftFlats
+        driftFlats = DriftFlatsClass.fromCmdKeys(self.actor, cmdKeys)
+
         self.engine.runInThread(cmd, driftFlats)
 
     def ditheredArcs(self, cmd):

@@ -84,24 +84,42 @@ class DitheredFlats(TimedLampsSequence):
                 SpsSequence.expose(self, 'dark', interleaveDark, nirCam, duplicate=1)
 
 
-class DriftFlats(TimedLampsSequence):
+class ShutterDriftFlats(SpsSequence):
     """ Dithered Flats sequence """
     seqtype = 'driftFlats'
 
-    def __init__(self, cams, lampsKeys, duplicate, pixMin, pixMax, doStopHexapod, **seqKeys):
+    def __init__(self, cams, exptime, duplicate, pixMin, pixMax, doStopHexapod, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         # go home first.
         self.add('sps', 'slit start', cams=cams)
         self.add('sps', 'slit home', cams=cams)
 
-        self.expose('flat', lampsKeys, cams, duplicate=duplicate, slideSlit=f'{pixMin:.1f},{pixMax:.1f}')
+        self.expose('flat', exptime, cams, duplicate=duplicate, slideSlit=f'{pixMin:.1f},{pixMax:.1f}')
 
         # move back home
         self.tail.add('sps', 'slit home', cams=cams)
         # stop hexapod if required.
         if doStopHexapod:
             self.tail.add('sps', 'slit stop', cams=cams)
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct ScienceObject object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+        identKeys = translate.identKeys(cmdKeys)
+        exptime, duplicate = translate.spsExposureKeys(cmdKeys)
+
+        pixMin, pixMax, num = cmdKeys['pixelRange'].values
+        doStopHexapod = 'keepHexapodOn' not in cmdKeys
+
+        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
+
+        return cls(cams, exptime, duplicate, pixMin, pixMax, doStopHexapod, **seqKeys)
+
+
+class DriftFlats(ShutterDriftFlats, TimedLampsSequence):
+    """ Dithered Flats sequence """
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):

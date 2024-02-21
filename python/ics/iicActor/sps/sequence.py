@@ -28,7 +28,7 @@ class SpsSequence(sequence.Sequence):
 
         return self.allLightSources[0]
 
-    def expose(self, exptype, exptime, cams, duplicate=1, windowKeys=None):
+    def expose(self, exptype, exptime, cams, duplicate=1, windowKeys=None, slideSlit=None):
         """Append duplicate * sps expose to sequence."""
         # being nice about input arguments.
         exptime = [exptime] if not isinstance(exptime, list) else exptime
@@ -39,7 +39,8 @@ class SpsSequence(sequence.Sequence):
             for nExposure in range(duplicate):
                 # creating SpsExpose command object.
                 spsExpose = SpsExpose.specify(self, exptype, expTime, cams,
-                                              doTest=self.doTest, doScienceCheck=self.doScienceCheck, **windowKeys)
+                                              doTest=self.doTest, doScienceCheck=self.doScienceCheck,
+                                              slideSlit=slideSlit, **windowKeys)
                 list.append(self, spsExpose)
 
     def instantiate(self, actor, cmdStr, **kwargs):
