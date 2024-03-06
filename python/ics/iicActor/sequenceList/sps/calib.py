@@ -93,10 +93,11 @@ class ShutterDriftFlats(SpsSequence):
 
         # go home first.
         self.add('sps', 'slit start', cams=cams)
-        # moving to the beginning of the range.
-        self.add('sps', 'slit dither', x=pixMin, pixels=True, cams=cams)
 
-        self.expose('flat', exptime, cams, duplicate=duplicate, slideSlit=f'{pixMin:.1f},{pixMax:.1f}')
+        for iDuplicate in range(duplicate):
+            # moving to the beginning of the range // required for N.
+            self.add('sps', 'slit dither', x=pixMin, pixels=True, cams=cams)
+            self.expose('flat', exptime, cams, duplicate=duplicate, slideSlit=f'{pixMin:.1f},{pixMax:.1f}')
 
         # move back home
         self.tail.add('sps', 'slit home', cams=cams)
