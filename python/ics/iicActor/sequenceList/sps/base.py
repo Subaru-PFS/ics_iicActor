@@ -157,7 +157,7 @@ class DefocusedArcs(TimedLampsSequence):
     """ Defocus sequence """
     seqtype = 'defocusedArcs'
 
-    def __init__(self, cams, lampsKeys, duplicate, positions, hexapodOff, **seqKeys):
+    def __init__(self, cams, lampsKeys, iisKeys, duplicate, positions, hexapodOff, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
         # start hexapod and move home.
         self.add('sps', 'slit start', cams=cams)
@@ -166,7 +166,9 @@ class DefocusedArcs(TimedLampsSequence):
         for position in positions:
             multFactor, _ = defocused_exposure_times_single_position(exp_time_0=1, att_value_0=None,
                                                                      defocused_value=position)
+
             scaled = dict([(lamp, exptime * multFactor) for lamp, exptime in lampsKeys.items()])
+            scaled['iis'] = dict([(lamp, exptime * multFactor) for lamp, exptime in iisKeys.items()])
 
             self.add('sps', 'slit', focus=position, abs=True, cams=cams)
             self.expose('arc', scaled, cams, duplicate=duplicate)
@@ -184,13 +186,14 @@ class DefocusedArcs(TimedLampsSequence):
         identKeys = translate.identKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
+        iisKeys = lampsKeys.pop('iis', None)  # removing iis for now.
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num)).round(6)
 
         cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
         hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
-        return cls(cams, lampsKeys, duplicate, positions, hexapodOff, **seqKeys)
+        return cls(cams, lampsKeys, iisKeys, duplicate, positions, hexapodOff, **seqKeys)
 
 
 class FpaThroughFocus(TimedLampsSequence):
