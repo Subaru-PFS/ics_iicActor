@@ -4,7 +4,8 @@ from pfs.datamodel.pfsConfig import PfsDesign
 from pfs.datamodel.utils import calculate_pfsDesignId
 from pfs.utils.fiberids import FiberIds
 
-fakeRa, fakeDec = 100, -89
+from pfs.utils.pfsDesignUtils import fakeRa, fakeDec
+
 
 def fakePfiNominal(fiberId):
     """Fake PfiNominal from fiberId, basically take x,y from GFM."""
