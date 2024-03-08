@@ -22,6 +22,17 @@ class TimedLampsSequence(SpsSequence):
 
             return len(lamps) != 0, exptime, f'prepare {" ".join(lamps)}'
 
+        def prepareTotalLampTime(timedLamps):
+            [lamp] = [lamp for lamp in ['hgcd', 'hgar'] if lamp in timedLamps]
+            estimatedTime = timedLamps[lamp]
+            arms = set([cam.arm for cam in cams])
+
+            estimatedTime += (25 if 'n' in arms else 0)
+            estimatedTime += (50 if 'b' in arms or 'r' in arms or 'm' in arms else 0)
+            estimatedTime *= duplicate
+
+            return estimatedTime, f'prepare {lamp}={estimatedTime}'
+
         # retrieving iis keys.
         iisKeys = lampKeys.pop('iis', None)
 
@@ -32,7 +43,18 @@ class TimedLampsSequence(SpsSequence):
         # pfilamps.waitForReadySignal() is where its happening, ~2s for qth, immediate for neon,krypton,argon,xenon.
         # for hgcd can take up to 2 minutes ! It won't work on n arm with the current scheme, but I think most hgcd
         # lines are in the blue anyway.
-        timeOffset = 240 if ('hgcd' in lampsCmdStr or 'hgar' in lampsCmdStr) else 90
+
+        # other scheme when lamp is turn on before end. INSTRM-2184.
+        doImmediateGo = 'hgcd' in lampsCmdStr or 'hgar' in lampsCmdStr
+
+        if doImmediateGo:
+            estimatedTime, lampsCmdStr = prepareTotalLampTime(lampKeys)
+            self.add(actor='lamps', cmdStr=lampsCmdStr)
+            self.add(actor='lamps', cmdStr='waitForReadySignal', timeLim=240)
+            self.add(actor='lamps', cmdStr='go noWait')
+            # enforce shutterTiming and doLamps to False.
+            lampKeys['shutterTiming'] = False
+            doLamps = False
 
         if lampKeys['shutterTiming']:
             exptime = lampKeys['shutterTiming']
@@ -51,7 +73,11 @@ class TimedLampsSequence(SpsSequence):
             # creating SpsExpose command object.
             spsExpose = SpsExpose.specify(self, exptype, exptime, cams,
                                           doLamps=doLamps, doIIS=doIIS,
-                                          doShutterTiming=doShutterTiming, timeOffset=timeOffset,
+                                          doShutterTiming=doShutterTiming,
                                           doTest=self.doTest, doScienceCheck=self.doScienceCheck, slideSlit=slideSlit,
                                           **windowKeys)
             list.append(self, spsExpose)
+
+        # stop lamp in the end because we're done
+        if doImmediateGo:
+            self.add(actor='lamps', cmdStr='stop')
