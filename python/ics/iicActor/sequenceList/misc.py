@@ -235,6 +235,6 @@ class DotRoachPfiLamps(DotRoach, TimedLampsSequence):
 
     # initial exposure
     def expose(self, exptype, exptime, cams, **windowKeys):
-        exptime = dict(halogen=int(exptime), shutterTiming=False)
+        exptime = dict(halogen=int(exptime), shutterTiming=False, iis=dict())
 
         TimedLampsSequence.expose(self, 'flat', exptime, cams, **windowKeys)
