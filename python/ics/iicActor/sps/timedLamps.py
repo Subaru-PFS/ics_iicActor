@@ -9,6 +9,7 @@ class TimedLampsSequence(SpsSequence):
     def expose(self, exptype, lampKeys, cams, duplicate=1, windowKeys=None, slideSlit=None):
         """Override expose function to handle dcb/pfilamps lampKeys arguments."""
         windowKeys = dict() if windowKeys is None else windowKeys
+        lampKeys = lampKeys.copy()
 
         def doTimedLamps(timedLamps):
             exptime = 0.0
