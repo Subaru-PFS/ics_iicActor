@@ -77,7 +77,7 @@ class MoveToPfsDesign(FpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'moveToPfsDesign'
 
-    def __init__(self, designId, nIteration, tolerance, exptime, maskFile, goHome, noTweak, **seqKeys):
+    def __init__(self, designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, noTweak, **seqKeys):
         FpsSequence.__init__(self, **seqKeys)
 
         # turning illuminators on
@@ -86,7 +86,7 @@ class MoveToPfsDesign(FpsSequence):
 
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
-                 tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=goHome, twoStepsOff=not goHome,
+                 tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=goHome, twoStepsOff=twoStepsOff,
                  noTweak=noTweak, timeLim=600)
 
         # turning illuminators off
@@ -107,9 +107,10 @@ class MoveToPfsDesign(FpsSequence):
         nIteration = cmdKeys['nIteration'].values[0] if 'nIteration' in cmdKeys else False
         tolerance = cmdKeys['tolerance'].values[0] if 'tolerance' in cmdKeys else False
         goHome = 'noHome' not in cmdKeys
+        twoStepsOff = 'twoStepsOff' in cmdKeys
         noTweak = 'noTweak' in cmdKeys
 
-        return cls(designId, nIteration, tolerance, exptime, maskFile, goHome, noTweak, **seqKeys)
+        return cls(designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, noTweak, **seqKeys)
 
 
 class MoveToHome(FpsSequence):
