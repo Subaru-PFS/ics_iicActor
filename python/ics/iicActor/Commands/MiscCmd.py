@@ -162,8 +162,34 @@ class MiscCmd(object):
 
         # use pfiLamps by default.
         roaching = misc.DotRoach if 'hscLamps' in cmdKeys else misc.DotRoachPfiLamps
+        roachingInit = misc.DotRoachInit if 'hscLamps' in cmdKeys else misc.DotRoachInitPfiLamps
 
         dotRoach = roaching.fromCmdKeys(self.actor, cmd)
+        dotRoachInit = roachingInit.fromCmdKeys(self.actor, cmd)
+
+        moveToHomeAll = fpsSequence.MoveToHome(exptime=4.8, designId=0x70923278b1e654c7)
+        self.engine.run(cmd, moveToHomeAll, doFinish=False)
+
+        if moveToHomeAll.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="moveToHome not completed, stopping here."')
+            return
+
+        self.engine.run(cmd, dotRoachInit, doFinish=False)
+
+        if dotRoachInit.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="dotRoachInit not completed, stopping here."')
+            return
+
+        # converge to near dot in the first place.
+        nearDotConvergence = self.nearDotConvergence(cmd, designName='phiCrossing', doFinish=False)
+        # something happened, convergence did not complete, we need to stop here.
+        if nearDotConvergence.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="NearDotConvergence not completed, stopping here."')
+            return
+
         self.engine.run(cmd, dotRoach, doFinish=False)
 
         if dotRoach.status.flag != Flag.FINISHED:
