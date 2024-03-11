@@ -36,13 +36,13 @@ class AgCmd(object):
                                         keys.Key('tail', types.String() * (1,), help='cmdStr list to process after'),
                                         keys.Key("designId", types.Long(),
                                                  help="pfsDesignId for the field, which defines the fiber positions"),
-                                        keys.Key('exptime', types.Float() * (1,), help='exptime list (seconds)'),
+                                        keys.Key('exptime', types.Int(), help='exposure time in millisecond'),
                                         keys.Key("magnitude", types.Float()),
                                         keys.Key("cadence", types.Int()),
                                         keys.Key("center", types.Float() * (1, 3)),
                                         keys.Key('fit_dScale', types.String(), help='do fit dScale (yes|no)'),
                                         keys.Key('fit_dInR', types.String(), help='do fit dInR (yes|no)'),
-                                        keys.Key("exposure_delay", types.Float(), help='delay in milliseconds between AG cameras'),
+                                        keys.Key("exposure_delay", types.Int(), help='delay in milliseconds between AG cameras'),
                                         keys.Key('tec_off', types.String(), help='AG cameras thermoelectric coolers turned off'))
     @property
     def engine(self):
