@@ -33,7 +33,7 @@ class AcquireField(AgSequence):
         """Defining rules to construct ScienceObject object."""
         seqKeys = translate.seqKeys(cmdKeys)
 
-        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else None
+        exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
         otf = True if 'otf' in cmdKeys else False
         guide = 'no' if 'guideOff' in cmdKeys else None
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
@@ -75,7 +75,7 @@ class AutoguideStart(AgSequence):
 
         otf = True if 'otf' in cmdKeys else False
         fromSky = 'yes' if 'fromSky' in cmdKeys else None
-        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else None
+        exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
         cadence = cmdKeys['cadence'].values[0] if 'cadence' in cmdKeys else None
         center = cmdKeys['center'].values if 'center' in cmdKeys else None
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None

@@ -36,7 +36,8 @@ class AgCmd(object):
                                         keys.Key('tail', types.String() * (1,), help='cmdStr list to process after'),
                                         keys.Key("designId", types.Long(),
                                                  help="pfsDesignId for the field, which defines the fiber positions"),
-                                        keys.Key('exptime', types.Int(), help='exposure time in millisecond'),
+                                        # exptime is an integer for ag but argument type must be consistent for all commands.
+                                        keys.Key('exptime', types.Float() * (1,), help='exposure time in millisecond'),
                                         keys.Key("magnitude", types.Float()),
                                         keys.Key("cadence", types.Int()),
                                         keys.Key("center", types.Float() * (1, 3)),
