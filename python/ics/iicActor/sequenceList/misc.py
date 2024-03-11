@@ -126,8 +126,8 @@ class DotRoach(SpsSequence):
         # steps22 = [25, 32, 40, 50, 60, 70, 80]
 
         # safer scenario, adding extra steps
-        steps21 = [125, 95, 75, 60, 50, 45, 50, 60, 75, 95, 115, 140, 170, 200, 230, 265, 295, 320, 360]
-        steps22 = [25, 30, 35, 45, 55, 65, 75, 85]
+        steps21 = [125, 95, 75, 60, 50, 45, 50, 60, 75, 95, 125, 150, 180, 210, 245, 280, 310, 330, 360]
+        steps22 = [20, 25, 30, 35, 40, 45, 50, 60, 70, 80]
 
         # quicker scenario.
         steps31 = [177, 133, 100, 76, 63, 62, 77, 102, 140, 192, 265, 362, 494]
@@ -157,39 +157,35 @@ class DotRoach(SpsSequence):
         # use sps erase command to niet things up.
         self.add('sps', 'erase', cams=cams)
 
-        # initial exposure
+        # first exposure after going to nearDot
+        firstIteration = 1
         self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-        self.add('drp', 'processDotRoach', iteration=1)
+        self.add('drp', 'processDotRoach', iteration=firstIteration)
 
         for iterNum, stepSize in enumerate(steps1):
+            iterNum = iterNum + firstIteration
             self.add('fps', f'cobraMoveSteps {motor}', stepsize=-stepSize, maskFile=maskFilePath(iterNum))
 
-            # first image takes longer to process because of fiberTraces preparation.
-            if iterNum == 0:
-                self.add('sps', 'erase', cams=cams)
             # for the last iter, we declare that'll go reverse.
-            elif iterNum == len(steps1) - 1:
+            if iterNum == len(steps1):
                 self.add('drp', 'dotRoach phase2')
 
             # expose and process.
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-            self.add('drp', 'processDotRoach', iteration=iterNum + 2)
+            self.add('drp', 'processDotRoach', iteration=iterNum + 1)
 
-        maskNumOffset = len(steps1) + 1
+        maskNumOffset = len(steps1) + firstIteration
         for iterNum, stepSize in enumerate(steps2):
             maskFileNum = maskNumOffset + iterNum
             self.add('fps', f'cobraMoveSteps {motor}', stepsize=stepSize, maskFile=maskFilePath(maskFileNum))
 
-            # for the last iter, we declare that'll go reverse.
+            # no need to go further
             if iterNum == len(steps2) - 1:
-                self.add('drp', 'dotRoach phase3')
+                break
 
             # expose and process.
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
             self.add('drp', 'processDotRoach', iteration=maskFileNum + 1)
-
-        maskFileNum = len(steps1) + len(steps2)
-        self.add('fps', f'cobraMoveSteps {motor}', stepsize=-20, maskFile=maskFilePath(maskFileNum))
 
         # turning drp processing off
         self.add('drp', 'stopDotRoach')

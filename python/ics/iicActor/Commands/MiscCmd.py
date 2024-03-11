@@ -159,7 +159,7 @@ class MiscCmd(object):
     def dotRoach(self, cmd):
         """"""
         cmdKeys = cmd.cmd.keywords
-
+        homeDesignId = 0x2bdf7785b7d8ca31
         # use pfiLamps by default.
         roaching = misc.DotRoach if 'hscLamps' in cmdKeys else misc.DotRoachPfiLamps
         roachingInit = misc.DotRoachInit if 'hscLamps' in cmdKeys else misc.DotRoachInitPfiLamps
@@ -167,7 +167,9 @@ class MiscCmd(object):
         dotRoach = roaching.fromCmdKeys(self.actor, cmd)
         dotRoachInit = roachingInit.fromCmdKeys(self.actor, cmd)
 
-        moveToHomeAll = fpsSequence.MoveToHome(exptime=4.8, designId=0x70923278b1e654c7)
+        # first declare design and going home.
+        self.actor.declareFpsDesign(cmd, designId=homeDesignId)
+        moveToHomeAll = fpsSequence.MoveToHome(exptime=4.8, designId=homeDesignId)
         self.engine.run(cmd, moveToHomeAll, doFinish=False)
 
         if moveToHomeAll.status.flag != Flag.FINISHED:
@@ -175,6 +177,7 @@ class MiscCmd(object):
                 cmd.fail('text="moveToHome not completed, stopping here."')
             return
 
+        # running dotRoach init to take reference flux.
         self.engine.run(cmd, dotRoachInit, doFinish=False)
 
         if dotRoachInit.status.flag != Flag.FINISHED:
