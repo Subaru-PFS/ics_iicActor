@@ -43,6 +43,10 @@ class IicActor(actorcore.ICC.ICC):
         return self.engine.visitManager
 
     @property
+    def spsConfig(self):
+        return self.engine.resourceManager.spsConfig
+
+    @property
     def pfiConnected(self):
         return 'pfi' in self.buffer.lightSources
 

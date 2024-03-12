@@ -43,15 +43,14 @@ class DitheredFlats(SpsSequence):
             self.expose('flat', exptime, cameraWithHexapodPowerCycled, duplicate=duplicate)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys, forceHalogen=True)
         positions = translate.ditheredFlatsKeys(cmdKeys)
 
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
         hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
         return cls(cams, exptime, dcbOn, dcbOff, positions, duplicate, hexapodOff, **seqKeys)
@@ -74,14 +73,12 @@ class Arcs(SpsSequence):
         self.expose('arc', exptime, cams, duplicate=duplicate)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, exptime, dcbOn, dcbOff, duplicate, **seqKeys)
 
@@ -103,15 +100,13 @@ class Flats(SpsSequence):
         self.expose('flat', exptime, cams, duplicate=duplicate, windowKeys=windowKeys)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         windowKeys = translate.windowKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys, forceHalogen=True)
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, exptime, dcbOn, dcbOff, duplicate, windowKeys, **seqKeys)
 
@@ -161,7 +156,7 @@ class DitheredArcs(SpsSequence):
             self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
         seqKeys = translate.seqKeys(cmdKeys)
         identKeys = translate.identKeys(cmdKeys)
@@ -197,7 +192,7 @@ class DetThroughFocus(SpsSequence):
         self.tail.add('sps', 'fpa toFocus', cams=cams)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
         seqKeys = translate.seqKeys(cmdKeys)
         identKeys = translate.identKeys(cmdKeys)
@@ -233,7 +228,7 @@ class SlitThroughFocus(SpsSequence):
         self.tail.add('sps', 'slit', focus=0, abs=True, cams=cams)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
         seqKeys = translate.seqKeys(cmdKeys)
         identKeys = translate.identKeys(cmdKeys)
@@ -280,7 +275,7 @@ class DefocusedArcs(SpsSequence):
             self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
         seqKeys = translate.seqKeys(cmdKeys)
         identKeys = translate.identKeys(cmdKeys)

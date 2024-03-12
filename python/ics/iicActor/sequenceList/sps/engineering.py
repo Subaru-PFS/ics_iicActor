@@ -56,10 +56,10 @@ class HexapodStability(SpsSequence):
             self.expose('arc', lampsKeys, cameraWithHexapodPowerCycled, duplicate=duplicate)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
 
@@ -70,7 +70,6 @@ class HexapodStability(SpsSequence):
         [start, stop, step] = cmdKeys['position'].values if 'position' in cmdKeys else [-0.05, 0.055, 0.01]
         positions = np.arange(start, stop, step)[::-1]
 
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
         hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
         return cls(cams, lampsKeys, duplicate, positions, hexapodOff, **seqKeys)
@@ -80,23 +79,22 @@ class RdaMove(Sequence):
     """ Rda move sequence """
     seqtype = 'rdaMove'
 
-    def __init__(self, specModules, targetPosition, **seqKeys):
+    def __init__(self, specNums, targetPosition, **seqKeys):
         Sequence.__init__(self, **seqKeys)
-        specNums = [specModule.specNum for specModule in specModules]
         self.add('sps', f'rda moveTo {targetPosition}', specNums=','.join(map(str, specNums)), timeLim=180)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct MasterBiases object."""
+        cmdKeys, specNums = iicActor.spsConfig.keysToSpecNum(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
-        specModules = iicActor.engine.resourceManager.spsConfig.selectModules(identKeys['specNums'])
         targetPosition = 'low' if 'low' in cmdKeys else 'med'
 
-        return cls(specModules, targetPosition, **seqKeys)
+        return cls(specNums, targetPosition, **seqKeys)
 
     @classmethod
     def fromDesign(cls, iicActor, targetPosition):
         """Defining rules to construct MasterBiases object."""
         specModules = iicActor.engine.resourceManager.spsConfig.selectModules(None)
-        return cls(specModules, targetPosition)
+        specNums = [specModule.specNum for specModule in specModules]
+        return cls(specNums, targetPosition)
