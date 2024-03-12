@@ -28,7 +28,7 @@ class MiscCmd(object):
         # associated methods when matched. The callbacks will be
         # passed a single argument, the parsed and typed command.
         #
-        identArgs = '[<cam>] [<arm>] [<specNum>]'
+        identArgs = '[<cam>] [<cams>] [<specNum>] [<specNums>] [<arm>] [<arms>]'
         commonArgs = f'{identArgs} [<duplicate>] {translate.seqArgs}'
 
         self.vocab = [
@@ -45,10 +45,18 @@ class MiscCmd(object):
         self.keys = keys.KeysDictionary("iic_misc", (1, 1),
                                         keys.Key('exptime', types.Float() * (1,), help='exptime list (seconds)'),
                                         keys.Key('duplicate', types.Int(), help='exposure duplicate (1 is default)'),
-                                        keys.Key('cam', types.String() * (1,), help='camera(s) to take exposure from'),
-                                        keys.Key('arm', types.String() * (1,), help='arm to take exposure from'),
+                                        keys.Key("cam", types.String() * (1,),
+                                                 help='list of camera to take exposure from'),
+                                        keys.Key("cams", types.String() * (1,),
+                                                 help='list of camera to take exposure from'),
                                         keys.Key('specNum', types.Int() * (1,),
                                                  help='spectrograph module(s) to take exposure from'),
+                                        keys.Key('specNums', types.Int() * (1,),
+                                                 help='spectrograph module(s) to take exposure from'),
+                                        keys.Key("arm", types.String() * (1,),
+                                                 help='arm to take exposure from'),
+                                        keys.Key("arms", types.String() * (1,),
+                                                 help='arm to take exposure from'),
                                         keys.Key('name', types.String(), help='iic_sequence name'),
                                         keys.Key('comments', types.String(), help='iic_sequence comments'),
                                         keys.Key('groupId', types.Int(), help='optional groupId'),
@@ -99,7 +107,6 @@ class MiscCmd(object):
     @singleShot
     def dotCrossing(self, cmd):
         """"""
-        cmdKeys = cmd.cmd.keywords
         cmdName = cmd.cmd.name
 
         # converge to near dot in the first place.
@@ -114,14 +121,12 @@ class MiscCmd(object):
         DotCrossing = misc.PhiCrossing if cmdName == 'phiCrossing' else misc.ThetaCrossing
 
         # run dotCrossing.
-        dotCrossing = DotCrossing.fromCmdKeys(self.actor, cmdKeys)
+        dotCrossing = DotCrossing.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.run(cmd, dotCrossing)
 
     def fiberIdentification(self, cmd):
         """"""
-        cmdKeys = cmd.cmd.keywords
-
-        fiberIdentification = misc.FiberIdentification.fromCmdKeys(self.actor, cmdKeys)
+        fiberIdentification = misc.FiberIdentification.fromCmdKeys(self.actor, cmd)
         self.engine.runInThread(cmd, fiberIdentification)
 
     @singleShot
@@ -158,7 +163,7 @@ class MiscCmd(object):
         # use pfiLamps by default.
         roaching = misc.DotRoach if 'hscLamps' in cmdKeys else misc.DotRoachPfiLamps
 
-        dotRoach = roaching.fromCmdKeys(self.actor, cmdKeys)
+        dotRoach = roaching.fromCmdKeys(self.actor, cmd)
         self.engine.run(cmd, dotRoach, doFinish=False)
 
         if dotRoach.status.flag != Flag.FINISHED:

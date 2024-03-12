@@ -88,10 +88,10 @@ class FiberIdentification(SpsSequence):
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         # we are using hsc ring lamps.
         windowedFlatConfig = iicActor.actorConfig['windowedFlat']['hscLamps'].copy()
         exptime = windowedFlatConfig.pop('exptime')
@@ -99,8 +99,6 @@ class FiberIdentification(SpsSequence):
         default = list(set(range(2, 32)) - {25})
         fiberGroups = cmdKeys['fiberGroups'].values if 'fiberGroups' in cmdKeys else default
         maskFilesRoot = iicActor.actorConfig['maskFiles']['rootDir']
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, exptime, windowedFlatConfig, maskFilesRoot, fiberGroups, **seqKeys)
 
@@ -200,10 +198,10 @@ class DotRoach(SpsSequence):
         self.add('drp', 'stopDotRoach')
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
 
         windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps].copy()
         exptime = windowedFlatConfig.pop('exptime')
@@ -224,8 +222,6 @@ class DotRoach(SpsSequence):
 
         keepMoving = 'keepMoving' in cmdKeys
         mode = cmdKeys['mode'].values[0] if 'mode' in cmdKeys else 'fast'
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, exptime, windowedFlatConfig, maskFile, keepMoving, mode, **config, **seqKeys)
 

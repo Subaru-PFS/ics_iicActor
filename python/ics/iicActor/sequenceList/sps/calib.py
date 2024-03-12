@@ -59,15 +59,14 @@ class DitheredFlats(TimedLampsSequence):
             self.takeOneDuplicate(lampsKeys, cameraWithHexapodPowerCycled, duplicate, interleaveDark)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
         positions = translate.ditheredFlatsKeys(cmdKeys)
 
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
         hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
         interleaveDark = cmdKeys['interleaveDark'].values[0] if 'interleaveDark' in cmdKeys else False
 
@@ -106,16 +105,14 @@ class ShutterDriftFlats(SpsSequence):
             self.tail.add('sps', 'slit stop', cams=cams)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
 
         pixMin, pixMax, num = cmdKeys['pixelRange'].values
         doStopHexapod = 'keepHexapodOn' not in cmdKeys
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, exptime, duplicate, pixMin, pixMax, doStopHexapod, **seqKeys)
 
@@ -124,16 +121,14 @@ class DriftFlats(ShutterDriftFlats, TimedLampsSequence):
     """ Dithered Flats sequence """
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
         pixMin, pixMax, num = cmdKeys['pixelRange'].values
         doStopHexapod = 'keepHexapodOn' not in cmdKeys
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, lampsKeys, duplicate, pixMin, pixMax, doStopHexapod, **seqKeys)
 
@@ -161,13 +156,11 @@ class DomeFlat(SpsSequence):
         self.expose('domeflat', exptime, cams, duplicate=duplicate, windowKeys=windowKeys)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         windowKeys = translate.windowKeys(cmdKeys)
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, exptime, duplicate, windowKeys, **seqKeys)

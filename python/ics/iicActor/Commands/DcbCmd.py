@@ -13,7 +13,7 @@ class DcbCmd(object):
     def __init__(self, actor):
         # This lets us access the rest of the actor.
         self.actor = actor
-        identArgs = '[<cam>] [<arm>] [<specNum>]'
+        identArgs = '[<cam>] [<cams>] [<specNum>] [<specNums>] [<arm>] [<arms>]'
         commonArgs = f'{identArgs} [<duplicate>] {translate.seqArgs}'
         arcArgs = f'<exptime> [<switchOn>] [<switchOff>] [<warmingTime>] [force]'
         flatArgs = f'<exptime> [noLampCtl] [switchOff] [<warmingTime>] [force]'
@@ -38,10 +38,18 @@ class DcbCmd(object):
         self.keys = keys.KeysDictionary('iic_dcb', (1, 1),
                                         keys.Key('exptime', types.Float() * (1,), help='exptime list (seconds)'),
                                         keys.Key('duplicate', types.Int(), help='exposure duplicate (1 is default)'),
-                                        keys.Key('cam', types.String() * (1,), help='camera(s) to take exposure from'),
-                                        keys.Key('arm', types.String() * (1,), help='arm to take exposure from'),
+                                        keys.Key("cam", types.String() * (1,),
+                                                 help='list of camera to take exposure from'),
+                                        keys.Key("cams", types.String() * (1,),
+                                                 help='list of camera to take exposure from'),
                                         keys.Key('specNum', types.Int() * (1,),
                                                  help='spectrograph module(s) to take exposure from'),
+                                        keys.Key('specNums', types.Int() * (1,),
+                                                 help='spectrograph module(s) to take exposure from'),
+                                        keys.Key("arm", types.String() * (1,),
+                                                 help='arm to take exposure from'),
+                                        keys.Key("arms", types.String() * (1,),
+                                                 help='arm to take exposure from'),
                                         keys.Key('name', types.String(), help='iic_sequence name'),
                                         keys.Key('comments', types.String(), help='iic_sequence comments'),
                                         keys.Key('groupId', types.Int(), help='optional groupId'),
@@ -116,9 +124,7 @@ class DcbCmd(object):
         tail : list of `str`
             list of command to be launched after the sequence.
         """
-        cmdKeys = cmd.cmd.keywords
-
-        ditheredFlats = dcb.DitheredFlats.fromCmdKeys(self.actor, cmdKeys)
+        ditheredFlats = dcb.DitheredFlats.fromCmdKeys(self.actor, cmd)
         self.engine.runInThread(cmd, ditheredFlats)
 
     def scienceArc(self, cmd):
@@ -158,9 +164,7 @@ class DcbCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        cmdKeys = cmd.cmd.keywords
-
-        scienceArc = dcb.ScienceArc.fromCmdKeys(self.actor, cmdKeys)
+        scienceArc = dcb.ScienceArc.fromCmdKeys(self.actor, cmd)
         self.engine.runInThread(cmd, scienceArc)
 
     def scienceTrace(self, cmd):
@@ -207,9 +211,7 @@ class DcbCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        cmdKeys = cmd.cmd.keywords
-
-        scienceTrace = dcb.ScienceTrace.fromCmdKeys(self.actor, cmdKeys)
+        scienceTrace = dcb.ScienceTrace.fromCmdKeys(self.actor, cmd)
         self.engine.runInThread(cmd, scienceTrace)
 
     def doArc(self, cmd):
@@ -251,9 +253,7 @@ class DcbCmd(object):
         tail : list of `str`
             list of command to be launched after the sequence.
         """
-        cmdKeys = cmd.cmd.keywords
-
-        arcs = dcb.Arcs.fromCmdKeys(self.actor, cmdKeys)
+        arcs = dcb.Arcs.fromCmdKeys(self.actor, cmd)
         self.engine.runInThread(cmd, arcs)
 
     def doFlat(self, cmd):
@@ -295,9 +295,7 @@ class DcbCmd(object):
         tail : list of `str`
             list of command to be launched after the sequence.
         """
-        cmdKeys = cmd.cmd.keywords
-
-        flats = dcb.Flats.fromCmdKeys(self.actor, cmdKeys)
+        flats = dcb.Flats.fromCmdKeys(self.actor, cmd)
         self.engine.runInThread(cmd, flats)
 
     def detThroughFocus(self, cmd):
@@ -344,9 +342,7 @@ class DcbCmd(object):
         doTest : `bool`
            image/exposure type will be labelled as test, default=arc.
         """
-        cmdKeys = cmd.cmd.keywords
-
-        detThroughFocus = dcb.DetThroughFocus.fromCmdKeys(self.actor, cmdKeys)
+        detThroughFocus = dcb.DetThroughFocus.fromCmdKeys(self.actor, cmd)
         self.engine.runInThread(cmd, detThroughFocus)
 
     def slitThroughFocus(self, cmd):
@@ -391,9 +387,7 @@ class DcbCmd(object):
         doTest : `bool`
            image/exposure type will be labelled as test, default=arc.
         """
-        cmdKeys = cmd.cmd.keywords
-
-        slitThroughFocus = dcb.SlitThroughFocus.fromCmdKeys(self.actor, cmdKeys)
+        slitThroughFocus = dcb.SlitThroughFocus.fromCmdKeys(self.actor, cmd)
         self.engine.runInThread(cmd, slitThroughFocus)
 
     def ditheredArcs(self, cmd):
@@ -438,9 +432,7 @@ class DcbCmd(object):
         tail : list of `str`
             list of command to be launched after the sequence.
         """
-        cmdKeys = cmd.cmd.keywords
-
-        ditheredArcs = dcb.DitheredArcs.fromCmdKeys(self.actor, cmdKeys)
+        ditheredArcs = dcb.DitheredArcs.fromCmdKeys(self.actor, cmd)
         self.engine.runInThread(cmd, ditheredArcs)
 
     def defocusedArcs(self, cmd):
@@ -484,7 +476,5 @@ class DcbCmd(object):
         tail : list of `str`
             list of command to be launched after the sequence.
         """
-        cmdKeys = cmd.cmd.keywords
-
-        defocusedArcs = dcb.DefocusedArcs.fromCmdKeys(self.actor, cmdKeys)
+        defocusedArcs = dcb.DefocusedArcs.fromCmdKeys(self.actor, cmd)
         self.engine.runInThread(cmd, defocusedArcs)

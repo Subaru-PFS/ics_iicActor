@@ -16,11 +16,10 @@ class Biases(SpsSequence):
         self.expose('bias', 0, cams, duplicate=duplicate)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct MasterBiases object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
 
         return cls(cams, duplicate, **seqKeys)
@@ -37,11 +36,10 @@ class Darks(SpsSequence):
         self.expose('dark', exptime, cams, duplicate=duplicate)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct MasterBiases object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
 
         return cls(cams, exptime, duplicate, **seqKeys)
@@ -57,14 +55,12 @@ class Arcs(TimedLampsSequence):
         self.expose('arc', lampsKeys, cams, duplicate=duplicate)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, lampsKeys, duplicate, **seqKeys)
 
@@ -79,15 +75,13 @@ class Flats(TimedLampsSequence):
         self.expose('flat', lampsKeys, cams, duplicate=duplicate, windowKeys=windowKeys)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         windowKeys = translate.windowKeys(cmdKeys)
         lampsKeys = translate.lampsKeys(cmdKeys)
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, lampsKeys, duplicate, windowKeys, **seqKeys)
 
@@ -103,13 +97,11 @@ class Erase(SpsSequence):
             self.add('sps', 'erase', cams=cams)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, duplicate, **seqKeys)
 
@@ -139,15 +131,14 @@ class DitheredArcs(TimedLampsSequence):
             self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
         pixelStep = cmdKeys['pixelStep'].values[0]
 
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
         hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
         return cls(cams, lampsKeys, duplicate, pixelStep, hexapodOff, **seqKeys)
@@ -180,17 +171,16 @@ class DefocusedArcs(TimedLampsSequence):
             self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
         iisKeys = lampsKeys.pop('iis', None)  # removing iis for now.
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num)).round(6)
 
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
         hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
         return cls(cams, lampsKeys, iisKeys, duplicate, positions, hexapodOff, **seqKeys)
@@ -211,15 +201,13 @@ class FpaThroughFocus(TimedLampsSequence):
         self.tail.add('sps', 'fpa toFocus', cams=cams)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
         start, stop, num = cmdKeys['micronsRange'].values
         positions = np.linspace(start, stop, num=int(num)).round(6)
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, lampsKeys, duplicate, positions, **seqKeys)

@@ -17,21 +17,6 @@ def seqKeys(cmdKeys):
                 head=head, tail=tail, groupId=groupId, cmdKeys=cmdKeys)
 
 
-def identKeys(cmdKeys):
-    """ Identify which spectrograph(cameras) is required to take data. """
-    keys = dict()
-
-    if 'cam' in cmdKeys and ('specNum' in cmdKeys or 'arm' in cmdKeys):
-        raise RuntimeError('you cannot provide both cam and (specNum or arm)')
-
-    for key in ['cam', 'arm', 'specNum']:
-        # front end is singular, but sps is plural as its more consistent.
-        tkey = f'{key}s'
-        keys[tkey] = cmdKeys[key].values if key in cmdKeys else None
-
-    return keys
-
-
 def spsExposureKeys(cmdKeys, doRaise=True):
     """ Identify which spectrograph(cameras) is required to take data. """
 
