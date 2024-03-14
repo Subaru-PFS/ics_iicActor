@@ -16,10 +16,11 @@ def ingest(cmd, pfsDesign, designed_at=None, to_be_observed_at=None):
         cmd.warn('text="pfsDesign-0x%016x already inserted in opdb..."' % pfsDesign.pfsDesignId)
 
 
-def latestDesignIdMatchingName(designName):
+def latestDesignIdMatchingName(designName, exact=False):
     """Retrieve last designId matching the name"""
-    # retrieving designId from opdb
-    sql = f"select pfs_design_id from pfs_design where substring(design_name,1,{len(designName)})='{designName}'"
+    # be strict about the name if exact==True
+    condition = f"design_name='{designName}'" if exact else f"substring(design_name,1,{len(designName)})='{designName}'"
+    sql = f"select pfs_design_id from pfs_design where {condition}"
 
     try:
         # not very clean, but it's all I can do for now.
