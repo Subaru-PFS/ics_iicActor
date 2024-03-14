@@ -163,13 +163,17 @@ class MiscCmd(object):
         # use pfiLamps by default.
         roaching = misc.DotRoach if 'hscLamps' in cmdKeys else misc.DotRoachPfiLamps
         roachingInit = misc.DotRoachInit if 'hscLamps' in cmdKeys else misc.DotRoachInitPfiLamps
-
-        dotRoach = roaching.fromCmdKeys(self.actor, cmd)
+        # now roaching is split in two steps.
         dotRoachInit = roachingInit.fromCmdKeys(self.actor, cmd)
+        dotRoach = roaching.fromCmdKeys(self.actor, cmd)
+
+        # exptime in cmdKeys means SPS exptime but the sequence interpret it as MCS exptime, so we have to patch it.
+        mcsExptime = self.actor.actorConfig['mcs']['exptime']
+        cmdKeys['exptime'].values[0] = mcsExptime
 
         # first declare design and going home.
         self.actor.declareFpsDesign(cmd, designId=homeDesignId)
-        moveToHomeAll = fpsSequence.MoveToHome(exptime=4.8, designId=homeDesignId)
+        moveToHomeAll = fpsSequence.MoveToHome(exptime=mcsExptime, designId=homeDesignId)
         self.engine.run(cmd, moveToHomeAll, doFinish=False)
 
         if moveToHomeAll.status.flag != Flag.FINISHED:

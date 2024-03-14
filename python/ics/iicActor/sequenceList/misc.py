@@ -241,10 +241,10 @@ class DotRoachInit(SpsSequence):
         self.add('drp', 'processDotRoach', iteration=0)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmd):
         """Defining rules to construct ScienceObject object."""
+        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
 
         windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps].copy()
         exptime = windowedFlatConfig.pop('exptime')
@@ -265,8 +265,6 @@ class DotRoachInit(SpsSequence):
 
         keepMoving = 'keepMoving' in cmdKeys
         mode = cmdKeys['mode'].values[0] if 'mode' in cmdKeys else 'fast'
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, exptime, windowedFlatConfig, maskFile, keepMoving, mode, **config, **seqKeys)
 
