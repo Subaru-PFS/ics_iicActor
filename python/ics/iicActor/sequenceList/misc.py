@@ -126,8 +126,8 @@ class DotRoach(SpsSequence):
         # steps22 = [25, 32, 40, 50, 60, 70, 80]
 
         # safer scenario, adding extra steps
-        steps21 = [125, 95, 75, 60, 50, 45, 50, 60, 75, 95, 125, 150, 180, 210, 245, 280, 310, 330, 360]
-        steps22 = [20, 25, 30, 35, 40, 45, 50, 60, 70, 80]
+        steps21 = [141, 107, 84, 67, 56, 50, 56, 67, 84, 107, 141, 180, 248, 316, 372, 429, 485]
+        steps22 = [25, 32, 40, 50, 60, 70, 80, 90]
 
         # quicker scenario.
         steps31 = [177, 133, 100, 76, 63, 62, 77, 102, 140, 192, 265, 362, 494]
@@ -158,25 +158,25 @@ class DotRoach(SpsSequence):
         self.add('sps', 'erase', cams=cams)
 
         # first exposure after going to nearDot
-        firstIteration = 1
+        maskNumOffset = 1
         self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-        self.add('drp', 'processDotRoach', iteration=firstIteration)
+        self.add('drp', 'processDotRoach', iteration=maskNumOffset)
 
         for iterNum, stepSize in enumerate(steps1):
-            iterNum = iterNum + firstIteration
-            self.add('fps', f'cobraMoveSteps {motor}', stepsize=-stepSize, maskFile=maskFilePath(iterNum))
+            maskFileNum = maskNumOffset + iterNum
+            self.add('fps', f'cobraMoveSteps {motor}', stepsize=-stepSize, maskFile=maskFilePath(maskFileNum))
 
             # for the last iter, we declare that'll go reverse.
-            if iterNum == len(steps1):
+            if iterNum == len(steps1) - 1:
                 self.add('drp', 'dotRoach phase2')
 
             # expose and process.
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-            self.add('drp', 'processDotRoach', iteration=iterNum + 1)
+            self.add('drp', 'processDotRoach', iteration=maskFileNum + 1)
 
-        maskNumOffset = len(steps1) + firstIteration
+        maskNumOffset += len(steps1)
         for iterNum, stepSize in enumerate(steps2):
-            maskFileNum = maskNumOffset + iterNum
+            maskFileNum = iterNum + maskNumOffset
             self.add('fps', f'cobraMoveSteps {motor}', stepsize=stepSize, maskFile=maskFilePath(maskFileNum))
 
             # no need to go further
