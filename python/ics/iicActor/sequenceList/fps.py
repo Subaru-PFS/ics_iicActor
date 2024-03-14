@@ -80,6 +80,9 @@ class MoveToPfsDesign(FpsSequence):
     def __init__(self, designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, noTweak, **seqKeys):
         FpsSequence.__init__(self, **seqKeys)
 
+        # Removing maskFile for now, it's broken on fps side (per INSTRM-2192)
+        maskFile = False
+
         # turning illuminators on
         self.add('sps', 'bia on')
         self.add('peb', 'led on')
@@ -104,9 +107,6 @@ class MoveToPfsDesign(FpsSequence):
             maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
         else:
             maskFile = False
-
-        # Removing maskFile for now, it's broken on fps side (per INSTRM-2192)
-        maskFile = False
 
         nIteration = cmdKeys['nIteration'].values[0] if 'nIteration' in cmdKeys else False
         tolerance = cmdKeys['tolerance'].values[0] if 'tolerance' in cmdKeys else False
