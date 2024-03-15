@@ -124,7 +124,7 @@ class DcbCmd(object):
         tail : list of `str`
             list of command to be launched after the sequence.
         """
-        ditheredFlats = dcb.DitheredFlats.fromCmdKeys(self.actor, cmd)
+        ditheredFlats = dcb.DitheredFlats.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, ditheredFlats)
 
     def scienceArc(self, cmd):
@@ -164,7 +164,7 @@ class DcbCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        scienceArc = dcb.ScienceArc.fromCmdKeys(self.actor, cmd)
+        scienceArc = dcb.ScienceArc.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, scienceArc)
 
     def scienceTrace(self, cmd):
@@ -211,7 +211,7 @@ class DcbCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        scienceTrace = dcb.ScienceTrace.fromCmdKeys(self.actor, cmd)
+        scienceTrace = dcb.ScienceTrace.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, scienceTrace)
 
     def doArc(self, cmd):
@@ -253,7 +253,7 @@ class DcbCmd(object):
         tail : list of `str`
             list of command to be launched after the sequence.
         """
-        arcs = dcb.Arcs.fromCmdKeys(self.actor, cmd)
+        arcs = dcb.Arcs.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, arcs)
 
     def doFlat(self, cmd):
@@ -295,7 +295,7 @@ class DcbCmd(object):
         tail : list of `str`
             list of command to be launched after the sequence.
         """
-        flats = dcb.Flats.fromCmdKeys(self.actor, cmd)
+        flats = dcb.Flats.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, flats)
 
     def detThroughFocus(self, cmd):
@@ -342,7 +342,7 @@ class DcbCmd(object):
         doTest : `bool`
            image/exposure type will be labelled as test, default=arc.
         """
-        detThroughFocus = dcb.DetThroughFocus.fromCmdKeys(self.actor, cmd)
+        detThroughFocus = dcb.DetThroughFocus.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, detThroughFocus)
 
     def slitThroughFocus(self, cmd):
@@ -387,7 +387,7 @@ class DcbCmd(object):
         doTest : `bool`
            image/exposure type will be labelled as test, default=arc.
         """
-        slitThroughFocus = dcb.SlitThroughFocus.fromCmdKeys(self.actor, cmd)
+        slitThroughFocus = dcb.SlitThroughFocus.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, slitThroughFocus)
 
     def ditheredArcs(self, cmd):
@@ -432,7 +432,7 @@ class DcbCmd(object):
         tail : list of `str`
             list of command to be launched after the sequence.
         """
-        ditheredArcs = dcb.DitheredArcs.fromCmdKeys(self.actor, cmd)
+        ditheredArcs = dcb.DitheredArcs.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, ditheredArcs)
 
     def defocusedArcs(self, cmd):
@@ -476,5 +476,5 @@ class DcbCmd(object):
         tail : list of `str`
             list of command to be launched after the sequence.
         """
-        defocusedArcs = dcb.DefocusedArcs.fromCmdKeys(self.actor, cmd)
+        defocusedArcs = dcb.DefocusedArcs.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, defocusedArcs)

@@ -125,7 +125,7 @@ class MiscCmd(object):
 
     def fiberIdentification(self, cmd):
         """"""
-        fiberIdentification = misc.FiberIdentification.fromCmdKeys(self.actor, cmd)
+        fiberIdentification = misc.FiberIdentification.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, fiberIdentification)
 
     @singleShot
@@ -173,8 +173,8 @@ class MiscCmd(object):
         roaching = misc.DotRoach if 'hscLamps' in cmdKeys else misc.DotRoachPfiLamps
         roachingInit = misc.DotRoachInit if 'hscLamps' in cmdKeys else misc.DotRoachInitPfiLamps
         # now roaching is split in two steps.
-        dotRoachInit = roachingInit.fromCmdKeys(self.actor, cmd)
-        dotRoach = roaching.fromCmdKeys(self.actor, cmd)
+        dotRoachInit = roachingInit.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords)
 
         # first declare design and going home.
         self.actor.declareFpsDesign(cmd, designId=homeDesignId)

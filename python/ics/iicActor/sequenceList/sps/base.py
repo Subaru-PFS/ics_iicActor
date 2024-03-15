@@ -16,9 +16,9 @@ class Biases(SpsSequence):
         self.expose('bias', 0, cams, duplicate=duplicate)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct MasterBiases object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
 
@@ -36,9 +36,9 @@ class Darks(SpsSequence):
         self.expose('dark', exptime, cams, duplicate=duplicate)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct MasterBiases object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
 
@@ -55,9 +55,9 @@ class Arcs(TimedLampsSequence):
         self.expose('arc', lampsKeys, cams, duplicate=duplicate)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
@@ -75,9 +75,9 @@ class Flats(TimedLampsSequence):
         self.expose('flat', lampsKeys, cams, duplicate=duplicate, windowKeys=windowKeys)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         windowKeys = translate.windowKeys(cmdKeys)
@@ -97,9 +97,9 @@ class Erase(SpsSequence):
             self.add('sps', 'erase', cams=cams)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
 
@@ -131,9 +131,9 @@ class DitheredArcs(TimedLampsSequence):
             self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
@@ -171,9 +171,9 @@ class DefocusedArcs(TimedLampsSequence):
             self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
@@ -201,9 +201,9 @@ class FpaThroughFocus(TimedLampsSequence):
         self.tail.add('sps', 'fpa toFocus', cams=cams)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)

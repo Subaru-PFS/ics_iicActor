@@ -14,9 +14,9 @@ class ScienceObject(SpsSequence):
         self.expose('object', exptime, cams, duplicate=duplicate, windowKeys=windowKeys)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         windowKeys = translate.windowKeys(cmdKeys)

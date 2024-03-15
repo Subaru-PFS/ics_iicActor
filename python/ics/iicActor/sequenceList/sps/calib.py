@@ -59,9 +59,9 @@ class DitheredFlats(TimedLampsSequence):
             self.takeOneDuplicate(lampsKeys, cameraWithHexapodPowerCycled, duplicate, interleaveDark)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
@@ -105,9 +105,9 @@ class ShutterDriftFlats(SpsSequence):
             self.tail.add('sps', 'slit stop', cams=cams)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
 
@@ -121,9 +121,9 @@ class DriftFlats(ShutterDriftFlats, TimedLampsSequence):
     """ Dithered Flats sequence """
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
@@ -156,9 +156,9 @@ class DomeFlat(SpsSequence):
         self.expose('domeflat', exptime, cams, duplicate=duplicate, windowKeys=windowKeys)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         windowKeys = translate.windowKeys(cmdKeys)

@@ -88,9 +88,9 @@ class FiberIdentification(SpsSequence):
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         # we are using hsc ring lamps.
         windowedFlatConfig = iicActor.actorConfig['windowedFlat']['hscLamps'].copy()
@@ -195,9 +195,9 @@ class DotRoach(SpsSequence):
         self.add('drp', 'stopDotRoach')
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
 
         windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps].copy()
@@ -245,9 +245,9 @@ class DotRoachInit(SpsSequence):
         self.add('drp', 'processDotRoach', iteration=0)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
 
         windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps].copy()

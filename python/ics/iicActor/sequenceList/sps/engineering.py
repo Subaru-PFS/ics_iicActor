@@ -56,9 +56,9 @@ class HexapodStability(SpsSequence):
             self.expose('arc', lampsKeys, cameraWithHexapodPowerCycled, duplicate=duplicate)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cmdKeys, cams = iicActor.spsConfig.keysToCam(cmd)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
@@ -84,7 +84,7 @@ class RdaMove(Sequence):
         self.add('sps', f'rda moveTo {targetPosition}', specNums=','.join(map(str, specNums)), timeLim=180)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmd):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct MasterBiases object."""
         cmdKeys, specNums = iicActor.spsConfig.keysToSpecNum(cmd)
         seqKeys = translate.seqKeys(cmdKeys)

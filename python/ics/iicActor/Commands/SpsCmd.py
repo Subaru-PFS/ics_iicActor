@@ -180,7 +180,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        masterDarks = calib.MasterDarks.fromCmdKeys(self.actor, cmd)
+        masterDarks = calib.MasterDarks.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, masterDarks)
 
     def ditheredFlats(self, cmd):
@@ -214,7 +214,7 @@ class SpsCmd(object):
         doTest : `bool`
            image/exposure type will be labelled as test, default=flat.
         """
-        ditheredFlats = calib.DitheredFlats.fromCmdKeys(self.actor, cmd)
+        ditheredFlats = calib.DitheredFlats.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, ditheredFlats)
 
     def scienceArc(self, cmd):
@@ -258,7 +258,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        scienceArc = calib.ScienceArc.fromCmdKeys(self.actor, cmd)
+        scienceArc = calib.ScienceArc.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, scienceArc)
 
     def scienceTrace(self, cmd):
@@ -299,7 +299,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        scienceTrace = calib.ScienceTrace.fromCmdKeys(self.actor, cmd)
+        scienceTrace = calib.ScienceTrace.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, scienceTrace)
 
     def domeFlat(self, cmd):
@@ -338,7 +338,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        domeFlat = calib.DomeFlat.fromCmdKeys(self.actor, cmd)
+        domeFlat = calib.DomeFlat.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, domeFlat)
 
     def scienceObject(self, cmd):
@@ -377,7 +377,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        scienceObject = science.ScienceObject.fromCmdKeys(self.actor, cmd)
+        scienceObject = science.ScienceObject.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, scienceObject)
 
     def startExposureLoop(self, cmd):
@@ -409,7 +409,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        exposureLoop = science.ScienceObjectLoop.fromCmdKeys(self.actor, cmd)
+        exposureLoop = science.ScienceObjectLoop.fromCmdKeys(self.actor, cmd.cmd.keywords)
         # Check if resources are available, prepare sequence to be executed but do not fire *anything* yet.
         self.engine.run(cmd, exposureLoop, mode=ExecMode.CHECKIN, doFinish=False)
         # Sequence has been rejected, no need to go further.
@@ -444,7 +444,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        erase = base.Erase.fromCmdKeys(self.actor, cmd)
+        erase = base.Erase.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, erase)
 
     def doBias(self, cmd):
@@ -479,7 +479,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        biases = base.Biases.fromCmdKeys(self.actor, cmd)
+        biases = base.Biases.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, biases)
 
     def doDark(self, cmd):
@@ -515,7 +515,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        darks = base.Darks.fromCmdKeys(self.actor, cmd)
+        darks = base.Darks.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, darks)
 
     def doArc(self, cmd):
@@ -563,7 +563,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        arcs = base.Arcs.fromCmdKeys(self.actor, cmd)
+        arcs = base.Arcs.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, arcs)
 
     def doFlat(self, cmd):
@@ -601,7 +601,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        flats = base.Flats.fromCmdKeys(self.actor, cmd)
+        flats = base.Flats.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, flats)
 
     def driftFlats(self, cmd):
@@ -636,7 +636,7 @@ class SpsCmd(object):
         cmdKeys = cmd.cmd.keywords
         # selecting shutter driven or lamp driven drift flats.
         DriftFlatsClass = calib.ShutterDriftFlats if 'exptime' in cmdKeys else calib.DriftFlats
-        driftFlats = DriftFlatsClass.fromCmdKeys(self.actor, cmd)
+        driftFlats = DriftFlatsClass.fromCmdKeys(self.actor, cmdKeys)
 
         self.engine.runInThread(cmd, driftFlats)
 
@@ -691,7 +691,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        ditheredArcs = base.DitheredArcs.fromCmdKeys(self.actor, cmd)
+        ditheredArcs = base.DitheredArcs.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, ditheredArcs)
 
     def defocusedArcs(self, cmd):
@@ -742,7 +742,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        defocusedArcs = base.DefocusedArcs.fromCmdKeys(self.actor, cmd)
+        defocusedArcs = base.DefocusedArcs.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, defocusedArcs)
 
     def fpaThroughFocus(self, cmd):
@@ -793,7 +793,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        fpaThroughFocus = base.FpaThroughFocus.fromCmdKeys(self.actor, cmd)
+        fpaThroughFocus = base.FpaThroughFocus.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, fpaThroughFocus)
 
     def hexapodStability(self, cmd):
@@ -839,7 +839,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        hexapodStability = eng.HexapodStability.fromCmdKeys(self.actor, cmd)
+        hexapodStability = eng.HexapodStability.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, hexapodStability)
 
     def rdaMove(self, cmd):
@@ -853,7 +853,7 @@ class SpsCmd(object):
         sm : list of `int`
            List of spectrograph module to expose, default=all
         """
-        rdaMove = eng.RdaMove.fromCmdKeys(self.actor, cmd)
+        rdaMove = eng.RdaMove.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, rdaMove)
 
     def setGratingToDesign(self, cmd):
