@@ -34,11 +34,10 @@ class MiscCmd(object):
         self.vocab = [
             ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {translate.seqArgs}', self.dotCrossing),
             ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {translate.seqArgs}', self.dotCrossing),
-
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
             ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] [<maskFile>] {translate.seqArgs}', self.nearDotConvergenceCmd),
             ('genBlackDotsConfig', f'[<maskFile>] {translate.seqArgs}', self.genBlackDotsConfigCmd),
-            ('dotRoach', f'[@(phi|theta)] [<stepSize>] [<count>] [<exptime>] [<maskFile>] [@(keepMoving)] [@(hscLamps)] [<mode>] {identArgs} {translate.seqArgs}', self.dotRoach),
+            ('dotRoach', f'[<exptime>] [<maskFile>] [@(hscLamps)] [<mode>] {identArgs} {translate.seqArgs}', self.dotRoach),
         ]
 
         # Define typed command arguments for the above commands.
@@ -160,10 +159,51 @@ class MiscCmd(object):
         """"""
         cmdKeys = cmd.cmd.keywords
 
+        # defining all the sequence first.
+        homeDesignId = designDB.latestDesignIdMatchingName('cobraHome', exact=True)
+        phiCrossingDesignId = designDB.latestDesignIdMatchingName('phiCrossing')
+
+        # exptime in cmdKeys means SPS exptime but the sequence interpret it as MCS exptime, so we have to patch it.
+        mcsExptime = self.actor.actorConfig['mcs']['exptime']
+        moveToHomeAll = fpsSequence.MoveToHome(exptime=mcsExptime, designId=homeDesignId)
+        nearDotConvergence = misc.NearDotConvergence(phiCrossingDesignId, maskFile=False, goHome=False, noTweak=True,
+                                                     twoStepsOff=False, exptime=mcsExptime,
+                                                     **self.actor.actorConfig['nearDotConvergence'])
         # use pfiLamps by default.
         roaching = misc.DotRoach if 'hscLamps' in cmdKeys else misc.DotRoachPfiLamps
-
+        roachingInit = misc.DotRoachInit if 'hscLamps' in cmdKeys else misc.DotRoachInitPfiLamps
+        # now roaching is split in two steps.
+        dotRoachInit = roachingInit.fromCmdKeys(self.actor, cmd)
         dotRoach = roaching.fromCmdKeys(self.actor, cmd)
+
+        # first declare design and going home.
+        self.actor.declareFpsDesign(cmd, designId=homeDesignId)
+        self.engine.run(cmd, moveToHomeAll, doFinish=False)
+
+        if moveToHomeAll.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="moveToHome not completed, stopping here."')
+            return
+
+        # running dotRoach init to take reference flux.
+        self.engine.run(cmd, dotRoachInit, doFinish=False)
+
+        if dotRoachInit.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="dotRoachInit not completed, stopping here."')
+            return
+
+        # now declare phiCrossing design and  converge to near dot.
+        self.actor.declareFpsDesign(cmd, designId=phiCrossingDesignId)
+        self.engine.run(cmd, nearDotConvergence, doFinish=False)
+
+        # something happened, convergence did not complete, we need to stop here.
+        if nearDotConvergence.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="NearDotConvergence not completed, stopping here."')
+            return
+
+        # now proceed to with the actual roaching sequence.
         self.engine.run(cmd, dotRoach, doFinish=False)
 
         if dotRoach.status.flag != Flag.FINISHED:
