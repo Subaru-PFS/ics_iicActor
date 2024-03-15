@@ -80,6 +80,9 @@ class MoveToPfsDesign(FpsSequence):
     def __init__(self, designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, noTweak, **seqKeys):
         FpsSequence.__init__(self, **seqKeys)
 
+        # Removing maskFile for now, it's broken on fps side (per INSTRM-2192)
+        maskFile = False
+
         # turning illuminators on
         self.add('sps', 'bia on')
         self.add('peb', 'led on')
@@ -96,8 +99,8 @@ class MoveToPfsDesign(FpsSequence):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
         seqKeys = translate.seqKeys(cmdKeys)
-
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
+
         if 'maskFile' in cmdKeys:
             maskFile = cmdKeys['maskFile'].values[0]
             maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
