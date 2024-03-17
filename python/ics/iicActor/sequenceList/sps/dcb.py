@@ -159,12 +159,10 @@ class DitheredArcs(SpsSequence):
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
         pixelStep = cmdKeys['pixelStep'].values[0]
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
         hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
         return cls(cams, exptime, dcbOn, dcbOff, duplicate, pixelStep, hexapodOff, **seqKeys)
@@ -195,13 +193,11 @@ class DetThroughFocus(SpsSequence):
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
         # translating from given position and tilt.
         positions = translate.detThroughFocusKeys(cmdKeys)
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, exptime, dcbOn, dcbOff, duplicate, positions, **seqKeys)
 
@@ -231,13 +227,11 @@ class SlitThroughFocus(SpsSequence):
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
         # translating from given position and tilt.
         positions = translate.slitThroughFocusKeys(cmdKeys)
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
 
         return cls(cams, exptime, dcbOn, dcbOff, duplicate, positions, **seqKeys)
 
@@ -278,14 +272,12 @@ class DefocusedArcs(SpsSequence):
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
         seqKeys = translate.seqKeys(cmdKeys)
-        identKeys = translate.identKeys(cmdKeys)
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
         # basic np.linspace.
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num)).round(6)
-
-        cams = iicActor.engine.resourceManager.spsConfig.identify(**identKeys)
         hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
 
         return cls(cams, exptime, dcbOn, dcbOff, duplicate, positions, hexapodOff, **seqKeys)
