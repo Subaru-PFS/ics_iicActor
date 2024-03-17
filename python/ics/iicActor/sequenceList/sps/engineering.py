@@ -86,7 +86,7 @@ class RdaMove(Sequence):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct MasterBiases object."""
-        cmdKeys, specNums = iicActor.spsConfig.keysToSpecNum(cmd)
+        specNums = iicActor.spsConfig.keysToSpecNum(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         targetPosition = 'low' if 'low' in cmdKeys else 'med'
 
