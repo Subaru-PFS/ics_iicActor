@@ -26,7 +26,8 @@ class TopCmd(object):
             ('status', '', self.status),
 
             ('declareCurrentPfsDesign', '<designId> [<variant>]', self.declareCurrentPfsDesign),
-            ('createVariants', '[<nVariants>] [<addVariants>] [<designId0>] [<sigma>] [@(doHex)]', self.createVariants),
+            ('createVariants', '[<nVariants>] [<addVariants>] [<designId0>] [<sigma>] [<randomFraction>] [@(doHex)]',
+             self.createVariants),
             ('getAllVariants', '<designId0>', self.getAllVariants),
             ('getMaxVariants', '<designId0>', self.getMaxVariants),
 
@@ -43,6 +44,7 @@ class TopCmd(object):
                                         keys.Key('nVariants', types.Int(), help='number of variants to be created'),
                                         keys.Key('addVariants', types.Int(), help='number of variants to be added'),
                                         keys.Key('sigma', types.Float(), help='sigma for random position noise'),
+                                        keys.Key('randomFraction', types.Float(), help='fraction of cobras set to random position'),
 
                                         keys.Key('caller', types.String(), help='visit caller'),
                                         keys.Key('designedAt', types.String(), help=''),
@@ -94,6 +96,7 @@ class TopCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         sigma = cmdKeys['sigma'].values[0] if 'sigma' in cmdKeys else 1
+        randomFraction = cmdKeys['randomFraction'].values[0] if 'randomFraction' in cmdKeys else 1
         doHex = 'doHex' in cmdKeys
         designId0 = cmdKeys['designId0'].values[0] if 'designId0' in cmdKeys else self.visitManager.getCurrentDesignId()
 
@@ -118,7 +121,8 @@ class TopCmd(object):
 
         for variant in variants:
             cmd.inform(f'text="creating variant {variant} for designId0 0x{designId0:016x}"')
-            pfsDesignVariant = makeVariantDesign(pfsDesign0, variant=variant, sigma=sigma, doHex=doHex)
+            pfsDesignVariant = makeVariantDesign(pfsDesign0, variant=variant, sigma=sigma, doHex=doHex,
+                                                 randomFraction=randomFraction)
             # writing to disk
             pfsDesignVariant.write(dirName=self.pfsDesignRootDir)
             # Ingesting into opdb.
