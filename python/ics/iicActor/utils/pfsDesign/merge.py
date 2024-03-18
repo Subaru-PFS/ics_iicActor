@@ -4,7 +4,7 @@ from pfs.datamodel.pfsConfig import PfsDesign
 from pfs.datamodel.utils import calculate_pfsDesignId
 from pfs.utils.fiberids import FiberIds
 
-from pfs.utils.pfsDesignUtils import fakeRa, fakeDec
+from pfs.utils.pfsDesignUtils import fakeRa, fakeDec, fakeRaDecFromPfiNominal
 
 
 def fakePfiNominal(fiberId):
@@ -19,9 +19,7 @@ def fakePfiNominal(fiberId):
 
 def fakeDesignIFromFiberId(fiberId, pfiNominal):
     """Fake ra and dec from pfiNominal and re-calculate pfsDesignId."""
-    ra = fakeRa + 1e-3 * pfiNominal[:, 0]
-    dec = fakeDec + 1e-3 * pfiNominal[:, 1]
-
+    ra, dec = fakeRaDecFromPfiNominal(pfiNominal)
     pfsDesignId = calculate_pfsDesignId(fiberId, ra, dec)
 
     return dict(pfsDesignId=pfsDesignId, ra=ra, dec=dec)
