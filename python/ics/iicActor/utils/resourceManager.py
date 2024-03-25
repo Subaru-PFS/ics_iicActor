@@ -214,7 +214,7 @@ class ResourceManager(object):
         """
         specNum = int(keyVar.actor[-1])
         try:
-            shutterState = keyVar.getValue()
+            shutterState = self.actor.models[keyVar.actor].keyVarDict['shutters'].getValue()
         except ValueError:
             return
 

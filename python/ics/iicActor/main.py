@@ -67,7 +67,7 @@ class IicActor(actorcore.ICC.ICC):
                 enuActor = f'enu_sm{spectrographId}'
                 self.addModels([enuActor])
                 self.buffer.attachCallback('sps', f'sm{spectrographId}LightSource', self.genPfsDesign)
-                self.models[enuActor].keyVarDict['shutters'].addCallback(self.engine.resourceManager.freeEnu)
+                self.models[enuActor].keyVarDict['redResolution'].addCallback(self.engine.resourceManager.freeEnu)
 
             for dcb in {'dcb', 'dcb2'}:
                 self.buffer.attachCallback(dcb, 'designId', self.genPfsDesign)
