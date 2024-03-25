@@ -151,15 +151,15 @@ class ResourceManager(object):
 
     def free(self, locked):
         """Freeing resources."""
-        # is nothing got locked just return.
-        if locked is None:
+        # filtering what's actually locked.
+        locked = [key for key in locked if (key in self.resources and not self.resources[key].available)]
+
+        # if nothing to be freed just return.
+        if not locked:
             return
 
         self.logger.info(f'freeing resources : {",".join(locked)}')
         for resource in locked:
-            if resource not in self.resources:
-                continue
-
             self.resources[resource].free()
 
     def inspect(self, sequence):
@@ -202,3 +202,25 @@ class ResourceManager(object):
                         raise RuntimeError(f'dont know what to do with {spsCommand.cmdHead}...')
 
         return list(set(allDeps))
+
+    def freeEnu(self, keyVar):
+        """
+        Free the bia, fca, and rda resources associated with the specified spectrograph module.
+
+        Parameters
+        ----------
+        keyVar : opscore.actor.keyvar.KeyVar
+            The KeyVar object associated with the spectrograph module shutter.
+        """
+        specNum = int(keyVar.actor[-1])
+        try:
+            shutterState = keyVar.getValue()
+        except ValueError:
+            return
+
+        if shutterState == 'close':
+            # freeing bia, fca and rda.
+            keys = [f'{resource}_sm{specNum}' for resource in ['bia', 'fca', 'rda']]
+            # making sure that the resource exist.
+            resources = list(set(keys).intersection(self.resources.keys()))
+            self.free(resources)

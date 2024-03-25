@@ -33,7 +33,7 @@ class Engine(object):
         """Main engine function.
         Note that arguments order matters, cmd is first because of how singleShot is written."""
         # make sure locked is always defined.
-        locked = None
+        locked = []
         # retrieving resources based on sequence.
         resources = self.resourceManager.inspect(sequence)
         try:
