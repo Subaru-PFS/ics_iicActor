@@ -6,14 +6,17 @@ from ics.iicActor.utils.subcmd import SubCmd
 class VisitedCmd(SubCmd):
     visitCmdArg = 'visit'
     frameIdCmdArg = 'frameId'
+    designIdCmdArg = 'designId'
 
-    def __init__(self, *args, parseVisit=False, parseFrameId=False, **kwargs):
+    def __init__(self, *args, parseVisit=False, parseFrameId=False, parseDesignId=False, **kwargs):
         SubCmd.__init__(self, *args, **kwargs)
 
         self.parseVisit = parseVisit
         self.parseFrameId = parseFrameId
+        self.parseDesignId = parseDesignId
 
         self.allocatedFrameId = -1
+        self.designId = -1
 
     @property
     def visitManager(self):
@@ -35,6 +38,7 @@ class VisitedCmd(SubCmd):
         allArgs = [self.cmdStr]
         allArgs.extend([f'{self.visitCmdArg}={self.visitId}'] if self.parseVisit else [])
         allArgs.extend([f'{self.frameIdCmdArg}={self.frameId}'] if self.parseFrameId else [])
+        allArgs.extend([f'{self.designIdCmdArg}={self.designId}'] if self.parseDesignId else [])
         return ' '.join(allArgs).strip()
 
     @property

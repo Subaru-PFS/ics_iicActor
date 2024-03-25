@@ -17,7 +17,7 @@ class SpsExpose(VisitedCmd):
 
     def __init__(self, *args, **kwargs):
         # always parse visit
-        VisitedCmd.__init__(self, *args, parseVisit=True, **kwargs)
+        VisitedCmd.__init__(self, *args, parseVisit=True, parseDesignId=True, **kwargs)
         self.visit = None
 
         __, exptype, __ = self.cmdStr.split(' ', 2)
@@ -82,6 +82,8 @@ class SpsExpose(VisitedCmd):
         opdbUtils.insertPfsConfigSps(pfs_visit_id=self.visitId, visit0=self.visitManager.activeField.visit0)
         # Generate pfsConfig key.
         self.iicActor.genPfsConfigKey(self.sequence.cmd, pfsConfig)
+        # attach command with designId for parsing.
+        self.designId = pfsConfig.pfsDesignId
 
     def abort(self, cmd):
         """ Abort current exposure """
