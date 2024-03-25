@@ -64,8 +64,10 @@ class IicActor(actorcore.ICC.ICC):
             self.logger.info(f'site :{self.site}')
 
             for spectrographId in range(1, 5):
-                self.addModels([f'enu_sm{spectrographId}'])
+                enuActor = f'enu_sm{spectrographId}'
+                self.addModels([enuActor])
                 self.buffer.attachCallback('sps', f'sm{spectrographId}LightSource', self.genPfsDesign)
+                self.models[enuActor].keyVarDict['shutters'].addCallback(self.engine.resourceManager.freeEnu)
 
             for dcb in {'dcb', 'dcb2'}:
                 self.buffer.attachCallback(dcb, 'designId', self.genPfsDesign)
