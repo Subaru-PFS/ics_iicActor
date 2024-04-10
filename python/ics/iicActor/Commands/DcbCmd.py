@@ -28,6 +28,7 @@ class DcbCmd(object):
             ('expose', f'flat {flatArgs} {windowingArgs} {commonArgs}', self.doFlat),
 
             ('detector', f'throughfocus {arcArgs} <position> [<tilt>] {commonArgs}', self.detThroughFocus),
+            ('fpa', f'throughfocus <micronsRange> {arcArgs} {commonArgs}', self.fpaThroughFocus),
             ('slit', f'throughfocus {arcArgs} <position> {commonArgs}', self.slitThroughFocus),
             ('ditheredArcs', f'{arcArgs} <pixelStep> {commonArgs}', self.ditheredArcs),
             ('defocusedArcs', f'{arcArgs} <position> {commonArgs}', self.defocusedArcs),
@@ -70,6 +71,8 @@ class DcbCmd(object):
                                         keys.Key('position', types.Float() * (1, 3),
                                                  help='slit/motor position for throughfocus same args as np.linspace'),
                                         keys.Key('tilt', types.Float() * (1, 3), help='motor tilt (a, b, c)'),
+                                        keys.Key('micronsRange', types.Float() * (1, 3),
+                                                 help='fpa range from focus(start, stop, nPosition)'),
 
                                         keys.Key("window", types.Int() * (1, 2),
                                                  help='first row, total number of rows to read'),
@@ -344,6 +347,44 @@ class DcbCmd(object):
         """
         detThroughFocus = dcb.DetThroughFocus.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, detThroughFocus)
+
+    def fpaThroughFocus(self, cmd):
+        """
+        `iic fpaThroughFocus exptime=??? micronsRange=??? [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"]
+        [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
+
+        Take Arc dataset through focus, with respect to tilt, using fpa motors.
+        Sequence is referenced in opdb as iic_sequence.seqtype=fpaThroughFocus.
+
+        Parameters
+        ---------
+        exptime : `float`
+            shutter exposure time.
+        micronsRange: `float`, `float`, `int`
+            fpa position constructor, same logic as np.linspace(start, stop, num).
+        cam : list of `str`
+           List of camera to expose, default=all
+        arm : list of `str`
+           List of arm to expose, default=all
+        specNum : list of `int`
+           List of spectrograph module to expose, default=all
+        duplicate : `int`
+           Number of exposure, default=1
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=arc.
+        head : list of `str`
+            list of command to be launched before the sequence.
+        tail : list of `str`
+            list of command to be launched after the sequence.
+        groupId : `int`
+           optional sequence group id.
+        """
+        fpaThroughFocus = dcb.FpaThroughFocus.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        self.engine.runInThread(cmd, fpaThroughFocus)
 
     def slitThroughFocus(self, cmd):
         """

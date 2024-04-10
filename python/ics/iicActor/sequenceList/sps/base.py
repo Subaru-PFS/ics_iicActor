@@ -194,6 +194,7 @@ class FpaThroughFocus(TimedLampsSequence):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         for microns in positions:
+            # we do a relative move to focus position.
             self.add('sps', 'fpa moveFocus', microns=microns, abs=False, cams=cams)
             self.expose('arc', lampsKeys, cams, duplicate=duplicate)
 
