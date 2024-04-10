@@ -202,6 +202,41 @@ class DetThroughFocus(SpsSequence):
         return cls(cams, exptime, dcbOn, dcbOff, duplicate, positions, **seqKeys)
 
 
+class FpaThroughFocus(SpsSequence):
+    """ FpaThroughFocus sequence. """
+    seqtype = 'fpaThroughFocus'
+
+    def __init__(self, cams, exptime, dcbOn, dcbOff, duplicate, positions, **seqKeys):
+        SpsSequence.__init__(self, cams, **seqKeys)
+
+        # adding dcbOn and dcbOff commands.
+        if any(dcbOn.values()):
+            self.head.add('dcb', 'lamps', **dcbOn)
+
+        if any(dcbOff.values()):
+            self.tail.add('dcb', 'lamps', **dcbOff)
+
+        for microns in positions:
+            # we do a relative move to focus position.
+            self.add('sps', 'fpa moveFocus', microns=microns, abs=False, cams=cams)
+            self.expose('arc', exptime, cams, duplicate=duplicate)
+
+        # moving back to focus at the end.
+        self.tail.add('sps', 'fpa toFocus', cams=cams)
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct ScienceObject object."""
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        seqKeys = translate.seqKeys(cmdKeys)
+        exptime, duplicate = translate.spsExposureKeys(cmdKeys)
+        dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
+        start, stop, num = cmdKeys['micronsRange'].values
+        positions = np.linspace(start, stop, num=int(num)).round(6)
+
+        return cls(cams, exptime, dcbOn, dcbOff, duplicate, positions, **seqKeys)
+
+
 class SlitThroughFocus(SpsSequence):
     """Slit through focus sequence."""
     seqtype = 'slitThroughFocus'
