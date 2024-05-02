@@ -149,7 +149,7 @@ class SpsCmd(object):
         groupId : `int`
            optional sequence group id.
         """
-        masterBiases = calib.MasterBiases.fromCmdKeys(self.actor, cmd)
+        masterBiases = calib.MasterBiases.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, masterBiases)
 
     def masterDarks(self, cmd):
