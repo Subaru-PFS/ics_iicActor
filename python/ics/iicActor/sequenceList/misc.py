@@ -14,7 +14,7 @@ class NearDotConvergence(MoveToPfsDesign):
         """Defining rules to construct NearDotConvergence object."""
         seqKeys = translate.seqKeys(cmdKeys)
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
-        config = iicActor.actorConfig['nearDotConvergence']
+        config = iicActor.actorConfig['nearDotConvergence'].copy()
         config.update(exptime=exptime)
 
         if 'maskFile' in cmdKeys:
@@ -52,7 +52,7 @@ class DotCrossing(FpsSequence):
         """Defining rules to construct DotCrossing object."""
         seqKeys = translate.seqKeys(cmdKeys)
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
-        config = iicActor.actorConfig['dotCrossing']
+        config = iicActor.actorConfig['dotCrossing'].copy()
         config.update(exptime=exptime)
         # updating config with optional args
         for arg in [optArg for optArg in ['stepSize', 'count'] if optArg in cmdKeys]:
@@ -210,7 +210,7 @@ class DotRoach(SpsSequence):
         maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
 
         # load dotRoach config and override with user parameters.
-        config = iicActor.actorConfig['dotRoach']
+        config = iicActor.actorConfig['dotRoach'].copy()
         stepSize = cmdKeys['stepSize'].values[0] if 'stepSize' in cmdKeys else config['stepSize']
         count = cmdKeys['count'].values[0] if 'count' in cmdKeys else config['count']
         motor = 'theta' if 'theta' in cmdKeys else config['motor']
@@ -260,7 +260,7 @@ class DotRoachInit(SpsSequence):
         maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
 
         # load dotRoach config and override with user parameters.
-        config = iicActor.actorConfig['dotRoach']
+        config = iicActor.actorConfig['dotRoach'].copy()
         stepSize = cmdKeys['stepSize'].values[0] if 'stepSize' in cmdKeys else config['stepSize']
         count = cmdKeys['count'].values[0] if 'count' in cmdKeys else config['count']
         motor = 'theta' if 'theta' in cmdKeys else config['motor']
