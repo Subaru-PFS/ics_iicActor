@@ -47,7 +47,8 @@ def lampsKeys(cmdKeys):
     overHead = 5 if doShutterTiming else 0
 
     keys = {name: int(round(cmdKeys[name].values[0]) + overHead) for name in lampState.allLamps if name in cmdKeys}
-    iisKeys = {name: int(round(cmdKeys[toIisArg(name)].values[0]) + overHead) for name in lampState.allLamps if toIisArg(name) in cmdKeys}
+    iisKeys = {name: int(round(cmdKeys[toIisArg(name)].values[0]) + overHead) for name in lampState.allLamps if
+               toIisArg(name) in cmdKeys}
 
     if not (keys or iisKeys):
         raise ValueError('no lamps has been specified')
@@ -87,6 +88,13 @@ def mcsExposureKeys(cmdKeys, actorConfig):
 
 def ditheredFlatsKeys(cmdKeys):
     [start, stop, step] = cmdKeys['pixelRange'].values if 'pixelRange' in cmdKeys else [-6, 6, 0.3]
+    nPositions = round((stop - start) / step + 1)
+    positions = np.linspace(start, stop, nPositions).round(2)
+    return positions
+
+
+def fiberProfilesKeys(cmdKeys):
+    [start, stop, step] = cmdKeys['pixelRange'].values if 'pixelRange' in cmdKeys else [-0.4, 0.4, 0.2]
     nPositions = round((stop - start) / step + 1)
     positions = np.linspace(start, stop, nPositions).round(2)
     return positions
