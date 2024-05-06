@@ -35,6 +35,7 @@ class SpsCmd(object):
             ('scienceTrace', f'{timedFlatArgs} {windowingArgs} {commonArgs}', self.scienceTrace),
             ('domeFlat', f'<exptime> {windowingArgs} {commonArgs}', self.domeFlat),
             ('scienceObject', f'<exptime> {windowingArgs} {commonArgs}', self.scienceObject),
+            ('fiberProfiles', f'{timedFlatArgs} [<pixelRange>] [<interleaveDark>] {commonArgs}', self.fiberProfiles),
 
             ('sps', f'@startExposures <exptime> {windowingArgs} {commonArgs}', self.startExposureLoop),
             ('sps', f'@erase {commonArgs}', self.erase),
@@ -216,6 +217,40 @@ class SpsCmd(object):
         """
         ditheredFlats = calib.DitheredFlats.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, ditheredFlats)
+
+    def fiberProfiles(self, cmd):
+        """
+        `iic fiberProfiles halogen=FF.F [@doShutterTiming] [pixels=FF.F,FF.F,FF.F] [cam=???] [arm=???] [specNum=???]
+        [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+
+        Take a set of dithered fiberProfiles data with a given pixel step (default=0.2).
+        Sequence is referenced in opdb as iic_sequence.seqtype=ditheredFlats.
+
+        Parameters
+        ---------
+        halogen : `float`
+            number of second to trigger continuum lamp.
+        doShutterTiming : `bool`
+           if True, use the shutters to control exposure time, ie fire the lamps before opening the shutters.
+        pixels : `float`,`float`,`float`
+            pixels array : start, end, step (default: -6, 6, 0.3).
+        cam : list of `str`
+           List of camera to expose, default=all.
+        arm : list of `str`
+           List of arm to expose, default=all.
+        specNum : list of `int`
+           List of spectrograph module to expose, default=all.
+        duplicate : `int`
+           Number of exposure, default=1.
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=flat.
+        """
+        fiberProfiles = calib.FiberProfiles.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        self.engine.runInThread(cmd, fiberProfiles)
 
     def scienceArc(self, cmd):
         """

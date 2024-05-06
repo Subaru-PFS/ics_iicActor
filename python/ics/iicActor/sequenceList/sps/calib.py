@@ -83,6 +83,51 @@ class DitheredFlats(TimedLampsSequence):
                 SpsSequence.expose(self, 'dark', interleaveDark, nirCam, duplicate=1)
 
 
+class FiberProfiles(TimedLampsSequence):
+    """ Dithered Flats sequence """
+    seqtype = 'fiberProfiles'
+
+    def __init__(self, cams, lampsKeys, positions, duplicate, interleaveDark, **seqKeys):
+        SpsSequence.__init__(self, cams, **seqKeys)
+
+        # taking a trace in home to start.
+        self.add('sps', 'slit start', cams=cams)
+        self.add('sps', 'slit home', cams=cams)
+        # taking 3 images in home first.
+        self.takeOneDuplicate(lampsKeys, cams, duplicate * 3, interleaveDark)
+
+        for position in positions:
+            self.add('sps', 'slit dither', x=position, pixels=True, abs=True, cams=cams)
+            self.takeOneDuplicate(lampsKeys, cams, duplicate, interleaveDark)
+
+        # taking a trace in home to end.
+        self.add('sps', 'slit home', cams=cams)
+        self.takeOneDuplicate(lampsKeys, cams, duplicate, interleaveDark)
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct ScienceObject object."""
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        seqKeys = translate.seqKeys(cmdKeys)
+        __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
+        lampsKeys = translate.lampsKeys(cmdKeys)
+        positions = translate.fiberProfilesKeys(cmdKeys)
+
+        interleaveDark = cmdKeys['interleaveDark'].values[0] if 'interleaveDark' in cmdKeys else False
+
+        return cls(cams, lampsKeys, positions, duplicate, interleaveDark, **seqKeys)
+
+    def takeOneDuplicate(self, lampsKeys, cams, duplicate, interleaveDark):
+        """take one duplicate, interleave for nir arm if necessary."""
+        nirCam = [cam for cam in cams if cam.arm == 'n']
+
+        for i in range(duplicate):
+            self.expose('flat', lampsKeys, cams, duplicate=1)
+            # interleave dark for nir.
+            if nirCam and interleaveDark:
+                SpsSequence.expose(self, 'dark', interleaveDark, nirCam, duplicate=1)
+
+
 class ShutterDriftFlats(SpsSequence):
     """ Dithered Flats sequence """
     seqtype = 'driftFlats'
@@ -95,7 +140,7 @@ class ShutterDriftFlats(SpsSequence):
 
         for iDuplicate in range(duplicate):
             # moving to the beginning of the range // required for N.
-            self.add('sps', 'slit dither', x=pixMin, pixels=True,  abs=True, cams=cams)
+            self.add('sps', 'slit dither', x=pixMin, pixels=True, abs=True, cams=cams)
             self.expose('flat', exptime, cams, duplicate=1, slideSlit=f'{pixMin:.1f},{pixMax:.1f}')
 
         # move back home
