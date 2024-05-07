@@ -7,6 +7,18 @@ from ics.iicActor.utils.visited import VisitedSequence
 class FpsSequence(VisitedSequence):
     caller = 'fps'
 
+    def turnOnIlluminators(self):
+        """Turn on the cobra illuminators."""
+        self.add('sps', 'bia on')
+        self.add('peb', 'led on')
+        self.add('dcb', 'power on cableB')
+
+    def turnOffIlluminators(self):
+        """Turn off the cobra illuminators."""
+        self.tail.add('sps', 'bia off')
+        self.tail.add('peb', 'led off')
+        self.tail.add('dcb', 'power off cableB')
+
 
 class BoresightLoop(FpsSequence):
     """The state required to run a boresight measurement loop.
@@ -84,9 +96,6 @@ class MoveToPfsDesign(FpsSequence):
         maskFile = False
 
         # turning illuminators on
-        self.add('sps', 'bia on')
-        self.add('peb', 'led on')
-        self.add('dcb', 'power on cableB')
 
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
@@ -94,10 +103,6 @@ class MoveToPfsDesign(FpsSequence):
                  noTweak=noTweak, timeLim=600)
 
         # turning illuminators off
-        self.tail.add('sps', 'bia off')
-        self.tail.add('peb', 'led off')
-        self.tail.add('dcb', 'power off cableB')
-
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -127,17 +132,13 @@ class MoveToHome(FpsSequence):
         FpsSequence.__init__(self, **seqKeys)
 
         # turning illuminators on
-        self.add('sps', 'bia on')
-        self.add('peb', 'led on')
-        self.add('dcb', 'power on cableB')
+        self.turnOnIlluminators()
 
         # move cobras to home, not supposed to, but meh.
         self.add('fps', 'moveToHome all', parseVisit=True, exptime=exptime, designId=designId, timeLim=120)
 
         # turning illuminators off
-        self.tail.add('sps', 'bia off')
-        self.tail.add('peb', 'led off')
-        self.tail.add('dcb', 'power off cableB')
+        self.turnOffIlluminators()
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -155,17 +156,13 @@ class GenBlackDotsConfig(FpsSequence):
         FpsSequence.__init__(self, **seqKeys)
 
         # turning illuminators on
-        self.add('sps', 'bia on')
-        self.add('peb', 'led on')
-        self.add('dcb', 'power on cableB')
+        self.turnOnIlluminators()
 
         self.add('mcs', 'expose object', exptime=exptime, parseFrameId=True, doFibreId=True)
         self.add('fps', 'genPfsConfigFromMcs', parseVisit=True, designId=designId)
 
         # turning illuminators off
-        self.tail.add('sps', 'bia off')
-        self.tail.add('peb', 'led off')
-        self.tail.add('dcb', 'power off cableB')
+        self.turnOffIlluminators()
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):

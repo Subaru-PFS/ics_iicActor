@@ -34,9 +34,7 @@ class DotCrossing(FpsSequence):
         FpsSequence.__init__(self, **seqKeys)
 
         # turning illuminators on
-        self.add('sps', 'bia on')
-        self.add('peb', 'led on')
-        self.add('dcb', 'power on cableB')
+        self.turnOnIlluminators()
 
         self.add('mcs', 'expose object', parseFrameId=True, exptime=exptime, doFibreId=True)
 
@@ -45,9 +43,7 @@ class DotCrossing(FpsSequence):
             self.add('mcs', 'expose object', parseFrameId=True, exptime=exptime, doFibreId=True)
 
         # turning illuminators off
-        self.tail.add('sps', 'bia off')
-        self.tail.add('peb', 'led off')
-        self.tail.add('dcb', 'power off cableB')
+        self.turnOffIlluminators()
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
