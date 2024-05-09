@@ -1,4 +1,3 @@
-import os
 from importlib import reload
 
 import ics.iicActor.sequenceList.fps as fpsSequence
@@ -6,10 +5,13 @@ import ics.iicActor.utils.lib as iicUtils
 import ics.iicActor.utils.translate as translate
 import ics.utils.cmd as cmdUtils
 import iicActor.utils.pfsDesign.opdb as designDB
+import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+import pandas as pd
 from ics.utils.threading import singleShot
 from iicActor.utils.engine import ExecMode
+from pfs.datamodel.pfsConfig import TargetType
 
 reload(fpsSequence)
 reload(iicUtils)
@@ -39,8 +41,8 @@ class FpsCmd(object):
             ('moveToPfsDesign',
              f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [@(twoStepsOff)] [@(noTweak)] [<nIteration>] [<tolerance>] {translate.seqArgs}',
              self.moveToPfsDesign),
-            ('moveToHome', f'[@(all)] [<exptime>] [<designId>] [<maskFile>] {translate.seqArgs}', self.moveToHome),
-
+            ('moveToHome', f'[@(all)] [<exptime>] [<designId>] [<maskFile>] [<wrtMaskFile>] {translate.seqArgs}',
+             self.moveToHome),
             ('movePhiToAngle', f'<angle> <nIteration> {translate.seqArgs}', self.movePhiToAngle),
             ('moveToSafePosition', f'{translate.seqArgs}', self.moveToSafePosition),
             ('gotoVerticalFromPhi60', f'{translate.seqArgs}', self.gotoVerticalFromPhi60),
@@ -84,6 +86,8 @@ class FpsCmd(object):
                                                  help="pfsDesignId for the field,which defines the fiber positions"),
                                         keys.Key('maskFile', types.String() * (1,),
                                                  help='filename containing which fibers to expose.'),
+                                        keys.Key('wrtMaskFile', types.String() * (1,),
+                                                 help='move with respect to that maskFile.'),
                                         )
 
     @property
@@ -222,6 +226,7 @@ class FpsCmd(object):
         moveToDesign = fpsSequence.MoveToPfsDesign.fromCmdKeys(self.actor, cmdKeys, designId=designId)
         self.engine.runInThread(cmd, moveToDesign)
 
+    @singleShot
     def moveToHome(self, cmd):
         """
         `iic moveToHome phi|theta|all [name=\"SSS\"] [comments=\"SSS\"]`
@@ -237,22 +242,34 @@ class FpsCmd(object):
         """
         cmdKeys = cmd.cmd.keywords
 
-        if 'maskFile' in cmdKeys:
-            maskFile = cmdKeys['maskFile'].values[0]
-            maskFile = os.path.join(self.actor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
-        else:
-            maskFile = ''
+        maskFileArgs = translate.getMaskFileArgsFromCmd(cmdKeys, self.actor.actorConfig)
 
-        maskFile = f'maskFile={maskFile}' if maskFile else ''
-
-        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=f'createHomeDesign {maskFile}'.strip(), timeLim=10)
+        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=f'createHomeDesign {maskFileArgs}'.strip(), timeLim=10)
         keys = cmdUtils.cmdVarToKeys(cmdVar)
         designId = int(keys['fpsDesignId'].values[0], 16)
 
         self.actor.declareFpsDesign(cmd, designId=designId)
+        activePfsDesign = self.actor.engine.visitManager.activeField.pfsDesign
+        toBeMoved = activePfsDesign.targetType == TargetType.HOME
+
+        # updating targetType for fibers that were already revealed
+        if 'wrtMaskFile' in cmdKeys:
+            wrtMaskFile = pd.read_csv(translate.constructMaskFilePath(cmdKeys["wrtMaskFile"].values[0],
+                                                                      self.actor.actorConfig), index_col=0)
+            alreadyMoved = np.isin(activePfsDesign.fiberId, wrtMaskFile.fiberId[wrtMaskFile.bitMask == 1])
+            activePfsDesign.targetType[np.logical_and(alreadyMoved, toBeMoved)] = TargetType.UNASSIGNED
+            # writing updated design.
+            activePfsDesign.write(self.actor.actorConfig['pfsDesign']['rootDir'])
 
         moveToHome = fpsSequence.MoveToHome.fromCmdKeys(self.actor, cmdKeys, designId=designId)
-        self.engine.runInThread(cmd, moveToHome)
+        self.engine.run(cmd, moveToHome, doFinish=False)
+
+        if 'wrtMaskFile' in cmdKeys:
+            # rewriting designFile back to original values.
+            activePfsDesign.targetType[toBeMoved] = TargetType.HOME
+            activePfsDesign.write(self.actor.actorConfig['pfsDesign']['rootDir'])
+
+        cmd.finish()
 
     def movePhiToAngle(self, cmd):
         """
