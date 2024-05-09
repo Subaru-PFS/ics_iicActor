@@ -1,3 +1,5 @@
+import os
+
 import ics.utils.sps.lamps.utils.lampState as lampState
 import numpy as np
 
@@ -111,3 +113,63 @@ def slitThroughFocusKeys(cmdKeys):
     [start, stop, num] = cmdKeys['position'].values
     positions = np.linspace(start, stop, int(num)).round(2)
     return positions
+
+
+def constructMaskFilePath(maskFile, actorConfig):
+    """
+    Construct the file path for a given mask file.
+
+    Parameters
+    ----------
+    maskFile : str
+        Name of the mask file.
+    actorConfig : dict
+        Actor configuration dictionary.
+
+    Returns
+    -------
+    str
+        File path for the mask file.
+    """
+    return os.path.join(actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
+
+
+def getMaskFilePathFromCmd(cmdKeys, actorConfig):
+    """
+    Get the file path for the mask file from command-line arguments.
+
+    Parameters
+    ----------
+    cmdKeys : dict
+        Dictionary of command-line arguments.
+    actorConfig : dict
+        Actor configuration dictionary.
+
+    Returns
+    -------
+    str
+        File path for the mask file.
+    """
+    return constructMaskFilePath(cmdKeys['maskFile'].values[0], actorConfig) if 'maskFile' in cmdKeys else ''
+
+
+def getMaskFileArgsFromCmd(cmdKeys, actorConfig):
+    """
+    Get the command-line arguments for the mask file.
+
+    Parameters
+    ----------
+    cmdKeys : dict
+        Dictionary of command-line arguments.
+    actorConfig : dict
+        Actor configuration dictionary.
+
+    Returns
+    -------
+    str
+        Command-line arguments for the mask file.
+    """
+    maskFilePath = getMaskFilePathFromCmd(cmdKeys, actorConfig)
+    maskFileArgs = f'maskFile={maskFilePath}' if maskFilePath else ''
+
+    return maskFileArgs

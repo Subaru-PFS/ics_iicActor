@@ -96,6 +96,7 @@ class MoveToPfsDesign(FpsSequence):
         maskFile = False
 
         # turning illuminators on
+        self.turnOnIlluminators()
 
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
@@ -103,17 +104,13 @@ class MoveToPfsDesign(FpsSequence):
                  noTweak=noTweak, timeLim=600)
 
         # turning illuminators off
+        self.turnOffIlluminators()
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
         seqKeys = translate.seqKeys(cmdKeys)
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
-
-        if 'maskFile' in cmdKeys:
-            maskFile = cmdKeys['maskFile'].values[0]
-            maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
-        else:
-            maskFile = False
+        maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
 
         nIteration = cmdKeys['nIteration'].values[0] if 'nIteration' in cmdKeys else False
         tolerance = cmdKeys['tolerance'].values[0] if 'tolerance' in cmdKeys else False

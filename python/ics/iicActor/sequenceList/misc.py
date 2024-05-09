@@ -14,14 +14,10 @@ class NearDotConvergence(MoveToPfsDesign):
         """Defining rules to construct NearDotConvergence object."""
         seqKeys = translate.seqKeys(cmdKeys)
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
+        maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
+
         config = iicActor.actorConfig['nearDotConvergence'].copy()
         config.update(exptime=exptime)
-
-        if 'maskFile' in cmdKeys:
-            maskFile = cmdKeys['maskFile'].values[0]
-            maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
-        else:
-            maskFile = False
 
         return cls(designId, maskFile=maskFile, goHome=True, noTweak=True, twoStepsOff=False, **config, **seqKeys)
 
@@ -73,14 +69,14 @@ class FiberIdentification(SpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'fiberIdentification'
 
-    def __init__(self, cams, exptime, windowKeys, maskFilesRoot, fiberGroups, **seqKeys):
+    def __init__(self, cams, exptime, windowKeys, actorConfig, fiberGroups, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
 
         for groupId in fiberGroups:
             self.add('fps', f'cobraMoveSteps phi',
-                     stepsize=3000, maskFile=os.path.join(maskFilesRoot, f'mtpGroup{str(groupId).zfill(2)}.csv'))
+                     stepsize=3000, maskFile=translate.constructMaskFilePath(f'mtpGroup{groupId:02d}', actorConfig))
             # use sps erase command to niet things up.
             self.add('sps', 'erase', cams=cams)
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
@@ -96,9 +92,8 @@ class FiberIdentification(SpsSequence):
         # group 25 does not exist.
         default = list(set(range(2, 32)) - {25})
         fiberGroups = cmdKeys['fiberGroups'].values if 'fiberGroups' in cmdKeys else default
-        maskFilesRoot = iicActor.actorConfig['maskFiles']['rootDir']
 
-        return cls(cams, exptime, windowedFlatConfig, maskFilesRoot, fiberGroups, **seqKeys)
+        return cls(cams, exptime, windowedFlatConfig, iicActor.actorConfig, fiberGroups, **seqKeys)
 
 
 class DotRoach(SpsSequence):
@@ -205,7 +200,7 @@ class DotRoach(SpsSequence):
 
         # construct maskFile path.
         maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'moveAll'
-        maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
+        maskFile = translate.constructMaskFilePath(maskFile, iicActor.actorConfig)
 
         # load dotRoach config and override with user parameters.
         config = iicActor.actorConfig['dotRoach'].copy()
@@ -255,7 +250,7 @@ class DotRoachInit(SpsSequence):
 
         # construct maskFile path.
         maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'moveAll'
-        maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
+        maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootmaskDir'], f'{maskFile}.csv')
 
         # load dotRoach config and override with user parameters.
         config = iicActor.actorConfig['dotRoach'].copy()

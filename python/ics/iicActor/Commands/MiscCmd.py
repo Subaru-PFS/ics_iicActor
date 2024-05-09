@@ -1,4 +1,3 @@
-import os
 from importlib import reload
 
 import ics.iicActor.sequenceList.fps as fpsSequence
@@ -137,15 +136,9 @@ class MiscCmd(object):
         """"""
         cmdKeys = cmd.cmd.keywords
 
-        if 'maskFile' in cmdKeys:
-            maskFile = cmdKeys['maskFile'].values[0]
-            maskFile = os.path.join(self.actor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
-        else:
-            maskFile = ''
+        maskFileArgs = translate.getMaskFileArgsFromCmd(cmdKeys, self.actor.actorConfig)
 
-        maskFile = f'maskFile={maskFile}' if maskFile else ''
-
-        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=f'createBlackDotDesign {maskFile}'.strip(), timeLim=10)
+        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=f'createBlackDotDesign {maskFileArgs}'.strip(), timeLim=10)
         keys = cmdUtils.cmdVarToKeys(cmdVar)
         designId = int(keys['fpsDesignId'].values[0], 16)
 
