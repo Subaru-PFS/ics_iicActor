@@ -268,6 +268,9 @@ class FpsCmd(object):
             # rewriting designFile back to original values.
             activePfsDesign.targetType[toBeMoved] = TargetType.HOME
             activePfsDesign.write(self.actor.actorConfig['pfsDesign']['rootDir'])
+            # also updating pfsConfig0.
+            if self.actor.engine.visitManager.activeField.pfsConfig0:
+                self.actor.engine.visitManager.activeField.pfsConfig0.targetType[toBeMoved] = TargetType.HOME
 
         cmd.finish()
 
