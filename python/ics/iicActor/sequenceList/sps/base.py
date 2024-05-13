@@ -139,7 +139,7 @@ class DitheredArcs(TimedLampsSequence):
         lampsKeys = translate.lampsKeys(cmdKeys)
         pixelStep = cmdKeys['pixelStep'].values[0]
 
-        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
+        hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
 
         return cls(cams, lampsKeys, duplicate, pixelStep, hexapodOff, **seqKeys)
 
@@ -181,7 +181,7 @@ class DefocusedArcs(TimedLampsSequence):
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num)).round(6)
 
-        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
+        hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
 
         return cls(cams, lampsKeys, iisKeys, duplicate, positions, hexapodOff, **seqKeys)
 

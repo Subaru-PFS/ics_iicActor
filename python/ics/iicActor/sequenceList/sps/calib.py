@@ -67,7 +67,7 @@ class DitheredFlats(TimedLampsSequence):
         lampsKeys = translate.lampsKeys(cmdKeys)
         positions = translate.ditheredFlatsKeys(cmdKeys)
 
-        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
+        hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
         interleaveDark = cmdKeys['interleaveDark'].values[0] if 'interleaveDark' in cmdKeys else False
 
         return cls(cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, **seqKeys)

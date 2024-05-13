@@ -51,7 +51,7 @@ class DitheredFlats(SpsSequence):
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys, forceHalogen=True)
         positions = translate.ditheredFlatsKeys(cmdKeys)
 
-        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
+        hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
 
         return cls(cams, exptime, dcbOn, dcbOff, positions, duplicate, hexapodOff, **seqKeys)
 
@@ -163,7 +163,7 @@ class DitheredArcs(SpsSequence):
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
         pixelStep = cmdKeys['pixelStep'].values[0]
-        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
+        hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
 
         return cls(cams, exptime, dcbOn, dcbOff, duplicate, pixelStep, hexapodOff, **seqKeys)
 
@@ -313,6 +313,6 @@ class DefocusedArcs(SpsSequence):
         # basic np.linspace.
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num)).round(6)
-        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
+        hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
 
         return cls(cams, exptime, dcbOn, dcbOff, duplicate, positions, hexapodOff, **seqKeys)

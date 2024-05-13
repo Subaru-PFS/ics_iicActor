@@ -70,7 +70,7 @@ class HexapodStability(SpsSequence):
         [start, stop, step] = cmdKeys['position'].values if 'position' in cmdKeys else [-0.05, 0.055, 0.01]
         positions = np.arange(start, stop, step)[::-1]
 
-        hexapodOff = iicActor.engine.keyRepo.hexapodPoweredOff(cams)
+        hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
 
         return cls(cams, lampsKeys, duplicate, positions, hexapodOff, **seqKeys)
 
