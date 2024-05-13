@@ -28,6 +28,34 @@ class SpsSequence(sequence.Sequence):
 
         return self.allLightSources[0]
 
+    def matchPfsConfigArms(self, pfsConfig):
+        """
+        Match the arms in the current pfsConfig to the arms being used in the sequence.
+
+        Parameters
+        ----------
+        pfsConfig : `pfs.datamodel.pfsConfig.PfsConfig`
+            Current pfsConfig.
+
+        Returns
+        -------
+        str
+            The arms being used in the sequence, as a string.
+
+        Raises
+        ------
+        ValueError
+            If any of the arms being used in the sequence are not present in the pfsConfig and
+            `forceGrating` is set to `False`.
+        """
+        useArms = [self.engine.keyRepo.getActualArm(cam) for cam in self.cams]
+        diffArm = set(useArms) - set(pfsConfig.arms)
+
+        if len(diffArm) and not self.forceGrating:
+            raise ValueError(f"{','.join(diffArm)} not present in pfsConfig.arms")
+
+        return ''.join(useArms)
+
     def expose(self, exptype, exptime, cams, duplicate=1, windowKeys=None, slideSlit=None):
         """Append duplicate * sps expose to sequence."""
         # being nice about input arguments.

@@ -3,7 +3,7 @@ import os
 import ics.utils.sps.lamps.utils.lampState as lampState
 import numpy as np
 
-seqArgs = '[<name>] [<comments>] [@doTest] [@noDeps] [<groupId>] [<head>] [<tail>]'
+seqArgs = '[<name>] [<comments>] [@doTest] [@noDeps] [@forceGrating] [<groupId>] [<head>] [<tail>]'
 
 
 def seqKeys(cmdKeys):
@@ -11,11 +11,13 @@ def seqKeys(cmdKeys):
     name = cmdKeys['name'].values[0] if 'name' in cmdKeys else ''
     comments = cmdKeys['comments'].values[0] if 'comments' in cmdKeys else ''
     doTest = 'doTest' in cmdKeys
+    noDeps = 'noDeps' in cmdKeys
+    forceGrating = 'forceGrating' in cmdKeys
     head = cmdKeys['head'].values if 'head' in cmdKeys else None
     tail = cmdKeys['tail'].values if 'tail' in cmdKeys else None
     groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
-    noDeps = 'noDeps' in cmdKeys
-    return dict(name=name, comments=comments, doTest=doTest, noDeps=noDeps,
+
+    return dict(name=name, comments=comments, doTest=doTest, noDeps=noDeps, forceGrating=forceGrating,
                 head=head, tail=tail, groupId=groupId, cmdKeys=cmdKeys)
 
 

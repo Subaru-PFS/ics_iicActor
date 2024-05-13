@@ -3,7 +3,6 @@ import pandas as pd
 from pfs.datamodel.pfsConfig import PfsDesign
 from pfs.datamodel.utils import calculate_pfsDesignId
 from pfs.utils.fiberids import FiberIds
-
 from pfs.utils.pfsDesignUtils import fakeRa, fakeDec, fakeRaDecFromPfiNominal
 
 
@@ -49,7 +48,7 @@ def sortFieldsByFiberId(kwargs):
 
 def mergeSuNSSAndDcb(pfsDesigns, designName):
     """Merge SuNSS and DCB PfsDesign."""
-    kwargs = dict(pfsDesignId=0, raBoresight=fakeRa, decBoresight=fakeDec, posAng=0, arms='brn', guideStars=None,
+    kwargs = dict(pfsDesignId=0, raBoresight=fakeRa, decBoresight=fakeDec, posAng=0, arms='brnm', guideStars=None,
                   designName=designName, variant=0, designId0=0)
     keywords = PfsDesign._keywords + PfsDesign._scalars + ['fiberStatus']
 
