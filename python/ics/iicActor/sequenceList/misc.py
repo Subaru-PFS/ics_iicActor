@@ -225,7 +225,7 @@ class DotRoachInit(SpsSequence):
         dataRoot = os.path.join(rootDir, 'current')
 
         # turning drp processing on
-        self.add('drp', 'startDotRoach', dataRoot=dataRoot, maskFile=maskFile, keepMoving=keepMoving)
+        self.add('drp', 'startDotRoach', dataRoot=dataRoot, maskFile=maskFile, keepMoving=keepMoving, cams=cams)
 
         # use sps erase command to niet things up.
         self.add('sps', 'erase', cams=cams)
