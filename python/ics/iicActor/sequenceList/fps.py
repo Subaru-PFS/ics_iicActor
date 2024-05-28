@@ -1,5 +1,3 @@
-import os
-
 import iicActor.utils.translate as translate
 from ics.iicActor.utils.visited import VisitedSequence
 
@@ -7,17 +5,28 @@ from ics.iicActor.utils.visited import VisitedSequence
 class FpsSequence(VisitedSequence):
     caller = 'fps'
 
-    def turnOnIlluminators(self):
+    def __init__(self, *args, doTurnOnIlluminator=False, cableBLampOn=False, **kwargs):
+        VisitedSequence.__init__(self, *args, **kwargs)
+
+        if doTurnOnIlluminator:
+            self.turnOnIlluminators(cableBLampOn)
+            self.turnOffIlluminators(cableBLampOn)
+
+    def turnOnIlluminators(self, cableBLampOn=False):
         """Turn on the cobra illuminators."""
         self.add('sps', 'bia on')
         self.add('peb', 'led on')
-        self.add('dcb', 'power on cableB')
 
-    def turnOffIlluminators(self):
+        if cableBLampOn:
+            self.add('dcb', 'power on cableB')
+
+    def turnOffIlluminators(self, cableBLampOn=False):
         """Turn off the cobra illuminators."""
         self.tail.add('sps', 'bia off')
         self.tail.add('peb', 'led off')
-        self.tail.add('dcb', 'power off cableB')
+
+        if cableBLampOn:
+            self.tail.add('dcb', 'power off cableB')
 
 
 class BoresightLoop(FpsSequence):
@@ -89,22 +98,17 @@ class MoveToPfsDesign(FpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'moveToPfsDesign'
 
-    def __init__(self, designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, noTweak, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
+    def __init__(self, designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, noTweak, cableBLampOn,
+                 **seqKeys):
+        FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
 
         # Removing maskFile for now, it's broken on fps side (per INSTRM-2192)
         maskFile = False
-
-        # turning illuminators on
-        self.turnOnIlluminators()
 
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
                  tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=goHome, twoStepsOff=twoStepsOff,
                  noTweak=noTweak, timeLim=600)
-
-        # turning illuminators off
-        self.turnOffIlluminators()
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -117,57 +121,49 @@ class MoveToPfsDesign(FpsSequence):
         goHome = 'noHome' not in cmdKeys
         twoStepsOff = 'twoStepsOff' in cmdKeys
         noTweak = 'noTweak' in cmdKeys
+        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
 
-        return cls(designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, noTweak, **seqKeys)
+        return cls(designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, noTweak, cableBLampOn,
+                   **seqKeys)
 
 
 class MoveToHome(FpsSequence):
     """ fps MoveToHome command."""
     seqtype = 'moveToHome'
 
-    def __init__(self, exptime, designId, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
-
-        # turning illuminators on
-        self.turnOnIlluminators()
+    def __init__(self, exptime, designId, cableBLampOn, **seqKeys):
+        FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
 
         # move cobras to home, not supposed to, but meh.
         self.add('fps', 'moveToHome all', parseVisit=True, exptime=exptime, designId=designId, timeLim=120)
-
-        # turning illuminators off
-        self.turnOffIlluminators()
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
         seqKeys = translate.seqKeys(cmdKeys)
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
+        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
 
-        return cls(exptime, designId, **seqKeys)
+        return cls(exptime, designId, cableBLampOn, **seqKeys)
 
 
 class GenBlackDotsConfig(FpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'genBlackDotsPfsConfig'
 
-    def __init__(self, exptime, designId, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
-
-        # turning illuminators on
-        self.turnOnIlluminators()
+    def __init__(self, exptime, designId, cableBLampOn, **seqKeys):
+        FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
 
         self.add('mcs', 'expose object', exptime=exptime, parseFrameId=True, doFibreId=True)
         self.add('fps', 'genPfsConfigFromMcs', parseVisit=True, designId=designId)
-
-        # turning illuminators off
-        self.turnOffIlluminators()
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
         """Defining rules to construct DotCrossing object."""
         seqKeys = translate.seqKeys(cmdKeys)
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
+        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
 
-        return cls(exptime, designId, **seqKeys)
+        return cls(exptime, designId, cableBLampOn, **seqKeys)
 
 
 class MovePhiToAngle(FpsSequence):

@@ -17,7 +17,8 @@ class NearDotConvergence(MoveToPfsDesign):
         maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
 
         config = iicActor.actorConfig['nearDotConvergence'].copy()
-        config.update(exptime=exptime)
+        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
+        config.update(exptime=exptime, cableBLampOn=cableBLampOn)
 
         return cls(designId, maskFile=maskFile, goHome=True, noTweak=True, twoStepsOff=False, **config, **seqKeys)
 
@@ -26,11 +27,8 @@ class DotCrossing(FpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'dotCrossing'
 
-    def __init__(self, stepSize, count, exptime, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
-
-        # turning illuminators on
-        self.turnOnIlluminators()
+    def __init__(self, stepSize, count, exptime, cableBLampOn, **seqKeys):
+        FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
 
         self.add('mcs', 'expose object', parseFrameId=True, exptime=exptime, doFibreId=True)
 
@@ -38,16 +36,15 @@ class DotCrossing(FpsSequence):
             self.add('fps', f'cobraMoveSteps {self.motor}', stepsize=stepSize)
             self.add('mcs', 'expose object', parseFrameId=True, exptime=exptime, doFibreId=True)
 
-        # turning illuminators off
-        self.turnOffIlluminators()
-
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct DotCrossing object."""
         seqKeys = translate.seqKeys(cmdKeys)
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
+        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
+
         config = iicActor.actorConfig['dotCrossing'].copy()
-        config.update(exptime=exptime)
+        config.update(exptime=exptime, cableBLampOn=cableBLampOn)
         # updating config with optional args
         for arg in [optArg for optArg in ['stepSize', 'count'] if optArg in cmdKeys]:
             config[arg] = cmdKeys[arg].values[0]
