@@ -225,7 +225,7 @@ class DotRoachInit(SpsSequence):
         dataRoot = os.path.join(rootDir, 'current')
 
         # turning drp processing on
-        self.add('drp', 'startDotRoach', dataRoot=dataRoot, maskFile=maskFile, keepMoving=keepMoving)
+        self.add('drp', 'startDotRoach', dataRoot=dataRoot, maskFile=maskFile, keepMoving=keepMoving, cams=cams)
 
         # use sps erase command to niet things up.
         self.add('sps', 'erase', cams=cams)
@@ -247,7 +247,7 @@ class DotRoachInit(SpsSequence):
 
         # construct maskFile path.
         maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'moveAll'
-        maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootmaskDir'], f'{maskFile}.csv')
+        maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
 
         # load dotRoach config and override with user parameters.
         config = iicActor.actorConfig['dotRoach'].copy()
