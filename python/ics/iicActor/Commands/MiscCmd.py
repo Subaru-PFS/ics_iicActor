@@ -158,9 +158,10 @@ class MiscCmd(object):
 
         # exptime in cmdKeys means SPS exptime but the sequence interpret it as MCS exptime, so we have to patch it.
         mcsExptime = self.actor.actorConfig['mcs']['exptime']
-        moveToHomeAll = fpsSequence.MoveToHome(exptime=mcsExptime, designId=homeDesignId)
+        cableBLampOn = self.actor.actorConfig['fps']['cableBLampOn']
+        moveToHomeAll = fpsSequence.MoveToHome(exptime=mcsExptime, designId=homeDesignId, cableBLampOn=cableBLampOn)
         nearDotConvergence = misc.NearDotConvergence(phiCrossingDesignId, maskFile=False, goHome=False, noTweak=True,
-                                                     twoStepsOff=False, exptime=mcsExptime,
+                                                     twoStepsOff=False, exptime=mcsExptime, cableBLampOn=cableBLampOn,
                                                      **self.actor.actorConfig['nearDotConvergence'])
         # use pfiLamps by default.
         roaching = misc.DotRoach if 'hscLamps' in cmdKeys else misc.DotRoachPfiLamps
