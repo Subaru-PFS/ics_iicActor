@@ -48,8 +48,8 @@ class SpsSequence(sequence.Sequence):
             If any of the arms being used in the sequence are not present in the pfsConfig and
             `forceGrating` is set to `False`.
         """
-        useArms = [self.engine.keyRepo.getActualArm(cam) for cam in self.cams]
-        diffArm = set(useArms) - set(pfsConfig.arms)
+        useArms = set([self.engine.keyRepo.getActualArm(cam) for cam in self.cams])
+        diffArm = useArms - set(pfsConfig.arms)
 
         if len(diffArm) and not self.forceGrating:
             raise ValueError(f"{','.join(diffArm)} not present in pfsConfig.arms")
