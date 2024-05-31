@@ -146,9 +146,9 @@ class MoveToHome(FpsSequence):
         return cls(exptime, designId, cableBLampOn, **seqKeys)
 
 
-class GenBlackDotsConfig(FpsSequence):
+class GenPfsConfigFromMcs(FpsSequence):
     """ fps MoveToPfsDesign command. """
-    seqtype = 'genBlackDotsPfsConfig'
+    seqtype = 'genPfsConfigFromMcs'
 
     def __init__(self, exptime, designId, cableBLampOn, **seqKeys):
         FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
