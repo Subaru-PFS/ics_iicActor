@@ -85,7 +85,7 @@ class MiscCmd(object):
         """"""
         cmdKeys = cmd.cmd.keywords
 
-        designName = 'phiCrossing-2022-06-19' if 'phi' in cmdKeys else designName
+        designName = 'phiCrossing-2024-05-29_+4.0 deg' if 'phi' in cmdKeys else designName
         designName = 'thetaCrossing-2022-06-19' if 'theta' in cmdKeys else designName
 
         # get dotCrossing designId from opdb or use provided new one.

@@ -124,8 +124,8 @@ class DotRoach(SpsSequence):
         steps22 = [25, 32, 40, 50, 60, 70, 80, 90]
 
         # quicker scenario.
-        steps31 = [177, 133, 100, 76, 63, 62, 77, 102, 140, 192, 265, 362, 494]
-        steps32 = [30, 42, 56, 74, 100]
+        steps31 = [70, 98, 137, 192, 269, 377, 500, 700]
+        steps32 = [30, 38, 48, 60, 75, 94, 118]
 
         if mode == 'first':
             return steps11, steps12
