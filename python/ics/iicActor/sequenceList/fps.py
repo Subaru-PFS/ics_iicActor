@@ -166,6 +166,10 @@ class GenPfsConfigFromMcs(FpsSequence):
         return cls(exptime, designId, cableBLampOn, **seqKeys)
 
 
+class GenBlackDotsConfig(GenPfsConfigFromMcs):
+    seqtype = 'genBlackDotsPfsConfig'
+
+
 class MovePhiToAngle(FpsSequence):
     """ fps MovePhiToAngle command. """
     seqtype = 'movePhiToAngle'

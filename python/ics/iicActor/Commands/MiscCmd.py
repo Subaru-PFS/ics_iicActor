@@ -145,7 +145,7 @@ class MiscCmd(object):
 
         self.actor.declareFpsDesign(cmd, designId=designId)
 
-        genPfsConfigFromMcs = fpsSequence.GenPfsConfigFromMcs.fromCmdKeys(self.actor, cmdKeys, designId=designId)
+        genPfsConfigFromMcs = fpsSequence.GenBlackDotsConfig.fromCmdKeys(self.actor, cmdKeys, designId=designId)
         self.engine.run(cmd, genPfsConfigFromMcs)
 
     @singleShot
