@@ -37,7 +37,6 @@ class MiscCmd(object):
             ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] [<maskFile>] {translate.seqArgs}', self.nearDotConvergenceCmd),
             ('genBlackDotsConfig', f'[<maskFile>] {translate.seqArgs}', self.genBlackDotsConfigCmd),
             ('dotRoach', f'[<exptime>] [<maskFile>] [@(hscLamps)] [<mode>] {identArgs} {translate.seqArgs}', self.dotRoach),
-            ('genPfsConfigFromMcs', f'[<designId>] {translate.seqArgs}', self.genPfsConfigFromMcs),
         ]
 
         # Define typed command arguments for the above commands.
@@ -208,16 +207,3 @@ class MiscCmd(object):
             return
 
         self.genBlackDotsConfig(cmd)
-
-    def genPfsConfigFromMcs(self, cmd):
-        """"""
-        cmdKeys = cmd.cmd.keywords
-
-        # then declare new design.
-        if 'designId' in cmdKeys:
-            self.actor.declareFpsDesign(cmd)
-
-        designId = self.engine.visitManager.getCurrentDesignId()
-
-        genPfsConfigFromMcs = fpsSequence.GenPfsConfigFromMcs.fromCmdKeys(self.actor, cmdKeys, designId=designId)
-        self.engine.runInThread(cmd, genPfsConfigFromMcs)
