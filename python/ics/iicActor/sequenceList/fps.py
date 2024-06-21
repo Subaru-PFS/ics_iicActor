@@ -200,6 +200,36 @@ class CobraMoveAngles(FpsSequence):
         return cls(phi, theta, angle, maskFile, genPfsConfig, exptime, designId, cableBLampOn, **seqKeys)
 
 
+class CobraMoveSteps(FpsSequence):
+    """ fps MotorOntimeSearch command. """
+    seqtype = 'cobraMoveSteps'
+
+    def __init__(self, phi, theta, stepSize, maskFile, genPfsConfig, exptime, designId, cableBLampOn, **seqKeys):
+        FpsSequence.__init__(self, **seqKeys, doTurnOnIlluminator=genPfsConfig, cableBLampOn=cableBLampOn)
+
+        self.add('fps', f'cobraMoveSteps', phi=phi, theta=theta, stepsize=stepSize, maskFile=maskFile)
+
+        if genPfsConfig:
+            self.add('mcs', 'expose object', exptime=exptime, parseFrameId=True, doFibreId=True)
+            self.add('fps', 'genPfsConfigFromMcs', parseVisit=True, designId=designId)
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys, designId):
+        """Defining rules to construct FpsLoop object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+
+        phi = 'phi' in cmdKeys
+        theta = 'theta' in cmdKeys
+        stepSize = cmdKeys['stepsize'].values[0]
+        maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
+
+        genPfsConfig = 'genPfsConfig' in cmdKeys
+        exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
+        cableBLampOn = genPfsConfig and iicActor.actorConfig['fps']['cableBLampOn']
+
+        return cls(phi, theta, stepSize, maskFile, genPfsConfig, exptime, designId, cableBLampOn, **seqKeys)
+
+
 class MovePhiToAngle(FpsSequence):
     """ fps MovePhiToAngle command. """
     seqtype = 'movePhiToAngle'
