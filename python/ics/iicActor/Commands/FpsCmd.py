@@ -43,6 +43,11 @@ class FpsCmd(object):
              self.moveToPfsDesign),
             ('moveToHome', f'[@(all)] [<exptime>] [<designId>] [<maskFile>] [<wrtMaskFile>] {translate.seqArgs}',
              self.moveToHome),
+            ('genPfsConfigFromMcs', f'[<designId>] {translate.seqArgs}', self.genPfsConfigFromMcs),
+            ('cobraMoveAngles', '@(phi|theta) <angle> [@(genPfsConfig)] [<maskFile>]', self.cobraMoveAngles),
+            ('cobraMoveSteps', '@(phi|theta) <stepsize> [@(genPfsConfig)] [<maskFile>]', self.cobraMoveSteps),
+            # from here not really used.
+
             ('movePhiToAngle', f'<angle> <nIteration> {translate.seqArgs}', self.movePhiToAngle),
             ('moveToSafePosition', f'{translate.seqArgs}', self.moveToSafePosition),
             ('gotoVerticalFromPhi60', f'{translate.seqArgs}', self.gotoVerticalFromPhi60),
@@ -273,6 +278,63 @@ class FpsCmd(object):
                 self.actor.engine.visitManager.activeField.pfsConfig0.targetType[toBeMoved] = TargetType.HOME
 
         cmd.finish()
+
+    def genPfsConfigFromMcs(self, cmd):
+        """"""
+        cmdKeys = cmd.cmd.keywords
+
+        # then declare new design.
+        if 'designId' in cmdKeys:
+            self.actor.declaanglereFpsDesign(cmd)
+
+        designId = self.visitManager.getCurrentDesignId()
+
+        genPfsConfigFromMcs = fpsSequence.GenPfsConfigFromMcs.fromCmdKeys(self.actor, cmdKeys, designId=designId)
+        self.engine.runInThread(cmd, genPfsConfigFromMcs)
+
+    def cobraMoveAngles(self, cmd):
+        """
+        `iic cobraMoveAngles angle=N [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Move Theta/Phi arm to angle.
+
+        Parameters
+        ---------
+        angle : `int`
+           specified angle .
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        """
+        cmdKeys = cmd.cmd.keywords
+
+        designId = self.visitManager.getCurrentDesignId()
+
+        cobraMoveAngles = fpsSequence.CobraMoveAngles.fromCmdKeys(self.actor, cmdKeys, designId=designId)
+        self.engine.runInThread(cmd, cobraMoveAngles)
+
+    def cobraMoveSteps(self, cmd):
+        """
+        `iic cobraMoveSteps stepsize=N [name=\"SSS\"] [comments=\"SSS\"]`
+
+        Move Theta/Phi arm to stepsize.
+
+        Parameters
+        ---------
+        stepsize : `int`
+           specified step size .
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        """
+        cmdKeys = cmd.cmd.keywords
+
+        designId = self.visitManager.getCurrentDesignId()
+
+        cobraMoveSteps = fpsSequence.CobraMoveSteps.fromCmdKeys(self.actor, cmdKeys, designId=designId)
+        self.engine.runInThread(cmd, cobraMoveSteps)
 
     def movePhiToAngle(self, cmd):
         """

@@ -152,7 +152,7 @@ def getMaskFilePathFromCmd(cmdKeys, actorConfig):
     str
         File path for the mask file.
     """
-    return constructMaskFilePath(cmdKeys['maskFile'].values[0], actorConfig) if 'maskFile' in cmdKeys else ''
+    return constructMaskFilePath(cmdKeys['maskFile'].values[0], actorConfig) if 'maskFile' in cmdKeys else False
 
 
 def getMaskFileArgsFromCmd(cmdKeys, actorConfig):
