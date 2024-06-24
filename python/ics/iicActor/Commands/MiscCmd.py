@@ -153,8 +153,7 @@ class MiscCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         # defining all the sequence first.
-        #homeDesignId = designDB.latestDesignIdMatchingName('cobraHome', exact=True)
-        homeDesignId = 0x1622c5aecbf55551
+        homeDesignId = designDB.latestDesignIdMatchingName('cobraHome', exact=True)
         phiCrossingDesignId = designDB.latestDesignIdMatchingName('phiCrossing-2022-06-19')
 
         # exptime in cmdKeys means SPS exptime but the sequence interpret it as MCS exptime, so we have to patch it.

@@ -20,12 +20,11 @@ def latestDesignIdMatchingName(designName, exact=False):
     """Retrieve last designId matching the name"""
     # be strict about the name if exact==True
     condition = f"design_name='{designName}'" if exact else f"substring(design_name,1,{len(designName)})='{designName}'"
-    sql = f"select pfs_design_id from pfs_design where {condition}"
+    sql = f"select pfs_design_id from pfs_design where {condition} order by to_be_observed_at desc limit 1"
 
     try:
         # not very clean, but it's all I can do for now.
-        allDesign = opDB.fetchall(sql)
-        [designId] = allDesign[-1]
+        [designId] = opDB.fetchone(sql)
     except:
         raise RuntimeError(f'could not retrieve {designName} designId from opdb')
 
