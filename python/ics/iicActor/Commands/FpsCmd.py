@@ -285,7 +285,7 @@ class FpsCmd(object):
 
         # then declare new design.
         if 'designId' in cmdKeys:
-            self.actor.declaanglereFpsDesign(cmd)
+            self.actor.declareFpsDesign(cmd)
 
         designId = self.visitManager.getCurrentDesignId()
 
