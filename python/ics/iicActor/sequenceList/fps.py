@@ -39,8 +39,8 @@ class BoresightLoop(FpsSequence):
     """
     seqtype = 'boresightLoop'
 
-    def __init__(self, exptime, nExposures, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
+    def __init__(self, exptime, nExposures, cableBLampOn, **seqKeys):
+        FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
 
         self.exptime = exptime
         self.nExposures = nExposures
@@ -60,8 +60,9 @@ class BoresightLoop(FpsSequence):
 
         exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else 2.0
         nExposures = cmdKeys['nExposures'].values[0] if 'nExposures' in cmdKeys else 2
+        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
 
-        return cls(exptime, nExposures, **seqKeys)
+        return cls(exptime, nExposures, cableBLampOn, **seqKeys)
 
     def addPosition(self, cmd):
         """Acquire data for a new boresight position."""
@@ -77,8 +78,8 @@ class FpsLoop(FpsSequence):
     """Run an MCS+FPS loop, without moving cobras."""
     seqtype = 'fpsLoop'
 
-    def __init__(self, exptime, cnt, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
+    def __init__(self, exptime, cnt, cableBLampOn, **seqKeys):
+        FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
 
         timeLim = 30 + (15 + exptime) * cnt
         self.add('fps', 'testLoop', parseVisit=True, exptime=exptime, cnt=cnt, timeLim=timeLim)
@@ -90,8 +91,9 @@ class FpsLoop(FpsSequence):
 
         exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else 1.0
         cnt = cmdKeys['cnt'].values[0] if 'cnt' in cmdKeys else 1
+        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
 
-        return cls(exptime, cnt, **seqKeys)
+        return cls(exptime, cnt, cableBLampOn, **seqKeys)
 
 
 class MoveToPfsDesign(FpsSequence):
