@@ -1,6 +1,7 @@
 import ics.iicActor.utils.opdb as opdbUtils
 import ics.utils.cmd as cmdUtils
 import ics.utils.sps.fits as fits
+import numpy as np
 import pfs.utils.pfsConfigUtils as pfsConfigUtils
 import pfscore.gen2 as gen2
 from ics.iicActor.utils.subcmd import SubCmd, CmdRet
@@ -68,7 +69,7 @@ class SpsExpose(VisitedCmd):
         if not self.visitManager.activeField:
             raise RuntimeError('No pfsDesign declared as current !')
 
-        if 'pfi' in self.sequence.allLightSources and self.exptype == 'object':
+        if self.sequence.isPfiExposure and self.exptype == 'object':
             # Bump up ag visit whenever sps is taking object.
             self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
 
@@ -76,16 +77,19 @@ class SpsExpose(VisitedCmd):
         cards = fits.getPfsConfigCards(self.iicActor, self.sequence.cmd, self.visitId, expType=self.exptype)
         # Create the pfsConfig associated with the visit.
         pfsConfig = self.visitManager.activeField.getPfsConfig(self.visitId, cards=cards)
+        # checking if pfsConfig was faked from the pfsDesign.
+        fakePfsConfig = not np.nansum(np.abs(pfsConfig.pfiNominal - pfsConfig.pfiCenter))
         # Check pfsConfig and set pfsConfig.arms to match arm being used.
         pfsConfig.arms = self.sequence.matchPfsConfigArms(pfsConfig)
         # Write pfsConfig to disk.
         pfsConfigUtils.writePfsConfig(pfsConfig)
         # Insert pfs_config_sps.
         opdbUtils.insertPfsConfigSps(pfs_visit_id=self.visitId, visit0=self.visitManager.activeField.visit0)
+        # Just throwing a warning.
+        if self.sequence.isPfiExposure and fakePfsConfig:
+            self.sequence.cmd.warn('text="pfsConfig.pfiCenter was faked from the pfsDesign !"')
         # Generate pfsConfig key.
         self.iicActor.genPfsConfigKey(self.sequence.cmd, pfsConfig)
-
-
 
     def abort(self, cmd):
         """ Abort current exposure """

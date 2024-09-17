@@ -3,11 +3,11 @@
 import os
 
 import actorcore.ICC
+import ics.iicActor.utils.pfsDesign.opdb as designDB
 import iicActor.utils.pfsDesign.merge as mergeDesign
 import numpy as np
 import pandas as pd
 import pfs.utils.pfsConfigUtils as pfsConfigUtils
-import ics.iicActor.utils.pfsDesign.opdb as designDB
 from ics.utils.sps.spectroIds import getSite
 from iicActor.utils import engine
 from iicActor.utils import keyBuffer

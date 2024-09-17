@@ -28,6 +28,10 @@ class SpsSequence(sequence.Sequence):
 
         return self.allLightSources[0]
 
+    @property
+    def isPfiExposure(self):
+        return 'pfi' in self.allLightSources
+
     def matchPfsConfigArms(self, pfsConfig):
         """
         Match the arms in the current pfsConfig to the arms being used in the sequence.
