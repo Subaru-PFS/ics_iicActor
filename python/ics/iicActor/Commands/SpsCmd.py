@@ -29,7 +29,7 @@ class SpsCmd(object):
 
         self.vocab = [
             ('masterBiases', f'{commonArgs}', self.masterBiases),
-            ('masterDarks', f'[<exptime>] {commonArgs}', self.masterDarks),
+            ('masterDarks', f'<exptime> {commonArgs}', self.masterDarks),
             ('ditheredFlats', f'{timedFlatArgs} [<pixelRange>] [<interleaveDark>] {commonArgs}', self.ditheredFlats),
             ('scienceArc', f'{timedArcArgs} {commonArgs}', self.scienceArc),
             ('scienceTrace', f'{timedFlatArgs} {windowingArgs} {commonArgs}', self.scienceTrace),

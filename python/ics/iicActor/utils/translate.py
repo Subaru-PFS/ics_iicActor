@@ -21,14 +21,14 @@ def seqKeys(cmdKeys):
                 head=head, tail=tail, groupId=groupId, cmdKeys=cmdKeys)
 
 
-def spsExposureKeys(cmdKeys, doRaise=True):
+def spsExposureKeys(cmdKeys, doRaise=True, defaultDuplicate=1):
     """ Identify which spectrograph(cameras) is required to take data. """
 
     if 'exptime' not in cmdKeys and doRaise:
         raise KeyError('exptime must be specified')
 
     exptime = cmdKeys['exptime'].values if 'exptime' in cmdKeys else None
-    duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else 1
+    duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else defaultDuplicate
     return exptime, duplicate
 
 
