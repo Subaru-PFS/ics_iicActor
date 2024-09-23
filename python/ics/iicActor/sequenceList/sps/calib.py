@@ -19,6 +19,9 @@ class MasterBiases(Biases):
         if duplicate < MasterBiases.minDuplicate:
             raise RuntimeError(f'masterBiases should at least contains {MasterBiases.minDuplicate} duplicates !')
 
+        if iicActor.scrLightsOn:
+            raise RuntimeError(f'SCR lights should be off for masterBiases !')
+
         seqKeys['name'] = 'calibProduct' if not seqKeys['name'] else seqKeys['name']
 
         return cls(cams, duplicate, **seqKeys)
@@ -38,6 +41,9 @@ class MasterDarks(Darks):
 
         if duplicate < MasterBiases.minDuplicate:
             raise RuntimeError(f'masterDarks should at least contains {MasterDarks.minDuplicate} duplicates !')
+
+        if iicActor.scrLightsOn:
+            raise RuntimeError(f'SCR lights should be off for masterDarks !')
 
         seqKeys['name'] = 'calibProduct' if not seqKeys['name'] else seqKeys['name']
 
