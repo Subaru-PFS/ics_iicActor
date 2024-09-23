@@ -50,12 +50,17 @@ class IicActor(actorcore.ICC.ICC):
     def pfiConnected(self):
         return 'pfi' in self.buffer.lightSources
 
+    @property
+    def scrLightsOn(self):
+        status = self.models['scr'].keyVarDict['scrLights'].getValue()
+        return status == 'on'
+
     def connectionMade(self):
         if self.everConnected is False:
             self.logger.info('Establishing first tron connection...')
             self.everConnected = True
 
-            _needModels = [self.name, 'gen2', 'fps', 'mcs', 'ag', 'dcb', 'dcb2', 'sunss']
+            _needModels = [self.name, 'gen2', 'fps', 'mcs', 'ag', 'dcb', 'dcb2', 'sunss', 'scr']
             self.logger.info(f'adding models: {sorted(_needModels)}')
             self.addModels(_needModels)
             self.logger.info(f'added models: {sorted(self.models.keys())}')

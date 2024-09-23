@@ -5,27 +5,49 @@ from iicActor.sequenceList.sps.base import Biases, Darks, Arcs, Flats
 
 
 class MasterBiases(Biases):
-    """ Biases sequence """
+    """ MasterBiases sequence """
     seqtype = 'masterBiases'
+    minDuplicate = 15
 
-    def __init__(self, cams, duplicate, **seqKeys):
-        # setting minimum to 15
-        duplicate = max(duplicate, 15)
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct MasterBiases object."""
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        seqKeys = translate.seqKeys(cmdKeys)
+        __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False, defaultDuplicate=25)
+
+        if duplicate < MasterBiases.minDuplicate:
+            raise RuntimeError(f'masterBiases should at least contains {MasterBiases.minDuplicate} duplicates !')
+
+        if iicActor.scrLightsOn:
+            raise RuntimeError(f'SCR lights should be off for masterBiases !')
+
         seqKeys['name'] = 'calibProduct' if not seqKeys['name'] else seqKeys['name']
 
-        Biases.__init__(self, cams, duplicate, **seqKeys)
+        return cls(cams, duplicate, **seqKeys)
 
 
 class MasterDarks(Darks):
-    """ Biases sequence """
+    """ MasterDarks sequence """
     seqtype = 'masterDarks'
+    minDuplicate = 15
 
-    def __init__(self, cams, exptime, duplicate, **seqKeys):
-        # setting minimum to 15
-        duplicate = max(duplicate, 15)
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct MasterDarks object."""
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        seqKeys = translate.seqKeys(cmdKeys)
+        exptime, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False, defaultDuplicate=25)
+
+        if duplicate < MasterBiases.minDuplicate:
+            raise RuntimeError(f'masterDarks should at least contains {MasterDarks.minDuplicate} duplicates !')
+
+        if iicActor.scrLightsOn:
+            raise RuntimeError(f'SCR lights should be off for masterDarks !')
+
         seqKeys['name'] = 'calibProduct' if not seqKeys['name'] else seqKeys['name']
 
-        Darks.__init__(self, cams, exptime, duplicate, **seqKeys)
+        return cls(cams, exptime, duplicate, **seqKeys)
 
 
 class DitheredFlats(TimedLampsSequence):
