@@ -32,7 +32,7 @@ class SpsSequence(sequence.Sequence):
     def isPfiExposure(self):
         return 'pfi' in self.allLightSources
 
-    def matchPfsConfigArms(self, pfsConfig):
+    def matchPfsConfigArms(self, pfsConfigArms):
         """
         Match the arms in the current pfsConfig to the arms being used in the sequence.
 
@@ -53,7 +53,8 @@ class SpsSequence(sequence.Sequence):
             `forceGrating` is set to `False`.
         """
         useArms = set([self.engine.keyRepo.getActualArm(cam) for cam in self.cams])
-        diffArm = useArms - set(pfsConfig.arms)
+        diffArm = useArms - set(pfsConfigArms)
+
 
         if len(diffArm) and not self.forceGrating:
             raise ValueError(f"{','.join(diffArm)} not present in pfsConfig.arms")
