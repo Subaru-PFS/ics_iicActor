@@ -78,6 +78,7 @@ class IicActor(actorcore.ICC.ICC):
                 self.buffer.attachCallback(dcb, 'designId', self.genPfsDesign)
 
             self.models['fps'].keyVarDict['pfsConfig'].addCallback(self.fpsConfig)
+            self.models['sps'].keyVarDict['fiberIllumination'].addCallback(self.updateFiberIllumination)
 
             reactor.callLater(1, self.letsGetReadyToRumble)
 
@@ -233,6 +234,24 @@ class IicActor(actorcore.ICC.ICC):
 
         if status == 'Done' and self.visitManager.activeField:
             self.visitManager.activeField.loadPfsConfig0(designId, visit0)
+
+    def updateFiberIllumination(self, keyVar):
+        """Callback called whenever sps.fiberIllumination is generated."""
+        try:
+            visit, fiberIlluminationStatus = keyVar.getValue()
+        except ValueError:
+            return
+
+        pfsConfig = self.visitManager.activePfsConfig.pop(visit, None)
+
+        if not pfsConfig:
+            self.logger.warning(f'Could not find matching pfsConfig with visit={visit}')
+            return
+
+        # update the illumination accordingly.
+        pfsConfig.updateFiberStatus(fiberIlluminationStatus)
+        # write the pfsConfig file.
+        pfsConfig.write()
 
     def genPfsDesignKey(self, cmd):
         """Generate pfsDesign keyword."""
