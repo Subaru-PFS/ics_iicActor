@@ -7,7 +7,9 @@ import ics.iicActor.sequenceList.sps.science as science
 import ics.iicActor.utils.translate as translate
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from ics.utils.threading import singleShot
 from iicActor.utils.engine import ExecMode
+from iicActor.utils.sequenceStatus import Flag
 
 reload(base)
 reload(calib)
@@ -218,6 +220,7 @@ class SpsCmd(object):
         ditheredFlats = calib.DitheredFlats.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, ditheredFlats)
 
+    @singleShot
     def fiberProfiles(self, cmd):
         """
         `iic fiberProfiles halogen=FF.F [@doShutterTiming] [pixels=FF.F,FF.F,FF.F] [cam=???] [arm=???] [specNum=???]
@@ -249,8 +252,38 @@ class SpsCmd(object):
         doTest : `bool`
            image/exposure type will be labelled as test, default=flat.
         """
-        fiberProfiles = calib.FiberProfiles.fromCmdKeys(self.actor, cmd.cmd.keywords)
-        self.engine.runInThread(cmd, fiberProfiles)
+        cmdKeys = cmd.cmd.keywords
+        specNums = self.actor.spsConfig.keysToSpecNum(cmdKeys)
+
+        try:
+            [current] = list(set([self.engine.keyRepo.getEnuKeyValue(f'sm{specNum}', 'rexm') for specNum in specNums]))
+        except IndexError:
+            cmd.fail('text="could not figure out current red resolution ..."')
+
+        cmd.inform(f'text="RDA currently in {current} resolution mode"')
+
+        # Run first set of fiberProfiles in current red resolution.
+        fiberProfiles = calib.FiberProfiles.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.run(cmd, fiberProfiles, doFinish=False)
+
+        if fiberProfiles.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="fiberProfiles not completed, stopping here."')
+            return
+
+        # Move to the other resolution.
+        targetPosition = 'med' if current == 'low' else 'low'
+        rdaMove = eng.RdaMove(specNums, targetPosition)
+        self.engine.run(cmd, rdaMove, doFinish=False)
+
+        if rdaMove.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="rdaMove not completed, stopping here."')
+            return
+
+        # Run second set pf fiberProfiles in the other red resolution.
+        fiberProfiles = calib.FiberProfiles.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.run(cmd, fiberProfiles, doFinish=True)
 
     def scienceArc(self, cmd):
         """
