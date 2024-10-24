@@ -55,7 +55,6 @@ class SpsSequence(sequence.Sequence):
         useArms = set([self.engine.keyRepo.getActualArm(cam) for cam in self.cams])
         diffArm = useArms - set(pfsConfigArms)
 
-
         if len(diffArm) and not self.forceGrating:
             raise ValueError(f"{','.join(diffArm)} not present in pfsConfig.arms")
 
