@@ -83,6 +83,9 @@ class SpsExpose(VisitedCmd):
         if self.sequence.isPfiExposure and pfsConfig.isFake:
             self.sequence.cmd.warn('text="pfsConfig.pfiCenter was faked from the pfsDesign !"')
 
+        # need to insert immediately into pfs_config_sps, needed per (designId, designName) argument to detector.read().
+        pfsConfig.insertInDB()
+
         # Write pfsConfig immediately since we do not expect further updates.
         if self.exptype in ['bias', 'dark']:
             pfsConfig.write()

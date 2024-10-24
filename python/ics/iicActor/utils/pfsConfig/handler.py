@@ -61,12 +61,13 @@ class PfsConfigHandler:
         # Write the pfsConfig to the filesystem.
         pfsConfigUtils.writePfsConfig(self.pfsConfig)
 
-        # Insert an entry into the pfs_config_sps database table.
-        opdbUtils.insertPfsConfigSps(pfs_visit_id=self.pfsConfig.visit,
-                                     visit0=self.spsExpose.visitManager.activeField.visit0)
-
         # Generate and log the pfsConfig key for tracking in the IIC actor.
         self.spsExpose.iicActor.genPfsConfigKey(self.spsExpose.sequence.cmd, self.pfsConfig)
+
+    def insertInDB(self):
+        """Insert an entry into the pfs_config_sps database table."""
+        opdbUtils.insertPfsConfigSps(pfs_visit_id=self.pfsConfig.visit,
+                                     visit0=self.spsExpose.visitManager.activeField.visit0)
 
     def updateFiberStatus(self, fiberIlluminationStatus):
         """
