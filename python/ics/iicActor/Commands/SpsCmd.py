@@ -259,11 +259,15 @@ class SpsCmd(object):
             [current] = list(set([self.engine.keyRepo.getEnuKeyValue(f'sm{specNum}', 'rexm') for specNum in specNums]))
         except IndexError:
             cmd.fail('text="could not figure out current red resolution ..."')
+            return
+
+        useComments = dict(low='brn arm', med='bmn arm')
 
         cmd.inform(f'text="RDA currently in {current} resolution mode"')
 
         # Run first set of fiberProfiles in current red resolution.
         fiberProfiles = calib.FiberProfiles.fromCmdKeys(self.actor, cmdKeys)
+        fiberProfiles.comments = useComments[current]
         self.engine.run(cmd, fiberProfiles, doFinish=False)
 
         if fiberProfiles.status.flag != Flag.FINISHED:
@@ -283,6 +287,7 @@ class SpsCmd(object):
 
         # Run second set pf fiberProfiles in the other red resolution.
         fiberProfiles = calib.FiberProfiles.fromCmdKeys(self.actor, cmdKeys)
+        fiberProfiles.comments = useComments[targetPosition]
         self.engine.run(cmd, fiberProfiles, doFinish=True)
 
     def scienceArc(self, cmd):
