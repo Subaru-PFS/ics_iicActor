@@ -80,12 +80,13 @@ class MiscCmd(object):
         """Needs a dedicated command function for threading."""
         return self.nearDotConvergence(cmd)
 
-    def nearDotConvergence(self, cmd, designName=None, doFinish=True):
+    def nearDotConvergence(self, cmd, doFinish=True):
         """"""
         cmdKeys = cmd.cmd.keywords
+        cmdName = cmd.cmd.name
 
-        designName = 'phiCrossing-2022-06-19' if 'phi' in cmdKeys else designName
-        designName = 'thetaCrossing-2022-06-19' if 'theta' in cmdKeys else designName
+        designName = 'phiCrossing-2022-06-19' if ('phi' in cmdKeys or 'phiCrossing' in cmdName) else ''
+        designName = 'thetaCrossing-2022-06-19' if ('theta' in cmdKeys or 'thetaCrossing' in cmdName) else designName
 
         # get dotCrossing designId from opdb or use provided new one.
         if 'designId' in cmdKeys:
@@ -108,7 +109,7 @@ class MiscCmd(object):
         cmdName = cmd.cmd.name
 
         # converge to near dot in the first place.
-        nearDotConvergence = self.nearDotConvergence(cmd, designName=cmdName, doFinish=False)
+        nearDotConvergence = self.nearDotConvergence(cmd, doFinish=False)
         # something happened, convergence did not complete, we need to stop here.
         if nearDotConvergence.status.flag != Flag.FINISHED:
             if cmd.alive:
