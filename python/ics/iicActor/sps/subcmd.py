@@ -39,6 +39,24 @@ class SpsExpose(VisitedCmd):
         visitId = -1 if self.visit is None else self.visit.visitId
         return visitId
 
+    @property
+    def cmdStrAndVisit(self):
+        """Parse visit and metadata"""
+        allArgs = [self.cmdStr, f'{self.visitCmdArg}={self.visitId}']
+
+        if self.pfsConfig is not None:
+            allArgs.append(self.getMetadata())
+
+        return ' '.join(allArgs).strip()
+
+    def getMetadata(self):
+        """"""
+        designInfo = [f'0x{self.pfsConfig.pfsDesignId:016x}', qstr(self.pfsConfig.designName)]
+        ids = list(map(str, [self.visit0, self.sequence.sequence_id, self.sequence.parseGroupId()]))
+        metadata = designInfo + ids
+
+        return f'metadata={",".join(metadata)}'
+
     @classmethod
     def specify(cls, sequence, exptype, exptime, cams, timeOffset=180, **kwargs):
         timeLim = timeOffset + exptime
