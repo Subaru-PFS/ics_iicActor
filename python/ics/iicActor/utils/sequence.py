@@ -178,6 +178,10 @@ class Sequence(list):
         doMatch = False if filter else True
         return doMatch
 
+    def parseGroupId(self):
+        """Parse a mhs compliant argument for groupId."""
+        return -1 if self.group_id is None else self.group_id
+
 
 class CmdList(list):
     def __init__(self, sequence, cmdList):
