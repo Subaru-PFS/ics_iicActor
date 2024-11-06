@@ -1,9 +1,15 @@
+import logging
+
 import ics.iicActor.utils.opdb as opdbUtils
-import ics.iicActor.utils.pfsConfig.handler as pfsConfigHandler
 import ics.utils.cmd as cmdUtils
+import ics.utils.sps.fits as fits
+import numpy as np
+import pfs.utils.pfsConfigUtils as pfsConfigUtils
 import pfscore.gen2 as gen2
+from ics.iicActor.utils.pfsConfig.illumination import updateFiberStatus
 from ics.iicActor.utils.subcmd import SubCmd, CmdRet
 from ics.iicActor.utils.visited import VisitedCmd
+from opscore.utility.qstr import qstr
 
 
 class GetVisitFailed(CmdRet):
@@ -17,10 +23,16 @@ class SpsExpose(VisitedCmd):
     def __init__(self, *args, **kwargs):
         # always parse visit
         VisitedCmd.__init__(self, *args, parseVisit=True, **kwargs)
+
         self.visit = None
+        self.visit0 = None
+        self.pfsConfig = None
+        self.doWritePfsConfig = True
 
         __, exptype, __ = self.cmdStr.split(' ', 2)
         self.exptype = exptype.strip()
+
+        self.logger = logging.getLogger('spsExpose')
 
     @property
     def visitId(self):
@@ -46,21 +58,22 @@ class SpsExpose(VisitedCmd):
         """Get and attach your visit, then parse it, insert into visit_set to finish."""
         with self.visitManager.getVisit(caller='sps') as visit:
             # set new visit
-            self.freshNewVisit(visit)
+            self.prepareVisit(visit)
             # regular visitedCall which will parse the fresh new visit.
             cmdRet = VisitedCmd.call(self, cmd)
-
-            # should not be the case but still being careful.
-            pfsConfig = self.visitManager.activePfsConfig.pop(self.visitId, None)
-            if pfsConfig:
-                pfsConfig.write()
 
             # insert into visit_set
             opdbUtils.insertVisitSet('sps', sequence_id=self.sequence.sequence_id, pfs_visit_id=self.visitId)
 
+            if self.doWritePfsConfig:  # should not be the case but still being careful.
+                self.writePfsConfig(self.pfsConfig)
+
+            # no longer an active visit.
+            self.release()
+
         return cmdRet
 
-    def freshNewVisit(self, visit):
+    def prepareVisit(self, visit):
         """Set the visit and generate keys."""
         self.visit = visit
         self.genKeys(self.sequence.cmd)
@@ -77,20 +90,67 @@ class SpsExpose(VisitedCmd):
             # Bump up ag visit whenever sps is taking object.
             self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
 
-        # Creating the pfsConfig handler.
-        pfsConfig = pfsConfigHandler.PfsConfigHandler(self)
+        # handling pfsConfig
+        self.pfsConfig, self.visit0 = self.getPfsConfig()
 
-        if self.sequence.isPfiExposure and pfsConfig.isFake:
+        # registering active visit.
+        self.register()
+
+    def getPfsConfig(self):
+        # Retrieve additional pfsConfig metadata from FITS headers.
+        cards = fits.getPfsConfigCards(self.iicActor, self.sequence.cmd, self.visitId,
+                                       expType=self.exptype)
+
+        # Create or retrieve the pfsConfig object for the current visit.
+        pfsConfig, visit0 = self.visitManager.activeField.getPfsConfig(self.visitId, cards=cards)
+
+        # inserting in opdb immediately.
+        opdbUtils.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=visit0)
+
+        # Ensure that pfsConfig arms match the arms used in the current sequence.
+        pfsConfig.arms = self.sequence.matchPfsConfigArms(pfsConfig.arms)
+
+        # checking that pfsConfig is a straigh copy of the pfsDesign.
+        isFake = not np.nansum(np.abs(pfsConfig.pfiNominal - pfsConfig.pfiCenter))
+
+        if self.sequence.isPfiExposure and isFake:
             self.sequence.cmd.warn('text="pfsConfig.pfiCenter was faked from the pfsDesign !"')
 
-        # need to insert immediately into pfs_config_sps, needed per (designId, designName) argument to detector.read().
-        pfsConfig.insertInDB()
-
-        # Write pfsConfig immediately since we do not expect further updates.
+        # writing pfsConfig right away since it doesn't need any further update.
         if self.exptype in ['bias', 'dark']:
-            pfsConfig.write()
-        else:
-            self.visitManager.activePfsConfig[self.visitId] = pfsConfig
+            self.writePfsConfig(pfsConfig)
+
+        return pfsConfig, visit0
+
+    def updateFiberIllumination(self, status):
+        pfsConfigKnobs = self.iicActor.actorConfig['pfsConfig']
+        updateFiberStatus(self.pfsConfig, fiberIlluminationStatus=status,
+                          doUpdateEngineeringFiberStatus=pfsConfigKnobs['doUpdateEngineeringFiberStatus'],
+                          doUpdateScienceFiberStatus=pfsConfigKnobs['doUpdateScienceFiberStatus'])
+        self.writePfsConfig(self.pfsConfig)
+
+    def writePfsConfig(self, pfsConfig):
+        """Wrapper around pfsConfig.write() method."""
+        if not self.doWritePfsConfig or pfsConfig is None:
+            return
+
+        # writing pfsConfig to disk.
+        pfsConfigUtils.writePfsConfig(pfsConfig)
+
+        # Generate and log the pfsConfig key for tracking in the IIC actor.
+        self.iicActor.genPfsConfigKey(self.sequence.cmd, pfsConfig)
+
+        # not writing in the future.
+        self.doWritePfsConfig = False
+
+    def register(self):
+        # adding to the active visit
+        self.logger.info(f'Registering {self.visit.visitId:06d} : 0x{id(self):016x} in active visits.')
+        self.visitManager.activeVisit[self.visitId] = self
+
+    def release(self):
+        self.logger.info(f'Releasing {self.visit.visitId:06d} : 0x{id(self):016x} from active visits.')
+        self.visitManager.activeVisit.pop(self.visitId, None)
 
     def abort(self, cmd):
         """ Abort current exposure """

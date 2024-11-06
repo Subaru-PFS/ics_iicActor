@@ -242,16 +242,15 @@ class IicActor(actorcore.ICC.ICC):
         except ValueError:
             return
 
-        pfsConfig = self.visitManager.activePfsConfig.pop(visit, None)
+        spsExpose = self.visitManager.activeVisit.get(visit, None)
 
-        if not pfsConfig:
-            self.logger.warning(f'Could not find matching pfsConfig with visit={visit}')
+        if not spsExpose:
+            self.logger.warning(f'Could not find matching sps exposure with visit={visit}')
             return
 
         # update the illumination accordingly.
-        pfsConfig.updateFiberStatus(fiberIlluminationStatus)
-        # write the pfsConfig file.
-        pfsConfig.write()
+        spsExpose.updateFiberIllumination(fiberIlluminationStatus)
+
 
     def genPfsDesignKey(self, cmd):
         """Generate pfsDesign keyword."""
