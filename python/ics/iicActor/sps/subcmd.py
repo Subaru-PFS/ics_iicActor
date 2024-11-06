@@ -18,30 +18,31 @@ class GetVisitFailed(CmdRet):
 
 
 class SpsExpose(VisitedCmd):
-    """ Placeholder to handle sps expose command specificities"""
+    """Handle SPS exposure command specifics, including visit and pfsConfig management."""
 
     def __init__(self, *args, **kwargs):
-        # always parse visit
-        VisitedCmd.__init__(self, *args, parseVisit=True, **kwargs)
+        # Always parse visit information
+        super().__init__(*args, parseVisit=True, **kwargs)
 
         self.visit = None
         self.visit0 = None
         self.pfsConfig = None
         self.doWritePfsConfig = True
 
-        __, exptype, __ = self.cmdStr.split(' ', 2)
+        # Extract exposure type from command string
+        _, exptype, _ = self.cmdStr.split(' ', 2)
         self.exptype = exptype.strip()
 
         self.logger = logging.getLogger('spsExpose')
 
     @property
     def visitId(self):
-        visitId = -1 if self.visit is None else self.visit.visitId
-        return visitId
+        """Return visit ID or -1 if no visit is defined."""
+        return -1 if self.visit is None else self.visit.visitId
 
     @property
     def cmdStrAndVisit(self):
-        """Parse visit and metadata"""
+        """Combine command string with visit and metadata."""
         allArgs = [self.cmdStr, f'{self.visitCmdArg}={self.visitId}']
 
         if self.pfsConfig is not None:
@@ -50,21 +51,21 @@ class SpsExpose(VisitedCmd):
         return ' '.join(allArgs).strip()
 
     def getMetadata(self):
-        """"""
+        """Format metadata argument."""
         designInfo = [f'0x{self.pfsConfig.pfsDesignId:016x}', qstr(self.pfsConfig.designName)]
         ids = list(map(str, [self.visit0, self.sequence.sequence_id, self.sequence.parseGroupId()]))
         metadata = designInfo + ids
-
         return f'metadata={",".join(metadata)}'
 
     @classmethod
     def specify(cls, sequence, exptype, exptime, cams, timeOffset=180, **kwargs):
+        """Specify exposure command with timing limits."""
         timeLim = timeOffset + exptime
         exptime = exptime if exptime else None
         return cls(sequence, 'sps', f'expose {exptype}', exptime=exptime, cams=cams, timeLim=timeLim, **kwargs)
 
     def call(self, cmd):
-        """getVisitedCall get the visit and parse it, but SubCmd.call() must always return a CmdRet object."""
+        """Execute command with visit and return CmdRet object."""
         try:
             cmdRet = self.getVisitedCall(cmd)
         except gen2.FetchVisitFromGen2 as e:
@@ -73,66 +74,55 @@ class SpsExpose(VisitedCmd):
         return cmdRet
 
     def getVisitedCall(self, cmd):
-        """Get and attach your visit, then parse it, insert into visit_set to finish."""
+        """Set visit, process command, and finalize by inserting into visit_set."""
         with self.visitManager.getVisit(caller='sps') as visit:
-            # set new visit
             self.prepareVisit(visit)
-            # regular visitedCall which will parse the fresh new visit.
-            cmdRet = VisitedCmd.call(self, cmd)
+            cmdRet = super().call(cmd)
 
-            # insert into visit_set
+            # Insert into visit_set in the database
             opdbUtils.insertVisitSet('sps', sequence_id=self.sequence.sequence_id, pfs_visit_id=self.visitId)
 
-            if self.doWritePfsConfig:  # should not be the case but still being careful.
+            # Write pfsConfig if required, should not happen but let's be careful.
+            if self.doWritePfsConfig:
                 self.writePfsConfig(self.pfsConfig)
 
-            # no longer an active visit.
+            # Release the visit as it is no longer active
             self.release()
 
         return cmdRet
 
     def prepareVisit(self, visit):
-        """Set the visit and generate keys."""
+        """Prepare visit by setting it, generating keys, and verifying configuration."""
         self.visit = visit
         self.genKeys(self.sequence.cmd)
 
-        # lightSources can be a bit tricky, sequence member is actually set to None for biases and darks.
-        # For those it's possible to have multiple lightSources, not sure what to do in that case.
-        # Since you could have multiple designId for a given visit, and we don't support merging.
-        # It does not probably matter in any case for biases and darks.
-
+        # Manage lightSources for different exposure types
         if not self.visitManager.activeField:
-            raise RuntimeError('No pfsDesign declared as current !')
+            raise RuntimeError('No active pfsDesign is declared!')
 
+        # Bump up ag visit whenever sps is taking object.
         if self.sequence.isPfiExposure and self.exptype == 'object':
-            # Bump up ag visit whenever sps is taking object.
             self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
 
-        # handling pfsConfig
+        # Obtain and register pfsConfig
         self.pfsConfig, self.visit0 = self.getPfsConfig()
-
-        # registering active visit.
         self.register()
 
     def getPfsConfig(self):
-        # Retrieve additional pfsConfig metadata from FITS headers.
-        cards = fits.getPfsConfigCards(self.iicActor, self.sequence.cmd, self.visitId,
-                                       expType=self.exptype)
-
-        # Create or retrieve the pfsConfig object for the current visit.
+        """Retrieve or create pfsConfig and ensure matching arms in sequence."""
+        cards = fits.getPfsConfigCards(self.iicActor, self.sequence.cmd, self.visitId, expType=self.exptype)
         pfsConfig, visit0 = self.visitManager.activeField.getPfsConfig(self.visitId, cards=cards)
 
-        # inserting in opdb immediately.
+        # Insert into opdb immediately
         opdbUtils.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=visit0)
 
-        # Ensure that pfsConfig arms match the arms used in the current sequence.
+        # Ensure pfsConfig arms match those used in current sequence
         pfsConfig.arms = self.sequence.matchPfsConfigArms(pfsConfig.arms)
 
-        # checking that pfsConfig is a straigh copy of the pfsDesign.
+        # Reporting that the pfsConfig is a direct copy of the pfsDesign
         isFake = not np.nansum(np.abs(pfsConfig.pfiNominal - pfsConfig.pfiCenter))
-
         if self.sequence.isPfiExposure and isFake:
-            self.sequence.cmd.warn('text="pfsConfig.pfiCenter was faked from the pfsDesign !"')
+            self.sequence.cmd.warn('text="pfsConfig.pfiCenter was faked from the pfsDesign!"')
 
         # writing pfsConfig right away since it doesn't need any further update.
         if self.exptype in ['bias', 'dark']:
@@ -141,37 +131,38 @@ class SpsExpose(VisitedCmd):
         return pfsConfig, visit0
 
     def updateFiberIllumination(self, status):
+        """Update fiber illumination status based on configuration settings."""
         pfsConfigKnobs = self.iicActor.actorConfig['pfsConfig']
-        updateFiberStatus(self.pfsConfig, fiberIlluminationStatus=status,
-                          doUpdateEngineeringFiberStatus=pfsConfigKnobs['doUpdateEngineeringFiberStatus'],
-                          doUpdateScienceFiberStatus=pfsConfigKnobs['doUpdateScienceFiberStatus'])
+        updateFiberStatus(
+            self.pfsConfig,
+            fiberIlluminationStatus=status,
+            doUpdateEngineeringFiberStatus=pfsConfigKnobs['doUpdateEngineeringFiberStatus'],
+            doUpdateScienceFiberStatus=pfsConfigKnobs['doUpdateScienceFiberStatus']
+        )
         self.writePfsConfig(self.pfsConfig)
 
     def writePfsConfig(self, pfsConfig):
-        """Wrapper around pfsConfig.write() method."""
+        """Write pfsConfig to disk and track with pfsConfig key."""
         if not self.doWritePfsConfig or pfsConfig is None:
             return
 
-        # writing pfsConfig to disk.
+        # Save pfsConfig to disk
         pfsConfigUtils.writePfsConfig(pfsConfig)
-
-        # Generate and log the pfsConfig key for tracking in the IIC actor.
         self.iicActor.genPfsConfigKey(self.sequence.cmd, pfsConfig)
-
-        # not writing in the future.
-        self.doWritePfsConfig = False
+        self.doWritePfsConfig = False  # Prevent redundant writes
 
     def register(self):
-        # adding to the active visit
+        """Register current visit as active."""
         self.logger.info(f'Registering {self.visit.visitId:06d} : 0x{id(self):016x} in active visits.')
         self.visitManager.activeVisit[self.visitId] = self
 
     def release(self):
+        """Release current visit from active list."""
         self.logger.info(f'Releasing {self.visit.visitId:06d} : 0x{id(self):016x} from active visits.')
         self.visitManager.activeVisit.pop(self.visitId, None)
 
     def abort(self, cmd):
-        """ Abort current exposure """
+        """Abort current exposure if visit is valid."""
         if self.visitId == -1:
             return
 
@@ -183,7 +174,7 @@ class SpsExpose(VisitedCmd):
             cmd.warn(cmdUtils.formatLastReply(cmdVar))
 
     def finishNow(self, cmd):
-        """ Finish current exposure """
+        """Finish current exposure if visit is valid."""
         if self.visitId == -1:
             return
 
@@ -196,23 +187,19 @@ class SpsExpose(VisitedCmd):
 
 
 class LampsCmd(SubCmd):
-    """ Placeholder to handle lamps command specificities"""
+    """Handle lamp command specificities, ensuring lamp actor availability."""
 
     def __init__(self, sequence, actor, *args, **kwargs):
         if not sequence.lightSource.lampsActor:
-            raise RuntimeError(f'cannot control lampActor for lightSource={sequence.lightSource} !')
+            raise RuntimeError(f'Cannot control lampsActor for lightSource={sequence.lightSource}!')
 
-        SubCmd.__init__(self, sequence, sequence.lightSource.lampsActor, *args, **kwargs)
+        super().__init__(sequence, sequence.lightSource.lampsActor, *args, **kwargs)
 
     def abort(self, cmd):
-        """ Abort warmup """
-        cmdVar = self.iicActor.cmdr.call(actor=self.actor,
-                                         cmdStr='abort',
-                                         forUserCmd=cmd,
-                                         timeLim=10)
+        """Abort lamp warmup if active."""
+        cmdVar = self.iicActor.cmdr.call(actor=self.actor, cmdStr='abort', forUserCmd=cmd, timeLim=10)
         if cmdVar.didFail:
             cmd.warn(cmdUtils.formatLastReply(cmdVar))
-            # raise RuntimeError("Failed to abort exposure")
 
 
 class DcbCmd(LampsCmd):
@@ -220,4 +207,4 @@ class DcbCmd(LampsCmd):
         if not sequence.lightSource.useDcbActor:
             raise RuntimeError('this command has been designed for dcb only')
 
-        LampsCmd.__init__(self, sequence, *args, **kwargs)
+        super().__init__(sequence, *args, **kwargs)
