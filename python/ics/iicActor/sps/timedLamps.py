@@ -1,6 +1,6 @@
 import ics.utils.sps.lamps.utils.lampState as lampState
 from ics.iicActor.sps.sequence import SpsSequence
-from ics.iicActor.sps.subcmd import SpsExpose
+from ics.iicActor.sps.expose import SpsExpose
 
 
 class TimedLampsSequence(SpsSequence):
