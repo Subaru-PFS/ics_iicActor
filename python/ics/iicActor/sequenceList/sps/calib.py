@@ -109,7 +109,7 @@ class FiberProfiles(TimedLampsSequence):
     """ Dithered Flats sequence """
     seqtype = 'fiberProfiles'
 
-    def __init__(self, cams, lampsKeys, positions, duplicate, interleaveDark, **seqKeys):
+    def __init__(self, cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         # taking a trace in home to start.
@@ -126,8 +126,13 @@ class FiberProfiles(TimedLampsSequence):
         self.add('sps', 'slit home', cams=cams)
         self.takeOneDuplicate(lampsKeys, cams, duplicate, interleaveDark)
 
+        # Turn hexapod off only if it was off in the first place.
+        if hexapodOff:
+            self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
+
+
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
+    def fromCmdKeys(cls, iicActor, cmdKeys, hexapodOff=False):
         """Defining rules to construct ScienceObject object."""
         cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
@@ -137,7 +142,7 @@ class FiberProfiles(TimedLampsSequence):
 
         interleaveDark = cmdKeys['interleaveDark'].values[0] if 'interleaveDark' in cmdKeys else False
 
-        return cls(cams, lampsKeys, positions, duplicate, interleaveDark, **seqKeys)
+        return cls(cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, **seqKeys)
 
     def takeOneDuplicate(self, lampsKeys, cams, duplicate, interleaveDark):
         """take one duplicate, interleave for nir arm if necessary."""
@@ -148,6 +153,11 @@ class FiberProfiles(TimedLampsSequence):
             # interleave dark for nir.
             if nirCam and interleaveDark:
                 SpsSequence.expose(self, 'dark', interleaveDark, nirCam, duplicate=1)
+
+    def setComments(self, rdaPosition):
+        """Setting default comments."""
+        if not self.comments:
+            self.comments = 'brn arm' if rdaPosition =='low' else 'bmn arm'
 
 
 class ShutterDriftFlats(SpsSequence):
