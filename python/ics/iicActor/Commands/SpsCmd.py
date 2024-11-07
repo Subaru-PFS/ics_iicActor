@@ -291,7 +291,6 @@ class SpsCmd(object):
         fiberProfiles = calib.FiberProfiles.fromCmdKeys(self.actor, cmdKeys, hexapodOff=hexapodOff)
         fiberProfiles.setComments(targetPosition)
 
-
         self.engine.run(cmd, fiberProfiles, doFinish=True)
 
     def scienceArc(self, cmd):
