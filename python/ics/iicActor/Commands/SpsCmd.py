@@ -256,20 +256,12 @@ class SpsCmd(object):
         specNums = self.actor.spsConfig.keysToSpecNum(cmdKeys)
         cams = self.actor.spsConfig.keysToCam(cmdKeys)
 
-        try:
-            [current] = list(set([self.engine.keyRepo.getEnuKeyValue(f'sm{specNum}', 'rexm') for specNum in specNums]))
-        except IndexError:
-            cmd.fail('text="could not figure out current red resolution ..."')
-            return
-
-        # caching hexapod state if it's off, turn be turned back off again later.
-        hexapodOff = self.actor.engine.keyRepo.cacheHexapodState(cams)
-
+        hexapodOff = self.actor.engine.keyRepo.cacheHexapodState(cams)  # caching hexapod state if it's off.
+        current = self.actor.engine.keyRepo.getCurrentRedResolution(cams)
         cmd.inform(f'text="RDA currently in {current} resolution mode"')
 
         # Run first set of fiberProfiles in current red resolution.
         fiberProfiles = calib.FiberProfiles.fromCmdKeys(self.actor, cmdKeys)
-        fiberProfiles.setComments(current)
         self.engine.run(cmd, fiberProfiles, doFinish=False)
 
         if fiberProfiles.status.flag != Flag.FINISHED:
@@ -287,10 +279,8 @@ class SpsCmd(object):
                 cmd.fail('text="rdaMove not completed, stopping here."')
             return
 
-        # Run second set pf fiberProfiles in the other red resolution.
+        # Run second set of fiberProfiles in the other red resolution.
         fiberProfiles = calib.FiberProfiles.fromCmdKeys(self.actor, cmdKeys, hexapodOff=hexapodOff)
-        fiberProfiles.setComments(targetPosition)
-
         self.engine.run(cmd, fiberProfiles, doFinish=True)
 
     def scienceArc(self, cmd):

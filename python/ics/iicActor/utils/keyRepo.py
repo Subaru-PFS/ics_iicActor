@@ -108,24 +108,54 @@ class KeyRepo:
 
         return cached
 
-    def getActualArm(self, cam):
+    def getSelectedArms(self, cams):
         """
-        Determine the actual arm ('b', 'r', 'm', or 'n') used for a given camera.
+        Determine the unique set of arms selected for a list of cameras.
 
         Parameters
         ----------
-        cam : object
-            Camera object.
+        cams : list
+            List of camera objects.
+
+        Returns
+        -------
+        set
+            Set of unique arms being used, adjusted according to red resolution if necessary.
+        """
+
+        def getSelectedArm(cam):
+            """Determine the selected arm used for a given camera."""
+            arm = cam.arm
+            # Check if the arm is either 'r' or 'm' and adjust based on red resolution.
+            if arm in {'r', 'm'}:
+                redResolution = self.getEnuKeyValue(cam.specName, 'rexm')
+                arm = 'm' if redResolution == 'med' else 'r'
+            return arm
+
+        return {getSelectedArm(cam) for cam in cams}
+
+    def getCurrentRedResolution(self, cams):
+        """
+        Determine the current red resolution setting for a list of cameras.
+
+        Parameters
+        ----------
+        cams : list
+            List of camera objects to check.
 
         Returns
         -------
         str
-            The actual arm being used, corrected according to the current red resolution.
-        """
-        arm = cam.arm
-        # Check if the arm is either 'r' or 'm' and adjust based on red resolution.
-        if arm in {'r', 'm'}:
-            redResolution = self.getEnuKeyValue(cam.specName, 'rexm')
-            arm = 'm' if redResolution == 'med' else 'r'
+            The current red resolution ('med' or 'high').
 
-        return arm
+        Raises
+        ------
+        RuntimeError
+            If the current red resolution cannot be determined.
+        """
+        try:
+            [current] = set(self.getEnuKeyValues(cams, 'rexm').values())
+        except ValueError:
+            raise RuntimeError("Could not determine a unique current red resolution")
+
+        return current

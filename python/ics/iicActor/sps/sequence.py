@@ -1,5 +1,6 @@
 import ics.utils.cmd as cmdUtils
 import iicActor.utils.sequence as sequence
+import iicActor.utils.translate as translate
 from ics.iicActor.sps.expose import SpsExpose
 from ics.iicActor.sps.subcmd import DcbCmd, LampsCmd
 from ics.iicActor.utils.subcmd import SubCmd
@@ -33,6 +34,29 @@ class SpsSequence(sequence.Sequence):
     def isPfiExposure(self):
         return 'pfi' in self.allLightSources
 
+    def startup(self, engine, cmd):
+        """
+        Initialize the startup sequence.
+
+        Parameters
+        ----------
+        engine : object
+            The engine instance used to initialize the startup.
+        cmd : object
+            Command object to be executed.
+
+        Notes
+        -----
+        Sets default comments if none are provided by fetching selected arms
+        and translating them to default comments.
+        """
+        # Set default comments based on selected arms if not already defined
+        if not self.comments:
+            selectedArms = engine.keyRepo.getSelectedArms(self.cams)
+            self.comments = translate.setDefaultComments(selectedArms)
+
+        super().startup(engine, cmd)
+
     def matchPfsConfigArms(self, pfsConfigArms):
         """
         Match the arms in the current pfsConfig to the arms being used in the sequence.
@@ -53,13 +77,13 @@ class SpsSequence(sequence.Sequence):
             If any of the arms being used in the sequence are not present in the pfsConfig and
             `forceGrating` is set to `False`.
         """
-        useArms = set([self.engine.keyRepo.getActualArm(cam) for cam in self.cams])
-        diffArm = useArms - set(pfsConfigArms)
+        selectedArms = self.engine.keyRepo.getSelectedArms(self.cams)
+        diffArm = selectedArms - set(pfsConfigArms)
 
         if len(diffArm) and not self.forceGrating:
             raise ValueError(f"{','.join(diffArm)} not present in pfsConfig.arms")
 
-        return ''.join(useArms)
+        return ''.join(selectedArms)
 
     def expose(self, exptype, exptime, cams, duplicate=1, windowKeys=None, slideSlit=None):
         """Append duplicate * sps expose to sequence."""

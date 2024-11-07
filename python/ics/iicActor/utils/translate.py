@@ -175,3 +175,27 @@ def getMaskFileArgsFromCmd(cmdKeys, actorConfig):
     maskFileArgs = f'maskFile={maskFilePath}' if maskFilePath else ''
 
     return maskFileArgs
+
+
+def setDefaultComments(selectedArms):
+    """
+    Generate default comments based on the selected arms, ensuring the order
+    is 'b', then 'm' or 'r', and finally 'n'.
+
+    Parameters
+    ----------
+    selectedArms : set
+        Set of arms selected, which may include 'b', 'r', 'm', and 'n'.
+
+    Returns
+    -------
+    str
+        A string representing the default comment based on the selected arms.
+    """
+    # Define the priority order for arms
+    armOrder = ['b', 'r', 'm', 'n']
+    # Sort the selected arms according to the desired order
+    orderedArms = ''.join([arm for arm in armOrder if arm in selectedArms])
+
+    # Construct the comment
+    return f"{orderedArms} arm"
