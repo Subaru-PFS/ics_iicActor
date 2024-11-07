@@ -34,7 +34,7 @@ class SpsSequence(sequence.Sequence):
     def isPfiExposure(self):
         return 'pfi' in self.allLightSources
 
-    def startup(self, engine, cmd):
+    def initialize(self, engine, cmd):
         """
         Initialize the startup sequence.
 
@@ -55,7 +55,7 @@ class SpsSequence(sequence.Sequence):
             selectedArms = engine.keyRepo.getSelectedArms(self.cams)
             self.comments = translate.setDefaultComments(selectedArms)
 
-        super().startup(engine, cmd)
+        super().initialize(engine, cmd)
 
     def matchPfsConfigArms(self, pfsConfigArms):
         """

@@ -73,12 +73,22 @@ class Sequence(list):
         cmd = self.cmd if cmd is None else cmd
         cmd.inform(str(self))
 
-    def startup(self, engine, cmd):
-        """Attach engine and attach cmd"""
+    def initialize(self, engine, cmd):
+        """Attach command"""
         self.engine = engine
         self.cmd = cmd
+
         # strip name and comments from rawCmd since it is redundant opdb/keyword scheme.
-        self.cmdStr = makeCmdStr(cmd) if self.cmdStr is None else self.cmdStr
+        if self.cmdStr is None:
+            self.cmdStr = makeCmdStr(cmd)
+
+    def getCmd(self):
+        """Attach command"""
+        cmd = self.engine.actor.bcast if self.cmd is None else self.cmd
+        return cmd
+
+    def startup(self):
+        """Attach engine and attach cmd"""
         # initial insert into opdb.
         self.sequence_id = opdbUtils.insertSequence(group_id=self.group_id, sequence_type=self.seqtype, name=self.name,
                                                     comments=self.comments, cmd_str=self.cmdStr)
@@ -100,7 +110,7 @@ class Sequence(list):
 
         return self.remainingCmds[0]
 
-    def commandLogic(self, cmd):
+    def commandLogic(self):
         """Contain all the logic to process a sequence."""
 
         def cancelRemainings(cmd):
@@ -109,6 +119,7 @@ class Sequence(list):
                 subCmd.cancel(cmd)
 
         self.status.execute()
+        cmd = self.getCmd()
 
         while not self.status.isFlagged and self.getNextSubCmd():
             # get next subCommand.
@@ -132,9 +143,10 @@ class Sequence(list):
         if self.status.isAborted:
             raise exception.SequenceAborted()
 
-    def finalize(self, cmd):
+    def finalize(self):
         """Finalizing sequence."""
-        # insert sequence_status/
+        cmd = self.getCmd()
+        # insert sequence_status
         opdbUtils.insertSequenceStatus(sequence_id=self.sequence_id, status=self.status)
         # process tail, catch exception there, do not care.
         for subCmd in self.tail:

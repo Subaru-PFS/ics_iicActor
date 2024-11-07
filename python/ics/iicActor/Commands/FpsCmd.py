@@ -122,7 +122,7 @@ class FpsCmd(object):
 
         self.boresightLoop = fpsSequence.BoresightLoop.fromCmdKeys(self.actor, cmd.cmd.keywords)
         # doing startup manually, that will get a visit.
-        self.boresightLoop.startup(self.engine, cmd=cmd)
+        self.engine.run(cmd, self.boresightLoop, mode=ExecMode.CHECKIN)
 
         cmd.finish('text="Initialized boresight loop"')
 
