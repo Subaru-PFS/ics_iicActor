@@ -251,6 +251,11 @@ class IicActor(actorcore.ICC.ICC):
         # update the illumination accordingly.
         spsExpose.updateFiberIllumination(fiberIlluminationStatus)
 
+        # Finish command immediately.
+        if spsExpose.sequence.returnWhenShutterClose:
+            spsExpose.sequence.cmd.finish()
+            spsExpose.sequence.cmd = None
+
 
     def genPfsDesignKey(self, cmd):
         """Generate pfsDesign keyword."""

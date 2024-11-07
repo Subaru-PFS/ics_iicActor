@@ -76,7 +76,7 @@ class SubCmd(object):
     def callAndUpdate(self, cmd):
         """"""
         self.cmdRet = self.call(cmd)
-        self.handleOutput(cmd)
+        self.handleOutput()
 
     def call(self, cmd):
         """ Call subcommand, handle reply and generate status """
@@ -90,9 +90,9 @@ class SubCmd(object):
 
         return cmdRet
 
-    def handleOutput(self, cmd):
+    def handleOutput(self):
         """"""
-        self.genKeys(cmd)
+        self.genKeys(self.sequence.getCmd())
 
         if self.cmdRet.didFail:
             raise IicException(reason=self.cmdRet.lastReply,

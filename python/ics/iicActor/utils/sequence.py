@@ -11,13 +11,14 @@ class Sequence(list):
     seqtype = 'sequence'
 
     def __init__(self, name="", comments="", doTest=False, noDeps=False, forceGrating=False,
-                 head=None, tail=None, groupId=None, cmdKeys=None):
+                 returnWhenShutterClose=False, head=None, tail=None, groupId=None, cmdKeys=None):
         super().__init__()
         self.name = name
         self.comments = comments
         self.doTest = doTest
         self.noDeps = noDeps
         self.forceGrating = forceGrating
+        self.returnWhenShutterClose = returnWhenShutterClose
         self.head = CmdList(self, head)
         self.tail = CmdList(self, tail)
         self.group_id = groupId
@@ -59,31 +60,34 @@ class Sequence(list):
         # append or insert on index.
         list.append(self, subCmd)
 
-    def append(self, *args, cmd=None, **kwargs):
+    def append(self, *args, **kwargs):
         """Add subCmd and generate keys"""
-        cmd = self.cmd if cmd is None else cmd
+        cmd = self.getCmd()
         # regular add.
         self.add(*args, **kwargs)
         # declare id and generate keys
         id = len(self.cmdList) - 1
         self[-1].init(id, cmd=cmd)
 
-    def genKeys(self, *args, cmd=None):
+    def genKeys(self, *args):
         """Generate sequence keyword."""
-        cmd = self.cmd if cmd is None else cmd
-        cmd.inform(str(self))
+        self.getCmd().inform(str(self))
 
     def initialize(self, engine, cmd):
         """Attach command"""
         self.engine = engine
-        self.cmd = cmd
+        self.setCmd(cmd)
 
         # strip name and comments from rawCmd since it is redundant opdb/keyword scheme.
         if self.cmdStr is None:
             self.cmdStr = makeCmdStr(cmd)
 
-    def getCmd(self):
+    def setCmd(self, cmd):
         """Attach command"""
+        self.cmd = cmd
+
+    def getCmd(self):
+        """Get command objets"""
         cmd = self.engine.actor.bcast if self.cmd is None else self.cmd
         return cmd
 
@@ -99,7 +103,7 @@ class Sequence(list):
         """Declare sequence as active and generate sequence, subcmd keys."""
         # generate keywords for subCommand to come.
         for id, subCmd in enumerate(self.subCmds):
-            subCmd.init(id, cmd=self.cmd)
+            subCmd.init(id, cmd=self.getCmd())
 
         self.status.ready()
 

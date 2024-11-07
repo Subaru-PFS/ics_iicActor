@@ -3,7 +3,7 @@ import os
 import ics.utils.sps.lamps.utils.lampState as lampState
 import numpy as np
 
-seqArgs = '[<name>] [<comments>] [@doTest] [@noDeps] [@forceGrating] [<groupId>] [<head>] [<tail>]'
+seqArgs = '[<name>] [<comments>] [@doTest] [@noDeps] [@forceGrating] [@returnWhenShutterClose] [<groupId>] [<head>] [<tail>]'
 
 
 def seqKeys(cmdKeys):
@@ -13,12 +13,13 @@ def seqKeys(cmdKeys):
     doTest = 'doTest' in cmdKeys
     noDeps = 'noDeps' in cmdKeys
     forceGrating = 'forceGrating' in cmdKeys
+    returnWhenShutterClose = 'returnWhenShutterClose' in cmdKeys
     head = cmdKeys['head'].values if 'head' in cmdKeys else None
     tail = cmdKeys['tail'].values if 'tail' in cmdKeys else None
     groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
 
     return dict(name=name, comments=comments, doTest=doTest, noDeps=noDeps, forceGrating=forceGrating,
-                head=head, tail=tail, groupId=groupId, cmdKeys=cmdKeys)
+                returnWhenShutterClose=returnWhenShutterClose, head=head, tail=tail, groupId=groupId, cmdKeys=cmdKeys)
 
 
 def spsExposureKeys(cmdKeys, doRaise=True, defaultDuplicate=1):
