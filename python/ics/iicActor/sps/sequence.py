@@ -132,6 +132,12 @@ class SpsSequence(sequence.Sequence):
 
     def match(self, filter):
         """do that sequence match the filter."""
-        doMatch = 'sunss' in self.allLightSources if filter == 'sunss' else True
+
+        if filter == 'sunss':
+            doMatch = 'sunss' in self.allLightSources
+        elif filter == 'inBackground':
+            doMatch = self.cmd is None
+        else:
+            doMatch = True
 
         return doMatch
