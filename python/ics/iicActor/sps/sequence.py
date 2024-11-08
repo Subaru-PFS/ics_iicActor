@@ -12,10 +12,13 @@ class SpsSequence(sequence.Sequence):
     doScienceCheck = False
     """"""
 
-    def __init__(self, cams, *args, isWindowed=False, **kwargs):
+    def __init__(self, cams, *args, isWindowed=False, forceGrating=False, returnWhenShutterClose=False, **kwargs):
         self.cams = cams
 
         sequence.Sequence.__init__(self, *args, **kwargs)
+
+        self.forceGrating = forceGrating
+        self.returnWhenShutterClose = returnWhenShutterClose
         self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
 
     @property

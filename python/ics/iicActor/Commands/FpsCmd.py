@@ -124,8 +124,6 @@ class FpsCmd(object):
         # doing startup manually, that will get a visit.
         self.engine.run(cmd, self.boresightLoop, mode=ExecMode.CHECKIN)
 
-        cmd.finish('text="Initialized boresight loop"')
-
     @singleShot
     def addBoresightPosition(self, cmd):
         """
@@ -138,11 +136,11 @@ class FpsCmd(object):
             return
 
         # setting sequence status back to ready, hard amend because flexibility.
-        if self.boresightLoop:
-            self.boresightLoop.status.hardAmend()
+        self.boresightLoop.setCmd(cmd)
+        self.boresightLoop.status.hardAmend()
 
         # add position and run.
-        self.boresightLoop.addPosition(cmd=cmd)
+        self.boresightLoop.addPosition()
         self.engine.run(cmd, self.boresightLoop, mode=ExecMode.EXECUTE)
 
     @singleShot
@@ -165,10 +163,11 @@ class FpsCmd(object):
             return
 
         # setting sequence status back to ready, hard amend because flexibility.
+        self.boresightLoop.setCmd(cmd)
         self.boresightLoop.status.hardAmend()
 
         # adding calculateBoresight command.
-        self.boresightLoop.addReduce(startFrame, endFrame, cmd=cmd)
+        self.boresightLoop.addReduce(startFrame, endFrame)
         self.engine.run(cmd, self.boresightLoop, mode=ExecMode.CONCLUDE)
 
         # no further reference to the object.
@@ -184,8 +183,9 @@ class FpsCmd(object):
             cmd.fail('text="no boresight loop to abort"')
             return
 
+        self.boresightLoop.setCmd(cmd)
         self.boresightLoop.doAbort(cmd)
-        self.boresightLoop.finalize(cmd)
+        self.boresightLoop.finalize()
 
         # no further reference to the object.
         self.boresightLoop = None
@@ -280,7 +280,8 @@ class FpsCmd(object):
             if self.actor.engine.visitManager.activeField.pfsConfig0:
                 self.actor.engine.visitManager.activeField.pfsConfig0.targetType[toBeMoved] = TargetType.HOME
 
-        cmd.finish()
+        if cmd.isAlive():
+            cmd.finish()
 
     def genPfsConfigFromMcs(self, cmd):
         """"""

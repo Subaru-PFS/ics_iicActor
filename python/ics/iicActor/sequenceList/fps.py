@@ -64,14 +64,14 @@ class BoresightLoop(FpsSequence):
 
         return cls(exptime, nExposures, cableBLampOn, **seqKeys)
 
-    def addPosition(self, cmd):
+    def addPosition(self):
         """Acquire data for a new boresight position."""
         for i in range(self.nExposures):
-            self.append('mcs', 'expose object', exptime=self.exptime, frameId=self.visit.nextFrameId(), cmd=cmd)
+            self.append('mcs', 'expose object', exptime=self.exptime, frameId=self.visit.nextFrameId())
 
-    def addReduce(self, startFrame, endFrame, cmd):
+    def addReduce(self, startFrame, endFrame):
         """Close out the current boresight acquisition loop and process the data."""
-        self.append('fps', 'calculateBoresight', startFrame=startFrame, endFrame=endFrame, cmd=cmd, timeLim=30)
+        self.append('fps', 'calculateBoresight', startFrame=startFrame, endFrame=endFrame, timeLim=30)
 
 
 class FpsLoop(FpsSequence):
