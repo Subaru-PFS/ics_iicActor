@@ -7,10 +7,12 @@ from iicActor.utils import resourceManager
 
 
 class ExecMode:
-    FULLAUTO = 0  # Initialize sequence, execute command(s), and conclude.
-    CHECKIN = 1  # Just initialize without executing anything.
-    CONCLUDE = 2  # Execute command(s) and conclude.
-    EXECUTE = 3  # Just execute command(s).
+    """ Execution mode flags for controlling sequence flow with bitwise operations."""
+
+    CHECKIN = 1  # 0b001: Initialize sequence and setup routines
+    EXECUTE = 2  # 0b010: Execute main sequence command
+    CONCLUDE = 4  # 0b100: Finalize sequence with cleanup routines
+    FULLAUTO = CHECKIN | EXECUTE | CONCLUDE  # 0b111: Complete sequence flow
 
 
 class Engine(object):
@@ -57,38 +59,37 @@ class Engine(object):
             Sequence object containing initialization, command logic, and finalization.
         doFinish : bool, optional
             Whether to automatically finish the command after execution, by default True.
-        mode : ExecMode, optional
-            Execution mode determining the sequence flow, by default ExecMode.FULLAUTO.
+        mode : int, optional
+            Execution mode flags determining the sequence flow, by default ExecMode.FULLAUTO.
 
         Notes
         -----
-        - Ensure that the argument order is maintained (cmd first) because of singleShot.
-        - Defines `locked` to hold any resources locked during execution.
+        - This method uses bitwise flags in mode to control sequence actions.
         """
-        # Ensure locked is always defined, so resources can be freed in 'finally' block
-        locked = []
+        locked = []  # Ensure locked is defined for resource cleanup
 
         # Attach the command to the sequence by initializing it
         sequence.initialize(self, cmd)
 
         # Retrieve necessary resources based on the sequence requirements
         resources = self.resourceManager.inspect(sequence)
+
         try:
             # Attempt to lock the required resources
             locked = self.resourceManager.request(resources)
 
-            # If mode is FULLAUTO or CHECKIN, initialize sequence and register in registry
-            if mode in [ExecMode.FULLAUTO, ExecMode.CHECKIN]:
+            # Check if CHECKIN flag is set
+            if mode & ExecMode.CHECKIN:
                 sequence.startup()  # Run startup routine for the sequence
                 self.registry.register(sequence)  # Store sequence in the registry
 
-            # If mode is not CHECKIN, execute the command logic
-            if mode != ExecMode.CHECKIN:
+            # Check if EXECUTE flag is set
+            if mode & ExecMode.EXECUTE:
                 try:
                     sequence.commandLogic()  # Perform main command logic
                 finally:
-                    # If mode is not EXECUTE, finalize the sequence
-                    if mode != ExecMode.EXECUTE:
+                    # Check if CONCLUDE flag is set
+                    if mode & ExecMode.CONCLUDE:
                         sequence.finalize()
 
         except Exception as e:

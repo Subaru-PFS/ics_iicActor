@@ -168,7 +168,7 @@ class FpsCmd(object):
 
         # adding calculateBoresight command.
         self.boresightLoop.addReduce(startFrame, endFrame)
-        self.engine.run(cmd, self.boresightLoop, mode=ExecMode.CONCLUDE)
+        self.engine.run(cmd, self.boresightLoop, mode=ExecMode.EXECUTE | ExecMode.CONCLUDE)
 
         # no further reference to the object.
         self.boresightLoop = None
