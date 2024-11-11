@@ -10,14 +10,13 @@ class Sequence(list):
     daysToDeclareObsolete = 7
     seqtype = 'sequence'
 
-    def __init__(self, name="", comments="", doTest=False, noDeps=False, forceGrating=False,
-                 head=None, tail=None, groupId=None, cmdKeys=None):
+    def __init__(self, name="", comments="", doTest=False, noDeps=False, head=None, tail=None, groupId=None, cmdKeys=None, **kwargs):
         super().__init__()
         self.name = name
         self.comments = comments
         self.doTest = doTest
         self.noDeps = noDeps
-        self.forceGrating = forceGrating
+
         self.head = CmdList(self, head)
         self.tail = CmdList(self, tail)
         self.group_id = groupId
@@ -59,26 +58,39 @@ class Sequence(list):
         # append or insert on index.
         list.append(self, subCmd)
 
-    def append(self, *args, cmd=None, **kwargs):
+    def append(self, *args, **kwargs):
         """Add subCmd and generate keys"""
-        cmd = self.cmd if cmd is None else cmd
+        cmd = self.getCmd()
         # regular add.
         self.add(*args, **kwargs)
         # declare id and generate keys
         id = len(self.cmdList) - 1
         self[-1].init(id, cmd=cmd)
 
-    def genKeys(self, *args, cmd=None):
+    def genKeys(self, *args):
         """Generate sequence keyword."""
-        cmd = self.cmd if cmd is None else cmd
-        cmd.inform(str(self))
+        self.getCmd().inform(str(self))
 
-    def startup(self, engine, cmd):
-        """Attach engine and attach cmd"""
+    def initialize(self, engine, cmd):
+        """Attach command"""
         self.engine = engine
-        self.cmd = cmd
+        self.setCmd(cmd)
+
         # strip name and comments from rawCmd since it is redundant opdb/keyword scheme.
-        self.cmdStr = makeCmdStr(cmd) if self.cmdStr is None else self.cmdStr
+        if self.cmdStr is None:
+            self.cmdStr = makeCmdStr(cmd)
+
+    def setCmd(self, cmd):
+        """Attach command"""
+        self.cmd = cmd
+
+    def getCmd(self):
+        """Get command objets"""
+        cmd = self.engine.actor.bcast if self.cmd is None else self.cmd
+        return cmd
+
+    def startup(self):
+        """Attach engine and attach cmd"""
         # initial insert into opdb.
         self.sequence_id = opdbUtils.insertSequence(group_id=self.group_id, sequence_type=self.seqtype, name=self.name,
                                                     comments=self.comments, cmd_str=self.cmdStr)
@@ -89,7 +101,7 @@ class Sequence(list):
         """Declare sequence as active and generate sequence, subcmd keys."""
         # generate keywords for subCommand to come.
         for id, subCmd in enumerate(self.subCmds):
-            subCmd.init(id, cmd=self.cmd)
+            subCmd.init(id, cmd=self.getCmd())
 
         self.status.ready()
 
@@ -100,7 +112,7 @@ class Sequence(list):
 
         return self.remainingCmds[0]
 
-    def commandLogic(self, cmd):
+    def commandLogic(self):
         """Contain all the logic to process a sequence."""
 
         def cancelRemainings(cmd):
@@ -109,6 +121,7 @@ class Sequence(list):
                 subCmd.cancel(cmd)
 
         self.status.execute()
+        cmd = self.getCmd()
 
         while not self.status.isFlagged and self.getNextSubCmd():
             # get next subCommand.
@@ -132,9 +145,10 @@ class Sequence(list):
         if self.status.isAborted:
             raise exception.SequenceAborted()
 
-    def finalize(self, cmd):
+    def finalize(self):
         """Finalizing sequence."""
-        # insert sequence_status/
+        cmd = self.getCmd()
+        # insert sequence_status
         opdbUtils.insertSequenceStatus(sequence_id=self.sequence_id, status=self.status)
         # process tail, catch exception there, do not care.
         for subCmd in self.tail:

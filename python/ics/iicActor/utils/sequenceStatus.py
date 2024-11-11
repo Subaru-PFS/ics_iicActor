@@ -31,7 +31,7 @@ class Status(fysom.Fysom):
                   {'name': 'finish', 'src': 'EXECUTING', 'dst': 'FINISHED'},
                   {'name': 'abort', 'src': 'EXECUTING', 'dst': 'ABORTED'},
                   {'name': 'amend', 'src': 'FINISHED', 'dst': 'READY'},
-                  {'name': 'hardAmend', 'src': ['FINISHED', 'FAILED'], 'dst': 'READY'}]
+                  {'name': 'hardAmend', 'src': ['FINISHED', 'READY', 'FAILED'], 'dst': 'READY'}]
 
         fysom.Fysom.__init__(self, {'initial': 'none', 'events': events,
                                     'callbacks': {'on_INIT': self.reset, 'on_READY': self.reset}})

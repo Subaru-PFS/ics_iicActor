@@ -90,7 +90,7 @@ class SpsExpose(VisitedCmd):
     def prepareVisit(self, visit):
         """Prepare visit by setting it, generating keys, and verifying configuration."""
         self.visit = visit
-        self.genKeys(self.sequence.cmd)
+        self.genKeys(self.sequence.getCmd())
 
         # Manage lightSources for different exposure types
         if not self.visitManager.activeField:
@@ -106,7 +106,7 @@ class SpsExpose(VisitedCmd):
 
     def getPfsConfig(self):
         """Retrieve or create pfsConfig and ensure matching arms in sequence."""
-        cards = fits.getPfsConfigCards(self.iicActor, self.sequence.cmd, self.visitId, expType=self.exptype)
+        cards = fits.getPfsConfigCards(self.iicActor, self.sequence.getCmd(), self.visitId, expType=self.exptype)
         pfsConfig, visit0 = self.visitManager.activeField.getPfsConfig(self.visitId, cards=cards)
 
         # Insert into opdb immediately
@@ -118,7 +118,7 @@ class SpsExpose(VisitedCmd):
         # Reporting that the pfsConfig is a direct copy of the pfsDesign
         isFake = not np.nansum(np.abs(pfsConfig.pfiNominal - pfsConfig.pfiCenter))
         if self.sequence.isPfiExposure and isFake:
-            self.sequence.cmd.warn('text="pfsConfig.pfiCenter was faked from the pfsDesign!"')
+            self.sequence.getCmd().warn('text="pfsConfig.pfiCenter was faked from the pfsDesign!"')
 
         # writing pfsConfig right away since it doesn't need any further update.
         if self.exptype in ['bias', 'dark']:
@@ -144,7 +144,7 @@ class SpsExpose(VisitedCmd):
 
         # Save pfsConfig to disk
         pfsConfigUtils.writePfsConfig(pfsConfig)
-        self.iicActor.genPfsConfigKey(self.sequence.cmd, pfsConfig)
+        self.iicActor.genPfsConfigKey(self.sequence.getCmd(), pfsConfig)
         self.doWritePfsConfig = False  # Prevent redundant writes
 
     def register(self):

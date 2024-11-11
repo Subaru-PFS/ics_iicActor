@@ -20,6 +20,7 @@ class SequenceCmd(object):
             ('sequence', '@copy <id>', self.restartSequence),
             ('sps', '@abortExposure [<id>] [@(sunss)]', self.abortSpsExposure),
             ('sps', '@finishExposure [@(now)] [<id>] [@(sunss)]', self.finishSpsExposure),
+            ('sps', 'waitForSequenceCompletion [<id>]', self.waitForSequenceCompletion),
 
             ('getGroupId', '<groupName> [(@continue)]', self.getGroupId)
         ]
@@ -180,3 +181,12 @@ class SequenceCmd(object):
             return
 
         cmd.finish(f'groupId={groupId},{groupName}')
+
+    def waitForSequenceCompletion(self, cmd):
+        """Find the sequence running in background and wait for completion."""
+        cmdKeys = cmd.cmd.keywords
+
+        # identifying the sequence running in background.
+        sequence = self.engine.registry.identify(cmdKeys, filter='inBackground')
+        # attaching the command to the active sequence;
+        sequence.setCmd(cmd)

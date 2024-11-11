@@ -485,7 +485,7 @@ class SpsCmd(object):
         # Returning command right away.
         cmd.finish()
         # Running sequence in background.
-        self.engine.runInThread(self.actor.bcast, exposureLoop, mode=ExecMode.CONCLUDE)
+        self.engine.runInThread(self.actor.bcast, exposureLoop, mode=ExecMode.EXECUTE | ExecMode.CONCLUDE)
 
     def erase(self, cmd):
         """

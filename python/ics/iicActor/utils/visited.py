@@ -73,10 +73,10 @@ class VisitedSequence(Sequence):
         self.visit.lock()
         return Sequence.activate(self)
 
-    def finalize(self, cmd):
+    def finalize(self):
         """Unlock visit, regular Sequence.finalize() and insert into visit_set."""
         # prior to finalize sequence, unlock visit.
         self.visit.unlock()
-        Sequence.finalize(self, cmd)
+        Sequence.finalize(self)
         # finally insert into visit_set table
         opdbUtils.insertVisitSet(self.caller, sequence_id=self.sequence_id, pfs_visit_id=self.visit.visitId)

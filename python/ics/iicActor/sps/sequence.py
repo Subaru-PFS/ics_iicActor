@@ -12,10 +12,13 @@ class SpsSequence(sequence.Sequence):
     doScienceCheck = False
     """"""
 
-    def __init__(self, cams, *args, isWindowed=False, **kwargs):
+    def __init__(self, cams, *args, isWindowed=False, forceGrating=False, returnWhenShutterClose=False, **kwargs):
         self.cams = cams
 
         sequence.Sequence.__init__(self, *args, **kwargs)
+
+        self.forceGrating = forceGrating
+        self.returnWhenShutterClose = returnWhenShutterClose
         self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
 
     @property
@@ -34,7 +37,7 @@ class SpsSequence(sequence.Sequence):
     def isPfiExposure(self):
         return 'pfi' in self.allLightSources
 
-    def startup(self, engine, cmd):
+    def initialize(self, engine, cmd):
         """
         Initialize the startup sequence.
 
@@ -55,7 +58,7 @@ class SpsSequence(sequence.Sequence):
             selectedArms = engine.keyRepo.getSelectedArms(self.cams)
             self.comments = translate.setDefaultComments(selectedArms)
 
-        super().startup(engine, cmd)
+        super().initialize(engine, cmd)
 
     def matchPfsConfigArms(self, pfsConfigArms):
         """
@@ -132,6 +135,12 @@ class SpsSequence(sequence.Sequence):
 
     def match(self, filter):
         """do that sequence match the filter."""
-        doMatch = 'sunss' in self.allLightSources if filter == 'sunss' else True
+
+        if filter == 'sunss':
+            doMatch = 'sunss' in self.allLightSources
+        elif filter == 'inBackground':
+            doMatch = self.cmd is None
+        else:
+            doMatch = True
 
         return doMatch
