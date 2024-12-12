@@ -31,6 +31,8 @@ class Sequence(list):
         self.status = Status()
         self.status.onchangestate = self.genKeys
 
+        self.isDead = False
+
     def __str__(self):
         return f'sequence={self.sequence_id},{self.group_id},{self.seqtype},"{self.name}","{self.comments}",' \
                f'"{self.cmdStr}",{self.status}'
@@ -178,6 +180,11 @@ class Sequence(list):
 
         # set flag to aborted and wait for the sequence to conclude.
         self.status.setFlag(Flag.FINISHNOW, doWait=True)
+
+    def thisIsTheEnd(self):
+        """Declaring that this is the end for that sequence."""
+        self.getCmd().finish()
+        self.isDead = True
 
     def instantiate(self, actor, cmdStr, **kwargs):
         """Prototype"""

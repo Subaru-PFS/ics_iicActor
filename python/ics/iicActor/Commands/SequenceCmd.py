@@ -1,6 +1,6 @@
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
-
+import ics.utils.time as pfsTime
 
 class SequenceCmd(object):
 
@@ -112,6 +112,15 @@ class SequenceCmd(object):
 
         self.engine.runInThread(cmd, copy)
 
+    def finishWhenSequenceIsDead(self, cmd, sequence, timeout=1):
+        """Wait that the sequence is declared dead to finish."""
+        start = pfsTime.timestamp()
+
+        while not sequence.isDead and (pfsTime.timestamp() - start)<timeout:
+            pfsTime.sleep.millisec()
+
+        cmd.finish()
+
     def abortSpsExposure(self, cmd):
         """
         `iic sps @abort [id=N]`
@@ -133,7 +142,7 @@ class SequenceCmd(object):
             cmd.fail(f'text="{str(e)}"')
             return
 
-        cmd.finish()
+        self.finishWhenSequenceIsDead(cmd, sequence)
 
     def finishSpsExposure(self, cmd):
         """
@@ -157,7 +166,7 @@ class SequenceCmd(object):
             cmd.fail(f'text="{str(e)}"')
             return
 
-        cmd.finish()
+        self.finishWhenSequenceIsDead(cmd, sequence)
 
     def getGroupId(self, cmd):
         """

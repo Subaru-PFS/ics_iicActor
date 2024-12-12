@@ -100,7 +100,7 @@ class Engine(object):
             self.resourceManager.free(locked)
 
         if doFinish:
-            sequence.getCmd().finish()
+            sequence.thisIsTheEnd()
 
     def requestGroupId(self, groupName, doContinue=False):
         """
