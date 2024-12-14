@@ -1,6 +1,8 @@
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 import ics.utils.time as pfsTime
+from ics.utils.threading import singleShot
+
 
 class SequenceCmd(object):
 
@@ -35,6 +37,7 @@ class SequenceCmd(object):
     def engine(self):
         return self.actor.engine
 
+    @singleShot
     def abortSequence(self, cmd):
         """
         `iic sequence abort id=N`
@@ -55,6 +58,7 @@ class SequenceCmd(object):
 
         cmd.finish()
 
+    @singleShot
     def finishSequence(self, cmd):
         """
         `iic sequence finish id=N`
@@ -112,15 +116,7 @@ class SequenceCmd(object):
 
         self.engine.runInThread(cmd, copy)
 
-    def finishWhenSequenceIsDead(self, cmd, sequence, timeout=1):
-        """Wait that the sequence is declared dead to finish."""
-        start = pfsTime.timestamp()
-
-        while not sequence.isDead and (pfsTime.timestamp() - start)<timeout:
-            pfsTime.sleep.millisec()
-
-        cmd.finish()
-
+    @singleShot
     def abortSpsExposure(self, cmd):
         """
         `iic sps @abort [id=N]`
@@ -142,8 +138,10 @@ class SequenceCmd(object):
             cmd.fail(f'text="{str(e)}"')
             return
 
-        self.finishWhenSequenceIsDead(cmd, sequence)
+        sequence.waitWhileAlive(timeout=1)
+        cmd.finish()
 
+    @singleShot
     def finishSpsExposure(self, cmd):
         """
         `iic sps @finishExposure [now] [id=N]`
@@ -166,8 +164,10 @@ class SequenceCmd(object):
             cmd.fail(f'text="{str(e)}"')
             return
 
-        self.finishWhenSequenceIsDead(cmd, sequence)
+        sequence.waitWhileAlive(timeout=1)
+        cmd.finish()
 
+    @singleShot
     def getGroupId(self, cmd):
         """
         `iic getGroupId [continue]`
