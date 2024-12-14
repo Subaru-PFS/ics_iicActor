@@ -31,7 +31,7 @@ class Sequence(list):
         self.status = Status()
         self.status.onchangestate = self.genKeys
 
-        self.isDead = False
+        self.isAlive = True
 
     def __str__(self):
         return f'sequence={self.sequence_id},{self.group_id},{self.seqtype},"{self.name}","{self.comments}",' \
@@ -184,7 +184,14 @@ class Sequence(list):
     def thisIsTheEnd(self):
         """Declaring that this is the end for that sequence."""
         self.getCmd().finish()
-        self.isDead = True
+        self.isAlive = False
+
+    def waitWhileAlive(self, timeout=5):
+        """Wait that the sequence is declared dead to finish."""
+        start = pfsTime.timestamp()
+
+        while self.isAlive and (pfsTime.timestamp() - start) < timeout:
+            pfsTime.sleep.millisec()
 
     def instantiate(self, actor, cmdStr, **kwargs):
         """Prototype"""
