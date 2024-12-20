@@ -15,7 +15,7 @@ class DcbCmd(object):
         self.actor = actor
         identArgs = '[<cam>] [<cams>] [<specNum>] [<specNums>] [<arm>] [<arms>]'
         commonArgs = f'{identArgs} [<duplicate>] {translate.seqArgs}'
-        arcArgs = f'<exptime> [<switchOn>] [<switchOff>] [<warmingTime>] [force]'
+        arcArgs = f'<exptime> [noLampCtl] [<switchOn>] [<switchOff>] [<warmingTime>] [force]'
         flatArgs = f'<exptime> [noLampCtl] [switchOff] [<warmingTime>] [force]'
         windowingArgs = '[<window>] [<blueWindow>] [<redWindow>]'
 
