@@ -262,6 +262,55 @@ class DotRoachInit(SpsSequence):
 
         return cls(cams, exptime, windowedFlatConfig, maskFile, keepMoving, mode, **config, **seqKeys)
 
+class FastRoachTest(SpsSequence):
+    """ fps MoveToPfsDesign command. """
+    seqtype = 'FastRoachTest'
+    useLamps = 'hscLamps'
+
+    def __init__(self, cams, exptime, windowKeys, applyScaling, stepSize, nIterations, motor,
+                 **seqKeys):
+        SpsSequence.__init__(self, cams, **seqKeys)
+
+        # use sps erase command to niet things up.
+        self.add('sps', 'erase', cams=cams)
+
+        for i in range(nIterations):
+            self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
+            self.add('fps', f'cobraMoveSteps {motor}', stepsize=-stepSize, applyScaling=applyScaling)
+
+        for i in range(nIterations):
+            self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
+            self.add('fps', f'cobraMoveSteps {motor}', stepsize=stepSize, applyScaling=applyScaling)
+
+        self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys, applyScaling, stepSize, nIterations):
+        """Defining rules to construct ScienceObject object."""
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        seqKeys = translate.seqKeys(cmdKeys)
+
+        windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps].copy()
+        exptime = windowedFlatConfig.pop('exptime')
+        # overriding using user provided exptime.
+        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else exptime
+
+        # construct maskFile path.
+        maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'moveAll'
+        maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
+
+        # load dotRoach config and override with user parameters.
+        config = iicActor.actorConfig['dotRoach'].copy()
+        #stepSize = cmdKeys['stepSize'].values[0] if 'stepSize' in cmdKeys else config['stepSize']
+        count = cmdKeys['count'].values[0] if 'count' in cmdKeys else config['count']
+        motor = 'theta' if 'theta' in cmdKeys else config['motor']
+        motor = 'phi' if 'phi' in cmdKeys else motor
+        config.update(stepSize=stepSize, count=count, motor=motor)
+
+        keepMoving = 'keepMoving' in cmdKeys
+        mode = cmdKeys['mode'].values[0] if 'mode' in cmdKeys else 'fast'
+
+        return cls(cams, exptime, windowedFlatConfig, applyScaling, stepSize, nIterations, motor, **seqKeys)
 
 class DotRoachPfiLamps(DotRoach, TimedLampsSequence):
     useLamps = 'pfiLamps'
@@ -274,6 +323,16 @@ class DotRoachPfiLamps(DotRoach, TimedLampsSequence):
 
 
 class DotRoachInitPfiLamps(DotRoachInit, TimedLampsSequence):
+    useLamps = 'pfiLamps'
+
+    # initial exposure
+    def expose(self, exptype, exptime, cams, **windowKeys):
+        exptime = dict(halogen=int(exptime), shutterTiming=False, iis=dict())
+
+        TimedLampsSequence.expose(self, 'flat', exptime, cams, **windowKeys)
+
+
+class FastRoachTestPfiLamps(FastRoachTest, TimedLampsSequence):
     useLamps = 'pfiLamps'
 
     # initial exposure
