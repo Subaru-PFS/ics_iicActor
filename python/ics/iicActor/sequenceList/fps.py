@@ -231,6 +231,23 @@ class CobraMoveSteps(FpsSequence):
 
         return cls(phi, theta, stepSize, maskFile, genPfsConfig, exptime, designId, cableBLampOn, **seqKeys)
 
+class HideCobras(FpsSequence):
+    """ fps MoveToHome command."""
+    seqtype = 'hideCobras'
+
+    def __init__(self, exptime, cableBLampOn, **seqKeys):
+        FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
+
+        # move cobras to home, not supposed to, but meh.
+        self.add('fps', 'hideCobras', parseVisit=True,  timeLim=600)
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        seqKeys = translate.seqKeys(cmdKeys)
+        exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
+        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
+
+        return cls(exptime, cableBLampOn, **seqKeys)
 
 class MovePhiToAngle(FpsSequence):
     """ fps MovePhiToAngle command. """
