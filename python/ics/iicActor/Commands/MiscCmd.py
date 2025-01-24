@@ -164,11 +164,13 @@ class MiscCmd(object):
                                                      twoStepsOff=False, exptime=mcsExptime, cableBLampOn=cableBLampOn,
                                                      **self.actor.actorConfig['nearDotConvergence'])
         # use pfiLamps by default.
-        roaching = misc.DotRoach if 'hscLamps' in cmdKeys else misc.DotRoachPfiLamps
+        roaching = misc.FastRoachTest if 'hscLamps' in cmdKeys else misc.FastRoachTestPfiLamps
         roachingInit = misc.DotRoachInit if 'hscLamps' in cmdKeys else misc.DotRoachInitPfiLamps
+
         # now roaching is split in two steps.
         dotRoachInit = roachingInit.fromCmdKeys(self.actor, cmd.cmd.keywords)
-        dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        #dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        hideCobras = fpsSequence.HideCobras(self.actor, cmd.cmd.keywords)
 
         # first declare design and going home.
         self.actor.declareFpsDesign(cmd, designId=homeDesignId)
@@ -197,6 +199,15 @@ class MiscCmd(object):
                 cmd.fail('text="NearDotConvergence not completed, stopping here."')
             return
 
+        self.engine.run(cmd, hideCobras, doFinish=False)
+        if hideCobras.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="hideCobras not completed, stopping here."')
+            return
+
+        applyScaling = f'/data/fps/hideCobras/v{hideCobras.visit.visitId:06d}/scaling.csv'
+        dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords, applyScaling=applyScaling,
+                                                   stepSize=50, nIterations=10)
         # now proceed to with the actual roaching sequence.
         self.engine.run(cmd, dotRoach, doFinish=False)
 
