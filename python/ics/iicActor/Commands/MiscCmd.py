@@ -170,7 +170,7 @@ class MiscCmd(object):
         # now roaching is split in two steps.
         dotRoachInit = roachingInit.fromCmdKeys(self.actor, cmd.cmd.keywords)
         #dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords)
-        hideCobras = fpsSequence.HideCobras(self.actor, cmd.cmd.keywords)
+        hideCobras = fpsSequence.HideCobras.fromCmdKeys(self.actor, cmd.cmd.keywords)
 
         # first declare design and going home.
         self.actor.declareFpsDesign(cmd, designId=homeDesignId)
