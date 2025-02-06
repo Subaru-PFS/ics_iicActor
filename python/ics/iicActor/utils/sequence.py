@@ -53,6 +53,10 @@ class Sequence(list):
     def remainingCmds(self):
         return [subCmd for subCmd in self.cmdList if not subCmd.cmdRet.wasCalled]
 
+    @property
+    def timeLim(self):
+        return sum([subCmd.timeLim for subCmd in self.remainingCmds])
+
     def add(self, actor, cmdStr, **kwargs):
         """ Append duplicate * subcommand to sequence """
         # instantiate subcommand.

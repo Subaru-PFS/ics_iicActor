@@ -2,7 +2,7 @@ import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 import ics.utils.time as pfsTime
 from ics.utils.threading import singleShot
-
+from iicActor.utils import exception
 
 class SequenceCmd(object):
 
@@ -191,11 +191,25 @@ class SequenceCmd(object):
 
         cmd.finish(f'groupId={groupId},{groupName}')
 
+    @singleShot
     def waitForSequenceCompletion(self, cmd):
         """Find the sequence running in background and wait for completion."""
         cmdKeys = cmd.cmd.keywords
 
-        # identifying the sequence running in background.
-        sequence = self.engine.registry.identify(cmdKeys, filter='inBackground')
-        # attaching the command to the active sequence;
+        try:
+            # identifying the sequence running in background.
+            sequence = self.engine.registry.identify(cmdKeys, filter='returnWhenShutterClose')
+        except exception.SequenceIdentificationFailure:
+            cmd.finish('text="could not identify sequence with returnWhenShutterClose set, finishing now..."')
+            return
+
+        start = pfsTime.timestamp()
+
+        while not sequence.cmd is None:
+            if pfsTime.timestamp() - start > sequence.timeLim:
+                raise RuntimeError(f'Sequence did not return when shutter close after {sequence.timeLim} s')
+
+            pfsTime.sleep.millisec()
+
+        # attaching the command to the active sequence.
         sequence.setCmd(cmd)
