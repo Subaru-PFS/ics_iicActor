@@ -156,8 +156,7 @@ class FiberProfiles(TimedLampsSequence):
 
     def setComments(self, rdaPosition):
         """Setting default comments."""
-        if not self.comments:
-            self.comments = 'brn arm' if rdaPosition =='low' else 'bmn arm'
+        self.comments = 'brn arm' if rdaPosition =='low' else 'bmn arm'
 
 
 class ShutterDriftFlats(SpsSequence):
