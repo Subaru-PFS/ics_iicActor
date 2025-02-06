@@ -37,6 +37,11 @@ class SpsSequence(sequence.Sequence):
     def isPfiExposure(self):
         return 'pfi' in self.allLightSources
 
+    @property
+    def remainingExposures(self):
+        return [subCmd for subCmd in self.remainingCmds if isinstance(subCmd, SpsExpose)]
+
+
     def initialize(self, engine, cmd):
         """
         Initialize the startup sequence.
@@ -138,8 +143,8 @@ class SpsSequence(sequence.Sequence):
 
         if filter == 'sunss':
             doMatch = 'sunss' in self.allLightSources
-        elif filter == 'inBackground':
-            doMatch = self.cmd is None
+        elif filter == 'returnWhenShutterClose':
+            doMatch = self.returnWhenShutterClose
         else:
             doMatch = True
 

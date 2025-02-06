@@ -251,8 +251,11 @@ class IicActor(actorcore.ICC.ICC):
         # update the illumination accordingly.
         spsExpose.updateFiberIllumination(fiberIlluminationStatus)
 
+        # this is the last exposure of the sequence.
+        lastExposure = len(spsExpose.sequence.remainingExposures) == 1
+
         # Finish command immediately.
-        if spsExpose.sequence.returnWhenShutterClose:
+        if spsExpose.sequence.returnWhenShutterClose and lastExposure:
             spsExpose.sequence.cmd.finish()
             spsExpose.sequence.cmd = None
 
