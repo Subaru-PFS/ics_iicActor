@@ -10,6 +10,7 @@ from ics.iicActor.utils.pfsConfig.illumination import updateFiberStatus
 from ics.iicActor.utils.subcmd import CmdRet
 from ics.iicActor.utils.visited import VisitedCmd
 from opscore.utility.qstr import qstr
+from pfs.datamodel import PfsConfig
 
 
 class SpsExpose(VisitedCmd):
@@ -107,7 +108,11 @@ class SpsExpose(VisitedCmd):
     def getPfsConfig(self):
         """Retrieve or create pfsConfig and ensure matching arms in sequence."""
         cards = fits.getPfsConfigCards(self.iicActor, self.sequence.getCmd(), self.visitId, expType=self.exptype)
-        pfsConfig, visit0 = self.visitManager.activeField.getPfsConfig(self.visitId, cards=cards)
+
+        selectedCams = self.sequence.engine.keyRepo.getSelectedCams(self.sequence.cams)
+        camMask = PfsConfig.getCameraMask(selectedCams)
+
+        pfsConfig, visit0 = self.visitManager.activeField.getPfsConfig(self.visitId, cards=cards, camMask=camMask)
 
         # Insert into opdb immediately
         opdbUtils.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=visit0)
