@@ -122,17 +122,33 @@ class KeyRepo:
         set
             Set of unique arms being used, adjusted according to red resolution if necessary.
         """
+        return {cam[0] for cam in self.getSelectedCams(cams)}
 
-        def getSelectedArm(cam):
+    def getSelectedCams(self, cams):
+        """
+        Determine selected cams from the list of cameras, only matter for m-arm.
+
+        Parameters
+        ----------
+        cams : list
+            List of camera objects.
+
+        Returns
+        -------
+        set
+            Set of unique arms being used, adjusted according to red resolution if necessary.
+        """
+
+        def getSelectedCam(cam):
             """Determine the selected arm used for a given camera."""
             arm = cam.arm
             # Check if the arm is either 'r' or 'm' and adjust based on red resolution.
             if arm in {'r', 'm'}:
                 redResolution = self.getEnuKeyValue(cam.specName, 'rexm')
                 arm = 'm' if redResolution == 'med' else 'r'
-            return arm
+            return f'{arm}{cam.specNum}'
 
-        return {getSelectedArm(cam) for cam in cams}
+        return [getSelectedCam(cam) for cam in cams]
 
     def getCurrentRedResolution(self, cams):
         """
