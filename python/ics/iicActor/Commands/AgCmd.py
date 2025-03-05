@@ -5,6 +5,8 @@ import ics.iicActor.utils.lib as iicUtils
 import ics.iicActor.utils.translate as translate
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from ics.utils.threading import singleShot
+from iicActor.utils.engine import ExecMode
 
 reload(agSequence)
 reload(iicUtils)
@@ -15,7 +17,7 @@ class AgCmd(object):
     def __init__(self, actor):
         # This lets us access the rest of the actor.
         self.actor = actor
-
+        self.focusSweep = None
         # Declare the commands we implement. When the actor is started
         # these are registered with the parser, which will call the
         # associated methods when matched. The callbacks will be
@@ -25,6 +27,9 @@ class AgCmd(object):
             ('acquireField', f'[@(otf)] [<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] [<tec_off>] {translate.seqArgs}', self.acquireField),
             ('autoguideStart', f'[@(otf)] [<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] [<tec_off>] {translate.seqArgs}', self.autoguideStart),
             ('autoguideStop', '', self.autoguideStop),
+            ('startAgFocusSweep', '[<exptime>] [<exposure_delay>] [<tec_off>]', self.startAgFocusSweep),
+            ('addAgFocusPosition', '', self.addAgFocusPosition),
+            ('finishAgFocusSweep', '', self.finishAgFocusSweep),
         ]
 
         # Define typed command arguments for the above commands.
@@ -123,3 +128,65 @@ class AgCmd(object):
 
         autoguideStop = agSequence.AutoguideStop.fromCmdKeys(self.actor, cmdKeys)
         self.engine.runInThread(cmd, autoguideStop)
+
+    def startAgFocusSweep(self, cmd):
+        """
+        `iic startAgFocusSweep [expTime=FF.F] [nExposures=N]`
+
+        Start an AG Focus sweep acquisition.
+
+        Parameters
+        ---------
+        expTime : `float`
+            MCS Exposure time.
+        nExposures: `int`
+            Number of exposure.
+        """
+        if self.focusSweep is not None:
+            cmd.fail('text="there is already a focus sweep running"')
+            return
+
+        # Need to get a new visit, just easier this way.
+        pfsDesign, visit0 = self.actor.visitManager.declareNewField(self.actor.visitManager.getField().pfsDesignId,
+                                                                     genVisit0=True)
+
+        self.focusSweep = agSequence.FocusSweep.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        # doing startup manually, that will get a visit.
+        self.engine.run(cmd, self.focusSweep, mode=ExecMode.CHECKIN)
+
+    @singleShot
+    def addAgFocusPosition(self, cmd):
+        """
+        `iic addAgFocusPosition`
+
+        Acquire data for a new focus position.
+        """
+        if self.focusSweep is None:
+            cmd.fail('text="no focus sweep to add position to"')
+            return
+
+        # setting sequence status back to ready, hard amend because flexibility.
+        self.focusSweep.setCmd(cmd)
+        self.focusSweep.status.hardAmend()
+
+        # add position and run.
+        self.focusSweep.addPosition()
+        self.engine.run(cmd, self.focusSweep, mode=ExecMode.EXECUTE)
+
+    @singleShot
+    def finishAgFocusSweep(self, cmd):
+        """
+        `iic finishAgFocusSweep`
+
+        Close out the focusSweep acquisition.
+        """
+        if self.focusSweep is None:
+            cmd.fail('text="no focus sweep to finish"')
+            return
+
+        # just finalize the sequence.
+        self.focusSweep.finalize()
+
+        # no further reference to the object.
+        self.focusSweep = None
+        cmd.finish('text="AgFocusSweep now finished..."')
