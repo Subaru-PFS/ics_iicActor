@@ -110,3 +110,36 @@ class AutoguideStop(Sequence):
     def fromCmdKeys(cls, iicActor, cmdKeys):
         seqKeys = translate.seqKeys(cmdKeys)
         return cls(**seqKeys)
+
+
+class FocusSweep(AgSequence):
+    """The state required to run an AG focus sweep.
+
+    Basically, the Gen2 command knows about the hexapod motion, and
+    interleaves POPT2 hexapod moves with requests to us to expose.
+
+    """
+    seqtype = 'agFocusSweep'
+
+    def __init__(self, exptime, exposure_delay, tec_off, **seqKeys):
+        AgSequence.__init__(self, **seqKeys)
+
+        self.exptime = exptime
+        self.exposure_delay = exposure_delay
+        self.tec_off = tec_off
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct FocusSweep object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+
+        exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
+        exposure_delay = cmdKeys['exposure_delay'].values[0] if 'exposure_delay' in cmdKeys else None
+        tec_off = cmdKeys['tec_off'].values[0] if 'tec_off' in cmdKeys else None
+
+        return cls(exptime, exposure_delay, tec_off, **seqKeys)
+
+    def addPosition(self):
+        """Acquire data for a new focus position."""
+        self.add('ag', 'focus',
+                 parseVisit=True, exposure_time=self.exptime, exposure_delay=self.exposure_delay, tec_off=self.tec_off)
