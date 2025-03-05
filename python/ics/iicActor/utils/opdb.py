@@ -70,11 +70,7 @@ def insertSequence(group_id, sequence_type, name, comments, cmd_str, doRetry=Tru
 
 def insertVisitSet(caller, pfs_visit_id, sequence_id):
     """Insert into visit_set table."""
-    # ignoring ag, at least for now.
-    if caller == 'ag':
-        return
-
-    tables = dict(sps='sps_exposure', fps='mcs_exposure', mcs='mcs_exposure')
+    tables = dict(sps='sps_exposure', fps='mcs_exposure', mcs='mcs_exposure', ag='agc_exposure')
     exposure_table = tables[caller]
 
     def exposureTablePopulated():
@@ -90,7 +86,7 @@ def insertVisitSet(caller, pfs_visit_id, sequence_id):
         return
 
     if visitSetAlreadyPopulated():
-        logging.warning(f'visit_set.pfs_visit_id={pfs_visit_id} already exists.')
+        logging.info(f'caller={caller} visit_set.pfs_visit_id={pfs_visit_id} already exists...')
         return
 
     insertIntoOpDB('visit_set', pfs_visit_id=pfs_visit_id, iic_sequence_id=sequence_id)
