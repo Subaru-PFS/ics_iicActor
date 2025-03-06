@@ -152,4 +152,4 @@ class FocusSweep(AgSequence):
 
     def addPosition(self):
         """Acquire data for a new focus position."""
-        self.add('tests', 'acquire_field', parseVisit=True, **self.parseKwargs)
+        self.add('ag', 'acquire_field', parseVisit=True, **self.parseKwargs)

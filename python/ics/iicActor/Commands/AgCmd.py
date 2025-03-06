@@ -184,5 +184,7 @@ class AgCmd(object):
         self.focusSweep.finalize()
 
         cmd.finish(f'text="AgFocusSweep iic_sequence_id:{self.focusSweep.sequence_id} visitId:{self.focusSweep.visit.visitId} now finished..."')
+        # Making sure that visitId won't be used ever again.
+        self.actor.visitManager.getField().lockVisit()
         # no further reference to the object.
         self.focusSweep = None
