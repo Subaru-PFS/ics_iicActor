@@ -47,7 +47,7 @@ class AcquireField(AgSequence):
         if 'designId' in cmdKeys:
             designId = cmdKeys['designId'].values[0]
         else:
-            designId = iicActor.engine.visitManager.getCurrentDesignId()
+            designId = iicActor.visitManager.getCurrentDesignId()
 
         # override designId if otf.
         designId = False if otf else designId
@@ -89,7 +89,7 @@ class AutoguideStart(AgSequence):
         if 'designId' in cmdKeys:
             designId = cmdKeys['designId'].values[0]
         else:
-            designId = iicActor.engine.visitManager.getCurrentDesignId()
+            designId = iicActor.visitManager.getCurrentDesignId()
 
         # override designId if otf.
         designId = False if otf else designId
@@ -121,12 +121,11 @@ class FocusSweep(AgSequence):
     """
     seqtype = 'agFocusSweep'
 
-    def __init__(self, exptime, exposure_delay, tec_off, **seqKeys):
+    def __init__(self, otf, designId, exptime, fit_dScale, fit_dInR, exposure_delay, tec_off, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
-        self.exptime = exptime
-        self.exposure_delay = exposure_delay
-        self.tec_off = tec_off
+        self.parseKwargs = dict(otf=otf, design_id=designId, exposure_time=exptime, fit_dScale=fit_dScale, fit_dInR=fit_dInR,
+                                exposure_delay=exposure_delay, tec_off=tec_off)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -134,12 +133,23 @@ class FocusSweep(AgSequence):
         seqKeys = translate.seqKeys(cmdKeys)
 
         exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
+        otf = True if 'otf' in cmdKeys else False
+        fit_dScale = cmdKeys['fit_dScale'].values[0] if 'fit_dScale' in cmdKeys else None
+        fit_dInR = cmdKeys['fit_dInR'].values[0] if 'fit_dInR' in cmdKeys else None
         exposure_delay = cmdKeys['exposure_delay'].values[0] if 'exposure_delay' in cmdKeys else None
         tec_off = cmdKeys['tec_off'].values[0] if 'tec_off' in cmdKeys else None
 
-        return cls(exptime, exposure_delay, tec_off, **seqKeys)
+        # get provided designId or get current one.
+        if 'designId' in cmdKeys:
+            designId = cmdKeys['designId'].values[0]
+        else:
+            designId = iicActor.visitManager.getCurrentDesignId()
+
+        # Need to get a new visit, just easier this way.
+        pfsDesign, visit0 = iicActor.visitManager.declareNewField(designId, genVisit0=True)
+
+        return cls(otf, designId, exptime, fit_dScale, fit_dInR, exposure_delay, tec_off, **seqKeys)
 
     def addPosition(self):
         """Acquire data for a new focus position."""
-        self.add('ag', 'focus',
-                 parseVisit=True, exposure_time=self.exptime, exposure_delay=self.exposure_delay, tec_off=self.tec_off)
+        self.add('tests', 'acquire_field', parseVisit=True, **self.parseKwargs)

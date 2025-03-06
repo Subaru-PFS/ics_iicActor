@@ -27,7 +27,7 @@ class AgCmd(object):
             ('acquireField', f'[@(otf)] [<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] [<tec_off>] {translate.seqArgs}', self.acquireField),
             ('autoguideStart', f'[@(otf)] [<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] [<tec_off>] {translate.seqArgs}', self.autoguideStart),
             ('autoguideStop', '', self.autoguideStop),
-            ('startAgFocusSweep', '[<exptime>] [<exposure_delay>] [<tec_off>]', self.startAgFocusSweep),
+            ('startAgFocusSweep', f'[@(otf)] [<designId>] [<exptime>] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] [<tec_off>] {translate.seqArgs}', self.startAgFocusSweep),
             ('addAgFocusPosition', '', self.addAgFocusPosition),
             ('finishAgFocusSweep', '', self.finishAgFocusSweep),
         ]
@@ -146,10 +146,6 @@ class AgCmd(object):
             cmd.fail('text="there is already a focus sweep running"')
             return
 
-        # Need to get a new visit, just easier this way.
-        pfsDesign, visit0 = self.actor.visitManager.declareNewField(self.actor.visitManager.getField().pfsDesignId,
-                                                                     genVisit0=True)
-
         self.focusSweep = agSequence.FocusSweep.fromCmdKeys(self.actor, cmd.cmd.keywords)
         # doing startup manually, that will get a visit.
         self.engine.run(cmd, self.focusSweep, mode=ExecMode.CHECKIN)
@@ -187,6 +183,6 @@ class AgCmd(object):
         # just finalize the sequence.
         self.focusSweep.finalize()
 
+        cmd.finish(f'text="AgFocusSweep iic_sequence_id:{self.focusSweep.sequence_id} visitId:{self.focusSweep.visit.visitId} now finished..."')
         # no further reference to the object.
         self.focusSweep = None
-        cmd.finish('text="AgFocusSweep now finished..."')
