@@ -7,12 +7,12 @@ import ics.iicActor.utils.pfsDesign.opdb as designDB
 import iicActor.utils.pfsDesign.merge as mergeDesign
 import numpy as np
 import pandas as pd
-import pfs.utils.pfsConfigUtils as pfsConfigUtils
 from ics.utils.sps.spectroIds import getSite
 from iicActor.utils import engine
 from iicActor.utils import keyBuffer
 from pfs.datamodel.pfsConfig import PfsDesign, TargetType
 from pfs.utils.fiberids import FiberIds
+from pfs.utils.pfsConfigUtils import getDateDir
 from twisted.internet import reactor
 
 
@@ -259,7 +259,6 @@ class IicActor(actorcore.ICC.ICC):
             spsExpose.sequence.cmd.finish()
             spsExpose.sequence.cmd = None
 
-
     def genPfsDesignKey(self, cmd):
         """Generate pfsDesign keyword."""
         activeField = self.visitManager.activeField
@@ -285,15 +284,17 @@ class IicActor(actorcore.ICC.ICC):
 
     def genPfsConfigKey(self, cmd, pfsConfig):
         """Generate pfsConfig keyword."""
-        cmd.inform('pfsConfig=0x%016x,%d,"%s",%.6f,%.6f,%.6f,"%s",0x%016x,%d' % (pfsConfig.pfsDesignId,
-                                                                                 pfsConfig.visit,
-                                                                                 pfsConfigUtils.getDateDir(pfsConfig),
-                                                                                 pfsConfig.raBoresight,
-                                                                                 pfsConfig.decBoresight,
-                                                                                 pfsConfig.posAng,
-                                                                                 pfsConfig.designName,
-                                                                                 pfsConfig.designId0,
-                                                                                 pfsConfig.variant))
+        cmd.inform('pfsConfig=0x%016x,%d,"%s",%.6f,%.6f,%.6f,"%s",0x%016x,%d,"%s"' % (pfsConfig.pfsDesignId,
+                                                                                      pfsConfig.visit,
+                                                                                      getDateDir(pfsConfig),
+                                                                                      pfsConfig.raBoresight,
+                                                                                      pfsConfig.decBoresight,
+                                                                                      pfsConfig.posAng,
+                                                                                      pfsConfig.designName,
+                                                                                      pfsConfig.designId0,
+                                                                                      pfsConfig.variant,
+                                                                                      pfsConfig.decodeInstrumentStatusFlag()
+                                                                                      ))
 
 
 def main():
