@@ -17,28 +17,33 @@ def fetchOneEntry(query):
 
 
 def fetchLastSequenceId():
-    """Get last sequence_id from iic_sequence table."""
-    sequence_id = fetchOneEntry('select max(iic_sequence_id) from iic_sequence')
+    """Get last sequence_id FROM iic_sequence table."""
+    sequence_id = fetchOneEntry('SELECT max(iic_sequence_id) FROM iic_sequence')
     sequence_id = 0 if sequence_id is None else sequence_id
     return int(sequence_id)
 
 
 def fetchLastGroupId():
-    """Get last group_id from sequence_group table."""
-    group_id = fetchOneEntry('select max(group_id) from sequence_group')
+    """Get last group_id FROM sequence_group table."""
+    group_id = fetchOneEntry('SELECT max(group_id) FROM sequence_group')
     group_id = 0 if group_id is None else group_id
     return int(group_id)
 
 
 def fetchLastGroupIdMatchingName(group_name):
-    """Get last group_id from sequence_group table matching group_name."""
-    group_id = fetchOneEntry(f"select max(group_id) from sequence_group where group_name='{group_name}'")
+    """Get last group_id FROM sequence_group table matching group_name."""
+    group_id = fetchOneEntry(f"SELECT max(group_id) FROM sequence_group WHERE group_name='{group_name}'")
     # something went wrong here
     if not group_id:
         raise exception.OpDBFailure(f'no sequence_group match group_name: {group_name}')
 
     return int(group_id)
 
+def getDeltaINSROT(visit0, spsVisitId):
+    """Compute the difference in INSROT (instrument rotation) between spsVisit and visit0."""
+    INSROT0 = fetchOneEntry(f"SELECT insrot FROM tel_status WHERE pfs_visit_id={visit0} and caller='mcs' ORDER BY status_sequence_id DESC LIMIT 1")
+    INSROT = fetchOneEntry(f"SELECT insrot FROM tel_status WHERE pfs_visit_id={spsVisitId} ORDER BY status_sequence_id DESC LIMIT 1")
+    return float(INSROT-INSROT0)
 
 def insertIntoOpDB(tablename, **kwargs):
     """Simple insert into opDB, raising proper IicException."""
@@ -75,11 +80,11 @@ def insertVisitSet(caller, pfs_visit_id, sequence_id):
 
     def exposureTablePopulated():
         """Check is there is a matching visit in exposure table."""
-        return opDB.fetchone(f'select pfs_visit_id from {exposure_table} where pfs_visit_id={pfs_visit_id}')
+        return opDB.fetchone(f'SELECT pfs_visit_id FROM {exposure_table} WHERE pfs_visit_id={pfs_visit_id}')
 
     def visitSetAlreadyPopulated():
         """Check if visit_set table is already populated."""
-        return opDB.fetchone(f'select pfs_visit_id from visit_set where pfs_visit_id={pfs_visit_id}')
+        return opDB.fetchone(f'SELECT pfs_visit_id FROM visit_set WHERE pfs_visit_id={pfs_visit_id}')
 
     if not exposureTablePopulated():
         logging.warning(f'no entry for {exposure_table}.pfs_visit_id={pfs_visit_id}.')

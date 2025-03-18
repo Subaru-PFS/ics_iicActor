@@ -9,8 +9,10 @@ import pfscore.gen2 as gen2
 from ics.iicActor.utils.pfsConfig.illumination import updateFiberStatus
 from ics.iicActor.utils.subcmd import CmdRet
 from ics.iicActor.utils.visited import VisitedCmd
+from ics.utils.fits import mhs as fitsMhs
+from iicActor.utils import exception
 from opscore.utility.qstr import qstr
-from pfs.datamodel import PfsConfig
+from pfs.datamodel import PfsConfig, InstrumentStatusFlag
 
 
 class SpsExpose(VisitedCmd):
@@ -101,18 +103,46 @@ class SpsExpose(VisitedCmd):
         if self.sequence.isPfiExposure and self.exptype == 'object':
             self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
 
+        # Compute the change in INSROT since convergence.
+        dINSROT = self.getDeltaINSROT()
+
         # Obtain and register pfsConfig
-        self.pfsConfig, self.visit0 = self.getPfsConfig()
+        self.pfsConfig, self.visit0 = self.makePfsConfig(dINSROT=dINSROT)
         self.register()
 
-    def getPfsConfig(self):
+    def getDeltaINSROT(self):
+        """Compute the change in INSROT (instrument rotation) between the visit0 and the current visit."""
+        # Only compute if the sequence is a PFI exposure
+        if not self.sequence.isPfiExposure:
+            return None
+
+        try:
+            # Retrieve the reference visit (visit0) for comparison
+            visit0 = self.visitManager.activeField.getVisit0()
+            # Compute the delta INSROT between now and visit0.
+            dINSROT = opdbUtils.getDeltaINSROT(visit0, self.visitId)
+        except (ValueError, exception.OpDBFailure):
+            # Handle cases where INSROT calculation fails
+            dINSROT = float(fitsMhs.INVALID)
+
+        return dINSROT
+
+    def makePfsConfig(self, dINSROT=None):
         """Retrieve or create pfsConfig and ensure matching arms in sequence."""
         cards = fits.getPfsConfigCards(self.iicActor, self.sequence.getCmd(), self.visitId, expType=self.exptype)
+
+        # dINSROT is not always relevant, for example if PFS is not on the telescope.
+        if dINSROT is not None:
+            cards.update({'W_DINROT': (dINSROT, "[deg] INSROT delta between sps visit and convergence.")})
 
         selectedCams = self.sequence.engine.keyRepo.getSelectedCams(self.sequence.cams)
         camMask = PfsConfig.getCameraMask(selectedCams)
 
-        pfsConfig, visit0 = self.visitManager.activeField.getPfsConfig(self.visitId, cards=cards, camMask=camMask)
+        pfsConfig, visit0 = self.visitManager.activeField.makePfsConfig(self.visitId, cards=cards, camMask=camMask)
+
+        # setting INSROT_MISMATCH in pfsConfig if dINSROT > threshold
+        if dINSROT not in {None, float(fitsMhs.INVALID)} and abs(dINSROT) > self.iicActor.actorConfig['maxDeltaINSROT']:
+            pfsConfig.setInstrumentStatusFlag(InstrumentStatusFlag.INSROT_MISMATCH)
 
         # Insert into opdb immediately
         opdbUtils.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=visit0)
