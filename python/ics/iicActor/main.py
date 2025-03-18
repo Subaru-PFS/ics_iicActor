@@ -108,7 +108,7 @@ class IicActor(actorcore.ICC.ICC):
         pfsDesign, visit0 = self.visitManager.declareNewField(designId, genVisit0=genVisit0)
         self.genPfsDesignKey(cmd)
         # Ingest design.
-        designDB.ingest(cmd, pfsDesign, designed_at=designed_at, to_be_observed_at='now')
+        designDB.ingest(cmd, pfsDesign, designed_at=designed_at)
 
     def mergeDesignFromCurrentSetup(self):
         """ Merge design given the current setup, there are basically two modes :

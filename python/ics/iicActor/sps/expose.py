@@ -145,7 +145,8 @@ class SpsExpose(VisitedCmd):
             pfsConfig.setInstrumentStatusFlag(InstrumentStatusFlag.INSROT_MISMATCH)
 
         # Insert into opdb immediately
-        opdbUtils.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=visit0)
+        opdbUtils.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=visit0,
+                                     camMask=pfsConfig.camMask, instStatusFlag=pfsConfig.instStatusFlag)
 
         # Ensure pfsConfig arms match those used in current sequence
         pfsConfig.arms = self.sequence.matchPfsConfigArms(pfsConfig.arms)

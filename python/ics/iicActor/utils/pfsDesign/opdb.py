@@ -2,13 +2,13 @@ import pfs.utils.ingestPfsDesign as ingestPfsDesign
 from ics.utils.opdb import opDB
 
 
-def ingest(cmd, pfsDesign, designed_at=None, to_be_observed_at=None):
+def ingest(cmd, pfsDesign, designed_at=None):
     """Inserting into opdb."""
     isNew = not opDB.fetchone(f'select pfs_design_id from pfs_design where pfs_design_id={pfsDesign.pfsDesignId}')
 
     if isNew:
         try:
-            ingestPfsDesign.ingestPfsDesign(pfsDesign, designed_at=designed_at, to_be_observed_at=to_be_observed_at)
+            ingestPfsDesign.ingestPfsDesign(pfsDesign, designed_at=designed_at)
             cmd.inform('text="pfsDesign-0x%016x successfully inserted in opdb !"' % pfsDesign.pfsDesignId)
         except Exception as e:
             cmd.warn(f'text="ingestPfsDesign failed with {str(e)}, ignoring for now..."')
