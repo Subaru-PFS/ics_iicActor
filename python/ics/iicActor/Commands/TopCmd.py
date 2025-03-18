@@ -126,7 +126,7 @@ class TopCmd(object):
             # writing to disk
             pfsDesignVariant.write(dirName=self.pfsDesignRootDir)
             # Ingesting into opdb.
-            designDB.ingest(cmd, pfsDesignVariant, designed_at='now', to_be_observed_at='now')
+            designDB.ingest(cmd, pfsDesignVariant, designed_at='now')
 
         cmd.finish()
 
@@ -167,10 +167,9 @@ class TopCmd(object):
 
         designId = cmdKeys['designId'].values[0]
         designed_at = cmdKeys['designedAt'].values[0] if 'designedAt' in cmdKeys else None
-        to_be_observed_at = cmdKeys['toBeObservedAt'].values[0] if 'toBeObservedAt' in cmdKeys else None
         # Reading design file.
         pfsDesign = PfsDesign.read(designId, dirName=self.pfsDesignRootDir)
         # Ingesting into opdb.
-        designDB.ingest(cmd, pfsDesign, designed_at=designed_at, to_be_observed_at=to_be_observed_at)
+        designDB.ingest(cmd, pfsDesign, designed_at=designed_at)
 
         cmd.finish()

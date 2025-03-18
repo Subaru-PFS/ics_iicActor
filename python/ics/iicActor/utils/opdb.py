@@ -110,6 +110,7 @@ def insertSequenceGroup(group_name):
     return new_group_id
 
 
-def insertPfsConfigSps(pfs_visit_id, visit0):
+def insertPfsConfigSps(pfs_visit_id, visit0, camMask, instStatusFlag):
     """Insert into pfs_config_sps table."""
-    insertIntoOpDB('pfs_config_sps', pfs_visit_id=pfs_visit_id, visit0=visit0)
+    insertIntoOpDB('pfs_config_sps', pfs_visit_id=pfs_visit_id, visit0=visit0,
+                   cam_mask=camMask, inst_status_flag=instStatusFlag)
