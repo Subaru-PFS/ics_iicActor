@@ -284,6 +284,8 @@ class FastRoachTest(SpsSequence):
             self.add('fps', f'cobraMoveSteps {motor}', stepsize=stepSize, applyScaling=applyScaling)
 
         self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
+        # turning drp processing off
+        self.add('drp', 'stopDotRoach')
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, applyScaling, stepSize, nIterations):
