@@ -37,7 +37,7 @@ class SpsCmd(object):
             ('scienceTrace', f'{timedFlatArgs} {windowingArgs} {commonArgs}', self.scienceTrace),
             ('domeFlat', f'<exptime> {windowingArgs} {commonArgs}', self.domeFlat),
             ('scienceObject', f'<exptime> {windowingArgs} {commonArgs}', self.scienceObject),
-            ('fiberProfiles', f'{timedFlatArgs} [<pixelRange>] [<interleaveDark>] {commonArgs}', self.fiberProfiles),
+            ('fiberProfiles', f'{timedFlatArgs} [<pixelRange>] [<interleaveDark>] [@skipOtherRedResolution] {commonArgs}', self.fiberProfiles),
 
             ('sps', f'@startExposures <exptime> {windowingArgs} {commonArgs}', self.startExposureLoop),
             ('sps', f'@erase {commonArgs}', self.erase),
@@ -258,11 +258,16 @@ class SpsCmd(object):
 
         hexapodOff = self.actor.engine.keyRepo.cacheHexapodState(cams)  # caching hexapod state if it's off.
         current = self.actor.engine.keyRepo.getCurrentRedResolution(cams)
+        skipOtherRedResolution = 'skipOtherRedResolution' in cmdKeys
         cmd.inform(f'text="RDA currently in {current} resolution mode"')
 
         # Run first set of fiberProfiles in current red resolution.
         fiberProfiles = calib.FiberProfiles.fromCmdKeys(self.actor, cmdKeys)
         self.engine.run(cmd, fiberProfiles, doFinish=False)
+
+        if skipOtherRedResolution:
+            cmd.finish('text="not switching the red grating, finishing sequence here..."')
+            return
 
         if fiberProfiles.status.flag != Flag.FINISHED:
             if cmd.alive:
