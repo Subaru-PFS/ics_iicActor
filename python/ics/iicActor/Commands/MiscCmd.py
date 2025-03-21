@@ -160,7 +160,7 @@ class MiscCmd(object):
         mcsExptime = self.actor.actorConfig['mcs']['exptime']
         cableBLampOn = self.actor.actorConfig['fps']['cableBLampOn']
         moveToHomeAll = fpsSequence.MoveToHome(exptime=mcsExptime, designId=homeDesignId, cableBLampOn=cableBLampOn)
-        nearDotConvergence = misc.NearDotConvergence(phiCrossingDesignId, maskFile=False, goHome=False, noTweak=True,
+        nearDotConvergence = misc.NearDotConvergence(phiCrossingDesignId, maskFile=False, goHome=True, noTweak=True,
                                                      twoStepsOff=False, exptime=mcsExptime, cableBLampOn=cableBLampOn,
                                                      **self.actor.actorConfig['nearDotConvergence'])
         # use pfiLamps by default.
@@ -182,12 +182,12 @@ class MiscCmd(object):
             return
 
         # running dotRoach init to take reference flux.
-        self.engine.run(cmd, dotRoachInit, doFinish=False)
+        # self.engine.run(cmd, dotRoachInit, doFinish=False)
 
-        if dotRoachInit.status.flag != Flag.FINISHED:
-            if cmd.alive:
-                cmd.fail('text="dotRoachInit not completed, stopping here."')
-            return
+        # if dotRoachInit.status.flag != Flag.FINISHED:
+        #    if cmd.alive:
+        #        cmd.fail('text="dotRoachInit not completed, stopping here."')
+        #    return
 
         # now declare phiCrossing design and  converge to near dot.
         self.actor.declareFpsDesign(cmd, designId=phiCrossingDesignId)
@@ -204,6 +204,9 @@ class MiscCmd(object):
             if cmd.alive:
                 cmd.fail('text="hideCobras not completed, stopping here."')
             return
+
+        cmd.finish()
+        return
 
         applyScaling = f'/data/fps/hideCobras/v{hideCobras.visit.visitId:06d}/scaling.csv'
         dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords, applyScaling=applyScaling,
