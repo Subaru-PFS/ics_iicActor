@@ -23,7 +23,6 @@ class SpsExpose(VisitedCmd):
         super().__init__(*args, parseVisit=True, **kwargs)
 
         self.visit = None
-        self.visit0 = None
         self.pfsConfig = None
         self.doWritePfsConfig = True
 
@@ -58,7 +57,7 @@ class SpsExpose(VisitedCmd):
     def getMetadata(self):
         """Format metadata argument."""
         designInfo = [f'0x{self.pfsConfig.pfsDesignId:016x}', qstr(self.pfsConfig.designName)]
-        ids = list(map(str, [self.visit0, self.sequence.sequence_id, self.sequence.parseGroupId()]))
+        ids = list(map(str, [self.pfsConfig.visit0, self.sequence.sequence_id, self.sequence.parseGroupId()]))
         metadata = designInfo + ids
         return f'metadata={",".join(metadata)}'
 
@@ -107,7 +106,7 @@ class SpsExpose(VisitedCmd):
         dINSROT = self.getDeltaINSROT()
 
         # Obtain and register pfsConfig
-        self.pfsConfig, self.visit0 = self.makePfsConfig(dINSROT=dINSROT)
+        self.pfsConfig = self.makePfsConfig(dINSROT=dINSROT)
         self.register()
 
     def getDeltaINSROT(self):
@@ -138,14 +137,14 @@ class SpsExpose(VisitedCmd):
         selectedCams = self.sequence.engine.keyRepo.getSelectedCams(self.sequence.cams)
         camMask = PfsConfig.getCameraMask(selectedCams)
 
-        pfsConfig, visit0 = self.visitManager.activeField.makePfsConfig(self.visitId, cards=cards, camMask=camMask)
+        pfsConfig = self.visitManager.activeField.makePfsConfig(self.visitId, cards=cards, camMask=camMask)
 
         # setting INSROT_MISMATCH in pfsConfig if dINSROT > threshold
         if dINSROT not in {None, float(fitsMhs.INVALID)} and abs(dINSROT) > self.iicActor.actorConfig['maxDeltaINSROT']:
             pfsConfig.setInstrumentStatusFlag(InstrumentStatusFlag.INSROT_MISMATCH)
 
         # Insert into opdb immediately
-        opdbUtils.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=visit0,
+        opdbUtils.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=pfsConfig.visit0,
                                      camMask=pfsConfig.camMask, instStatusFlag=pfsConfig.instStatusFlag)
 
         # Ensure pfsConfig arms match those used in current sequence
@@ -160,7 +159,7 @@ class SpsExpose(VisitedCmd):
         if self.exptype in ['bias', 'dark']:
             self.writePfsConfig(pfsConfig)
 
-        return pfsConfig, visit0
+        return pfsConfig
 
     def updateFiberIllumination(self, status):
         """Update fiber illumination status based on configuration settings."""
