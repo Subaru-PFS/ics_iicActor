@@ -37,7 +37,7 @@ class SpsCmd(object):
             ('scienceTrace', f'{timedFlatArgs} {windowingArgs} {commonArgs}', self.scienceTrace),
             ('domeFlat', f'<exptime> {windowingArgs} {commonArgs}', self.domeFlat),
             ('scienceObject', f'<exptime> {windowingArgs} {commonArgs}', self.scienceObject),
-            ('fiberProfiles', f'{timedFlatArgs} [<pixelRange>] [<interleaveDark>] [@skipOtherRedResolution] {commonArgs}', self.fiberProfiles),
+            ('fiberProfiles', f'{timedFlatArgs} [<pixelRange>] [<interleaveDark>] [@skipOtherRedResolution] [<nTraceBefore>] [<nTraceAfter>] {commonArgs}', self.fiberProfiles),
 
             ('sps', f'@startExposures <exptime> {windowingArgs} {commonArgs}', self.startExposureLoop),
             ('sps', f'@erase {commonArgs}', self.erase),
@@ -118,7 +118,8 @@ class SpsCmd(object):
                                                  help='IIS lamp on time'),
                                         keys.Key('iisKrypton', types.Float(),
                                                  help='IIS Kr lamp on time'),
-
+                                        keys.Key('nTraceBefore', types.Int(), help='nTrace in Home before dithered fiberProfiles'),
+                                        keys.Key('nTraceAfter', types.Int(), help='nTrace in Home after dithered fiberProfiles'),
                                         )
 
     @property

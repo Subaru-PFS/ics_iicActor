@@ -109,14 +109,15 @@ class FiberProfiles(TimedLampsSequence):
     """ Dithered Flats sequence """
     seqtype = 'fiberProfiles'
 
-    def __init__(self, cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, **seqKeys):
+    def __init__(self, cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, nTraceBefore, nTraceAfter,
+                 **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         # taking a trace in home to start.
         self.add('sps', 'slit start', cams=cams)
         self.add('sps', 'slit home', cams=cams)
-        # taking 3 images in home first.
-        self.takeOneDuplicate(lampsKeys, cams, duplicate * 3, interleaveDark)
+        # taking nTraceBefore images in home first.
+        self.takeOneDuplicate(lampsKeys, cams, int(duplicate * nTraceBefore), interleaveDark)
 
         for position in positions:
             self.add('sps', 'slit dither', x=position, pixels=True, abs=True, cams=cams)
@@ -124,12 +125,11 @@ class FiberProfiles(TimedLampsSequence):
 
         # taking a trace in home to end.
         self.add('sps', 'slit home', cams=cams)
-        self.takeOneDuplicate(lampsKeys, cams, duplicate, interleaveDark)
+        self.takeOneDuplicate(lampsKeys, cams, int(duplicate * nTraceAfter), interleaveDark)
 
         # Turn hexapod off only if it was off in the first place.
         if hexapodOff:
             self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
-
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, hexapodOff=False):
@@ -139,10 +139,14 @@ class FiberProfiles(TimedLampsSequence):
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
         positions = translate.fiberProfilesKeys(cmdKeys)
-
         interleaveDark = cmdKeys['interleaveDark'].values[0] if 'interleaveDark' in cmdKeys else False
 
-        return cls(cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, **seqKeys)
+        actorConfig = iicActor.actorConfig['fiberProfiles']
+        nTraceBefore = cmdKeys['nTraceBefore'].values[0] if 'nTraceBefore' in cmdKeys else actorConfig['nTraceBefore']
+        nTraceAfter = cmdKeys['nTraceAfter'].values[0] if 'nTraceAfter' in cmdKeys else actorConfig['nTraceAfter']
+
+        return cls(cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, nTraceBefore, nTraceAfter,
+                   **seqKeys)
 
     def takeOneDuplicate(self, lampsKeys, cams, duplicate, interleaveDark):
         """take one duplicate, interleave for nir arm if necessary."""
@@ -156,7 +160,7 @@ class FiberProfiles(TimedLampsSequence):
 
     def setComments(self, rdaPosition):
         """Setting default comments."""
-        self.comments = 'brn arm' if rdaPosition =='low' else 'bmn arm'
+        self.comments = 'brn arm' if rdaPosition == 'low' else 'bmn arm'
 
 
 class ShutterDriftFlats(SpsSequence):
