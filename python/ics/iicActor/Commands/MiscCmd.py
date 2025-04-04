@@ -9,6 +9,7 @@ import iicActor.utils.pfsDesign.opdb as designDB
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.utils.threading import singleShot
+from iicActor.utils.engine import ExecMode
 from iicActor.utils.sequenceStatus import Flag
 
 reload(iicUtils)
@@ -34,9 +35,11 @@ class MiscCmd(object):
             ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {translate.seqArgs}', self.dotCrossing),
             ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {translate.seqArgs}', self.dotCrossing),
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
-            ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] [<maskFile>] {translate.seqArgs}', self.nearDotConvergenceCmd),
+            ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] [<maskFile>] {translate.seqArgs}',
+             self.nearDotConvergenceCmd),
             ('genBlackDotsConfig', f'[<maskFile>] {translate.seqArgs}', self.genBlackDotsConfigCmd),
-            ('dotRoach', f'[<exptime>] [<maskFile>] [@(hscLamps)] [<mode>] {identArgs} {translate.seqArgs}', self.dotRoach),
+            ('dotRoach', f'[<exptime>] [<maskFile>] [@(hscLamps)] [<mode>] {identArgs} {translate.seqArgs}',
+             self.dotRoach),
         ]
 
         # Define typed command arguments for the above commands.
@@ -169,7 +172,7 @@ class MiscCmd(object):
 
         # now roaching is split in two steps.
         dotRoachInit = roachingInit.fromCmdKeys(self.actor, cmd.cmd.keywords)
-        #dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        # dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords)
         hideCobras = fpsSequence.HideCobras.fromCmdKeys(self.actor, cmd.cmd.keywords)
 
         # first declare design and going home.
@@ -182,12 +185,12 @@ class MiscCmd(object):
             return
 
         # running dotRoach init to take reference flux.
-        # self.engine.run(cmd, dotRoachInit, doFinish=False)
+        self.engine.run(cmd, dotRoachInit, doFinish=False)
 
-        # if dotRoachInit.status.flag != Flag.FINISHED:
-        #    if cmd.alive:
-        #        cmd.fail('text="dotRoachInit not completed, stopping here."')
-        #    return
+        if dotRoachInit.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="dotRoachInit not completed, stopping here."')
+            return
 
         # now declare phiCrossing design and  converge to near dot.
         self.actor.declareFpsDesign(cmd, designId=phiCrossingDesignId)
@@ -205,18 +208,23 @@ class MiscCmd(object):
                 cmd.fail('text="hideCobras not completed, stopping here."')
             return
 
-        cmd.finish()
-        return
-
-        applyScaling = f'/data/fps/hideCobras/v{hideCobras.visit.visitId:06d}/scaling.csv'
-        dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords, applyScaling=applyScaling,
-                                                   stepSize=50, nIterations=10)
+        dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords)
         # now proceed to with the actual roaching sequence.
-        self.engine.run(cmd, dotRoach, doFinish=False)
+        self.engine.run(cmd, dotRoach, mode=ExecMode.CHECKIN | ExecMode.EXECUTE, doFinish=False)
 
         if dotRoach.status.flag != Flag.FINISHED:
             if cmd.alive:
                 cmd.fail('text="dotRoach not completed, stopping here."')
             return
 
-        self.genBlackDotsConfig(cmd)
+        for iteration in range(12):
+            dotRoach.status.hardAmend()
+            # add position and run.
+            dotRoach.addPosition()
+            self.engine.run(cmd, dotRoach, mode=ExecMode.EXECUTE, doFinish=False)
+
+        dotRoach.status.hardAmend()
+        dotRoach.finish()
+        self.engine.run(cmd, dotRoach, mode=ExecMode.EXECUTE | ExecMode.CONCLUDE, doFinish=False)
+
+        cmd.finish()

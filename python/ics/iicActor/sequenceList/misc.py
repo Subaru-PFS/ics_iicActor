@@ -262,32 +262,36 @@ class DotRoachInit(SpsSequence):
 
         return cls(cams, exptime, windowedFlatConfig, maskFile, keepMoving, mode, **config, **seqKeys)
 
+
 class FastRoachTest(SpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'FastRoachTest'
     useLamps = 'hscLamps'
 
-    def __init__(self, cams, exptime, windowKeys, applyScaling, stepSize, nIterations, motor,
-                 **seqKeys):
+    def __init__(self, cams, exptime, windowKeys, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
-        # use sps erase command to niet things up.
         self.add('sps', 'erase', cams=cams)
-
-        for i in range(nIterations):
-            self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-            self.add('fps', f'cobraMoveSteps {motor}', stepsize=-stepSize, applyScaling=applyScaling)
-
-        for i in range(nIterations):
-            self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-            self.add('fps', f'cobraMoveSteps {motor}', stepsize=stepSize, applyScaling=applyScaling)
-
         self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-        # turning drp processing off
+
+        self.useDict = dict(cams=cams, exptime=exptime, windowKeys=windowKeys)
+
+    def addPosition(self):
+        """Acquire data for a new focus position."""
+        self.add('sps', 'bia on')
+        self.add('peb', 'led on')
+        self.add('fps', 'driveHotRoachOpenLoop')
+        self.add('sps', 'bia off')
+        self.add('peb', 'led off')
+
+        self.add('sps', 'erase', cams=self.useDict['cams'])
+        self.expose('domeflat', self.useDict['exptime'], self.useDict['cams'], windowKeys=self.useDict['windowKeys'])
+
+    def finish(self):
         self.add('drp', 'stopDotRoach')
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys, applyScaling, stepSize, nIterations):
+    def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
         cams = iicActor.spsConfig.keysToCam(cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
@@ -297,22 +301,16 @@ class FastRoachTest(SpsSequence):
         # overriding using user provided exptime.
         exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else exptime
 
-        # construct maskFile path.
-        maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'moveAll'
-        maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
-
         # load dotRoach config and override with user parameters.
         config = iicActor.actorConfig['dotRoach'].copy()
-        #stepSize = cmdKeys['stepSize'].values[0] if 'stepSize' in cmdKeys else config['stepSize']
+        stepSize = cmdKeys['stepSize'].values[0] if 'stepSize' in cmdKeys else config['stepSize']
         count = cmdKeys['count'].values[0] if 'count' in cmdKeys else config['count']
         motor = 'theta' if 'theta' in cmdKeys else config['motor']
         motor = 'phi' if 'phi' in cmdKeys else motor
         config.update(stepSize=stepSize, count=count, motor=motor)
 
-        keepMoving = 'keepMoving' in cmdKeys
-        mode = cmdKeys['mode'].values[0] if 'mode' in cmdKeys else 'fast'
+        return cls(cams, exptime, windowedFlatConfig, **config, **seqKeys)
 
-        return cls(cams, exptime, windowedFlatConfig, applyScaling, stepSize, nIterations, motor, **seqKeys)
 
 class DotRoachPfiLamps(DotRoach, TimedLampsSequence):
     useLamps = 'pfiLamps'
