@@ -75,8 +75,6 @@ def insertSequence(group_id, sequence_type, name, comments, cmd_str, doRetry=Tru
 
 def insertVisitSet(caller, pfs_visit_id, sequence_id):
     """Insert into visit_set table."""
-    tables = dict(sps='sps_exposure', fps='mcs_exposure', mcs='mcs_exposure', ag='agc_exposure')
-    exposure_table = tables[caller]
 
     def exposureTablePopulated():
         """Check is there is a matching visit in exposure table."""
@@ -85,6 +83,19 @@ def insertVisitSet(caller, pfs_visit_id, sequence_id):
     def visitSetAlreadyPopulated():
         """Check if visit_set table is already populated."""
         return opDB.fetchone(f'SELECT pfs_visit_id FROM visit_set WHERE pfs_visit_id={pfs_visit_id}')
+
+    # AG commands are ignored when it comes to visit_set, with the current database design there can be ONLY ONE
+    # iic_sequence_id per pfs_visit_id, so I choose to give the priority to sps/fps sequence
+    # agFocusSweep is the only exception, in that case agFocusSweep is passed as caller to bypass that rule.
+    if caller == 'ag':
+        return
+
+    tables = dict(sps='sps_exposure', fps='mcs_exposure', mcs='mcs_exposure', ag='agc_exposure')
+
+    # agFocusSweep is the only exception.
+    tables['agFocusSweep'] = tables['ag']
+
+    exposure_table = tables[caller]
 
     if not exposureTablePopulated():
         logging.warning(f'no entry for {exposure_table}.pfs_visit_id={pfs_visit_id}.')

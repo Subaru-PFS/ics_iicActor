@@ -1,3 +1,4 @@
+import ics.iicActor.utils.opdb as opdbUtils
 import iicActor.utils.translate as translate
 from ics.iicActor.utils.sequence import Sequence
 from ics.iicActor.utils.visited import VisitedCmd, VisitedSequence
@@ -10,10 +11,17 @@ class AgVisitedCmd(VisitedCmd):
 class AgSequence(VisitedSequence):
     """Placeholder for ag sequence."""
     caller = 'ag'
+    insertVisitSet = False
 
     def instantiate(self, actor, cmdStr, parseVisit=False, parseFrameId=False, **kwargs):
         """I have to redefine this because visit argument is spelled differently for ag."""
         return AgVisitedCmd(self, actor, cmdStr, parseVisit=parseVisit, parseFrameId=parseFrameId, **kwargs)
+
+    def finalize(self):
+        VisitedSequence.finalize(self)
+        # ag command are ignored when it comes to visit_set, so making it happen manually.
+        if self.insertVisitSet:
+            opdbUtils.insertVisitSet(self.seqtype, sequence_id=self.sequence_id, pfs_visit_id=self.visit.visitId)
 
 
 class AcquireField(AgSequence):
@@ -24,7 +32,7 @@ class AcquireField(AgSequence):
                  **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
-        self.add('ag', 'acquire_field', parseVisit=True, otf=otf,
+        self.add('tests', 'acquire_field', parseVisit=True, otf=otf,
                  design_id=designId, exposure_time=exptime, guide=guide, magnitude=magnitude, dry_run=dryRun,
                  fit_dscale=fit_dScale, fit_dinr=fit_dInR, exposure_delay=exposure_delay, tec_off=tec_off)
 
@@ -64,7 +72,7 @@ class AutoguideStart(AgSequence):
                  exposure_delay, tec_off, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
-        self.add('ag', 'autoguide start', parseVisit=True, otf=otf,
+        self.add('tests', 'autoguide start', parseVisit=True, otf=otf,
                  design_id=designId, exposure_time=exptime, cadence=cadence, center=center, magnitude=magnitude,
                  from_sky=fromSky, dry_run=dryRun, fit_dscale=fit_dScale, fit_dinr=fit_dInR,
                  exposure_delay=exposure_delay, tec_off=tec_off)
@@ -104,7 +112,7 @@ class AutoguideStop(Sequence):
 
     def __init__(self, **seqKeys):
         Sequence.__init__(self, **seqKeys)
-        self.add(actor='ag', cmdStr='autoguide stop')
+        self.add(actor='tests', cmdStr='autoguide stop')
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -120,11 +128,13 @@ class FocusSweep(AgSequence):
 
     """
     seqtype = 'agFocusSweep'
+    insertVisitSet = True
 
     def __init__(self, otf, designId, exptime, fit_dScale, fit_dInR, exposure_delay, tec_off, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
-        self.parseKwargs = dict(otf=otf, design_id=designId, exposure_time=exptime, fit_dScale=fit_dScale, fit_dInR=fit_dInR,
+        self.parseKwargs = dict(otf=otf, design_id=designId, exposure_time=exptime, fit_dScale=fit_dScale,
+                                fit_dInR=fit_dInR,
                                 exposure_delay=exposure_delay, tec_off=tec_off)
 
     @classmethod
@@ -152,4 +162,4 @@ class FocusSweep(AgSequence):
 
     def addPosition(self):
         """Acquire data for a new focus position."""
-        self.add('ag', 'acquire_field', parseVisit=True, **self.parseKwargs)
+        self.add('tests', 'acquire_field', parseVisit=True, **self.parseKwargs)
