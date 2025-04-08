@@ -32,7 +32,7 @@ class AcquireField(AgSequence):
                  **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
-        self.add('tests', 'acquire_field', parseVisit=True, otf=otf,
+        self.add('ag', 'acquire_field', parseVisit=True, otf=otf,
                  design_id=designId, exposure_time=exptime, guide=guide, magnitude=magnitude, dry_run=dryRun,
                  fit_dscale=fit_dScale, fit_dinr=fit_dInR, exposure_delay=exposure_delay, tec_off=tec_off)
 
@@ -72,7 +72,7 @@ class AutoguideStart(AgSequence):
                  exposure_delay, tec_off, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
-        self.add('tests', 'autoguide start', parseVisit=True, otf=otf,
+        self.add('ag', 'autoguide start', parseVisit=True, otf=otf,
                  design_id=designId, exposure_time=exptime, cadence=cadence, center=center, magnitude=magnitude,
                  from_sky=fromSky, dry_run=dryRun, fit_dscale=fit_dScale, fit_dinr=fit_dInR,
                  exposure_delay=exposure_delay, tec_off=tec_off)
@@ -112,7 +112,7 @@ class AutoguideStop(Sequence):
 
     def __init__(self, **seqKeys):
         Sequence.__init__(self, **seqKeys)
-        self.add(actor='tests', cmdStr='autoguide stop')
+        self.add(actor='ag', cmdStr='autoguide stop')
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -162,4 +162,4 @@ class FocusSweep(AgSequence):
 
     def addPosition(self):
         """Acquire data for a new focus position."""
-        self.add('tests', 'acquire_field', parseVisit=True, **self.parseKwargs)
+        self.add('ag', 'acquire_field', parseVisit=True, **self.parseKwargs)
