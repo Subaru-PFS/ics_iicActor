@@ -214,6 +214,9 @@ class Sequence(list):
         """Parse a mhs compliant argument for groupId."""
         return -1 if self.group_id is None else self.group_id
 
+    def parseGroupName(self):
+        """Parse a mhs compliant argument for groupName."""
+        return "" if self.group_id is None else opdbUtils.getGroupNameFromGroupId(self.group_id)
 
 class CmdList(list):
     def __init__(self, sequence, cmdList):
