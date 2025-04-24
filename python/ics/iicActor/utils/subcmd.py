@@ -1,6 +1,7 @@
 import ics.utils.cmd as cmdUtils
 from ics.iicActor.utils.exception import IicException
 from ics.iicActor.utils.lib import stripQuotes
+from opscore.utility.qstr import qstr
 
 
 class CmdRet(object):
@@ -55,7 +56,7 @@ class SubCmd(object):
         self.cmdRet = CmdRet(-1, [''], '')
 
     def __str__(self):
-        return f'subCommand={self.sequence.sequence_id},{self.id},"{self.fullCmd}",{self.cmdRet}'
+        return f'subCommand={self.sequence.sequence_id},{self.id},{qstr(self.fullCmd)},{self.cmdRet}'
 
     @property
     def fullCmd(self):
