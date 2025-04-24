@@ -39,6 +39,34 @@ def fetchLastGroupIdMatchingName(group_name):
 
     return int(group_id)
 
+
+def getGroupNameFromGroupId(group_id):
+    """
+    Retrieve the group_name from the sequence_group table for a given group_id.
+
+    Parameters
+    ----------
+    group_id : int
+        The group_id to look up.
+
+    Returns
+    -------
+    str
+        The corresponding group_name.
+
+    Raises
+    ------
+    exception.OpDBFailure
+        If no matching group_name is found for the given group_id.
+    """
+    group_name = fetchOneEntry(f"SELECT group_name FROM sequence_group WHERE group_id={int(group_id)}")
+
+    if not group_name:
+        raise exception.OpDBFailure(f'No group_name found for group_id: {group_id}')
+
+    return str(group_name)
+
+
 def getDeltaINSROT(visit0, spsVisitId):
     """Compute the difference in INSROT (instrument rotation) between spsVisit and visit0."""
     INSROT0 = fetchOneEntry(f"SELECT insrot FROM tel_status WHERE pfs_visit_id={visit0} and caller='mcs' ORDER BY status_sequence_id DESC LIMIT 1")

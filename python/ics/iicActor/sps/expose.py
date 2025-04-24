@@ -58,7 +58,9 @@ class SpsExpose(VisitedCmd):
         """Format metadata argument."""
         designInfo = [f'0x{self.pfsConfig.pfsDesignId:016x}', qstr(self.pfsConfig.designName)]
         ids = list(map(str, [self.pfsConfig.visit0, self.sequence.sequence_id, self.sequence.parseGroupId()]))
-        metadata = designInfo + ids
+        descriptions = [qstr(self.sequence.parseGroupName()), qstr(self.sequence.seqtype), qstr(self.sequence.name),
+                        qstr(self.sequence.comments)]
+        metadata = designInfo + ids + descriptions
         return f'metadata={",".join(metadata)}'
 
     def call(self, cmd):
