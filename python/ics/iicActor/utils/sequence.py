@@ -2,6 +2,7 @@ import ics.iicActor.utils.opdb as opdbUtils
 import ics.utils.time as pfsTime
 from ics.iicActor.utils.lib import makeCmdStr
 from ics.iicActor.utils.subcmd import SubCmd
+from ics.utils.fits import mhs as fitsMhs
 from iicActor.utils import exception
 from iicActor.utils.sequenceStatus import Status, Flag
 
@@ -10,7 +11,8 @@ class Sequence(list):
     daysToDeclareObsolete = 7
     seqtype = 'sequence'
 
-    def __init__(self, name="", comments="", doTest=False, noDeps=False, head=None, tail=None, groupId=None, cmdKeys=None, **kwargs):
+    def __init__(self, name="", comments="", doTest=False, noDeps=False, head=None, tail=None, groupId=None,
+                 cmdKeys=None, **kwargs):
         super().__init__()
         self.name = name
         self.comments = comments
@@ -212,11 +214,12 @@ class Sequence(list):
 
     def parseGroupId(self):
         """Parse a mhs compliant argument for groupId."""
-        return -1 if self.group_id is None else self.group_id
+        return int(fitsMhs.INVALID) if self.group_id is None else self.group_id
 
     def parseGroupName(self):
         """Parse a mhs compliant argument for groupName."""
-        return "" if self.group_id is None else opdbUtils.getGroupNameFromGroupId(self.group_id)
+        return "no available value" if self.group_id is None else opdbUtils.getGroupNameFromGroupId(self.group_id)
+
 
 class CmdList(list):
     def __init__(self, sequence, cmdList):
