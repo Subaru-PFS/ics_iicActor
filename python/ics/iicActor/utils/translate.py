@@ -1,5 +1,6 @@
 import os
 
+import ics.iicActor.utils.opdb as opdbUtils
 import ics.utils.sps.lamps.utils.lampState as lampState
 import numpy as np
 
@@ -16,10 +17,22 @@ def seqKeys(cmdKeys):
     returnWhenShutterClose = 'returnWhenShutterClose' in cmdKeys
     head = cmdKeys['head'].values if 'head' in cmdKeys else None
     tail = cmdKeys['tail'].values if 'tail' in cmdKeys else None
-    groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
+    groupId = resolveGroupId(cmdKeys)
 
     return dict(name=name, comments=comments, doTest=doTest, noDeps=noDeps, forceGrating=forceGrating,
                 returnWhenShutterClose=returnWhenShutterClose, head=head, tail=tail, groupId=groupId, cmdKeys=cmdKeys)
+
+
+def resolveGroupId(cmdKeys):
+    """Resolve groupId from command keys, supporting -1 as the latest."""
+    groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
+
+    if groupId == -1:
+        groupId = opdbUtils.fetchLastGroupId()
+    elif groupId is not None and groupId < 0:
+        raise ValueError(f"Invalid groupId: {groupId}. Use -1 for latest or a non-negative integer (>= 0).")
+
+    return groupId
 
 
 def spsExposureKeys(cmdKeys, doRaise=True, defaultDuplicate=1):
