@@ -232,7 +232,7 @@ class DotRoachInit(SpsSequence):
 
         # initial exposure
         self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-        self.add('drp', 'processDotRoach', iteration=0)
+        self.add('drp', 'processDotRoach', iteration=0, timeLim=120)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
