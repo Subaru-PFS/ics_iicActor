@@ -243,12 +243,12 @@ class HideCobras(FpsSequence):
                  timeLim=600)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys, nMcsIteration):
+    def fromCmdKeys(cls, iicActor, cmdKeys, nMcsIteration, nSpsIteration):
         seqKeys = translate.seqKeys(cmdKeys)
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
         cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
 
-        return cls(exptime, cableBLampOn, nMcsIteration, **seqKeys)
+        return cls(exptime, cableBLampOn, nMcsIteration, nSpsIteration, **seqKeys)
 
 class MovePhiToAngle(FpsSequence):
     """ fps MovePhiToAngle command. """
