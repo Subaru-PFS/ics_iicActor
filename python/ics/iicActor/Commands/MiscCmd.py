@@ -159,7 +159,7 @@ class MiscCmd(object):
         """"""
         cmdKeys = cmd.cmd.keywords
         nMcsIteration = cmdKeys['nMcsIteration'] if 'nMcsIteration' in cmdKeys else 12
-        nSpsIteration = cmdKeys['nSpsIteration'] if 'nSpsIteration' in cmdKeys else 10
+        nSpsIteration = cmdKeys['nSpsIteration'] if 'nSpsIteration' in cmdKeys else 8
 
         # defining all the sequence first.
         homeDesignId = designDB.latestDesignIdMatchingName('cobraHome', exact=True)
@@ -229,6 +229,11 @@ class MiscCmd(object):
             # add position and run.
             dotRoach.addPosition(iteration, nSpsIteration)
             self.engine.run(cmd, dotRoach, mode=ExecMode.EXECUTE, doFinish=False)
+
+            if dotRoach.status.flag != Flag.FINISHED:
+                if cmd.alive:
+                    cmd.fail('text="dotRoach not completed, stopping here."')
+                return
 
         dotRoach.status.hardAmend()
         dotRoach.finish()
