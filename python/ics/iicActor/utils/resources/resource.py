@@ -4,6 +4,14 @@ from iicActor.utils import exception
 class Resource(object):
     default = 'nominal'
 
+    @classmethod
+    def getActor(cls, name: str) -> "Resource":
+        return cls(name)
+
+    @classmethod
+    def getPart(cls, name: str) -> "Resource":
+        return cls(name)
+
     def __init__(self, name):
         self.name = name
         self.available = True
@@ -27,18 +35,17 @@ class Resource(object):
         self.available = False
         self.state = state
 
-    def translate(self):
-        """Adding a special case for shutter closed basically."""
-        state = Resource.default
-        # special case when required shutters closed
-        if '.closed' in required:
-            resourceName, state = required.split('.')
-        if '.off' in required:
-            resourceName, state = required.split('.')
-
-        return resourceName, state
-
     def free(self):
         """"""
         self.available = True
         self.state = Resource.default
+
+    @staticmethod
+    def translate(resourceName):
+        """Adding a special case for shutter closed basically."""
+        name, state = resourceName, Resource.default
+
+        if '.' in resourceName:
+            name, state = resourceName.split('.')
+
+        return name, state

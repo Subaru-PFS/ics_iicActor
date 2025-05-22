@@ -4,8 +4,7 @@ import iicActor.utils.lib as libUtils
 from ics.iicActor.sps.sequence import SpsSequence
 from ics.utils.sps.config import SpsConfig
 from iicActor.utils import exception
-
-
+from iicActor.utils.resources import resource
 
 
 class ResourceManager(object):
@@ -37,7 +36,7 @@ class ResourceManager(object):
                 if actorName in self.connectedActors or actorName in ResourceManager.ignore:
                     continue
 
-                self.connectedActors[actorName] = Resource(actorName)
+                self.connectedActors[actorName] = resource.Resource.getActor(actorName)
 
             # also check for actors that disappeared.
             disconnected = set(self.connectedActors) - set(actorList)
@@ -66,7 +65,7 @@ class ResourceManager(object):
             if partName in self.spsResources:
                 continue
 
-            self.spsResources[partName] = Resource(partName)
+            self.spsResources[partName] = resource.Resource.getPart(partName)
 
         # also check for parts that are no longer available.
         disconnected = set(self.spsResources) - set(parts)
@@ -77,21 +76,18 @@ class ResourceManager(object):
 
     def request(self, resources):
         """Requesting and locking given resources."""
-
         notConnected = []
         isBusy = []
         locked = []
 
         for required in resources:
-            print(required)
-            required, state = required.translate()
-            print(required, state)
+            required, state = resource.Resource.translate(required)
 
             # checking for unconnected resources.
             if required not in self.resources:
                 notConnected.append(required)
                 continue
-            # checking for unavailable resources.self.res
+            # checking for unavailable resources,
             if not self.resources[required].isAvailable(state):
                 isBusy.append(required)
 
@@ -105,7 +101,7 @@ class ResourceManager(object):
         self.logger.info(f'locking resources : {",".join(resources)}')
 
         for required in resources:
-            required, state = translate(required)
+            required, state = resource.Resource.translate(required)
             self.resources[required].lock(state)
             # keeping only the locked resources.
             locked.append(required)
