@@ -20,7 +20,8 @@ class NearDotConvergence(MoveToPfsDesign):
         cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
         config.update(exptime=exptime, cableBLampOn=cableBLampOn)
 
-        return cls(designId, maskFile=maskFile, goHome=True, noTweak=True, twoStepsOff=False, **config, **seqKeys)
+        return cls(designId, maskFile=maskFile, goHome=True, noTweak=True, twoStepsOff=False, shortExpOff=False,
+                   **config, **seqKeys)
 
 
 class DotCrossing(FpsSequence):

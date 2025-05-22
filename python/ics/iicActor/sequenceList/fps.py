@@ -100,8 +100,8 @@ class MoveToPfsDesign(FpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'moveToPfsDesign'
 
-    def __init__(self, designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, noTweak, cableBLampOn,
-                 **seqKeys):
+    def __init__(self, designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, shortExpOff, noTweak,
+                 cableBLampOn, **seqKeys):
         FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
 
         # Removing maskFile for now, it's broken on fps side (per INSTRM-2192)
@@ -110,7 +110,7 @@ class MoveToPfsDesign(FpsSequence):
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
                  tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=goHome, twoStepsOff=twoStepsOff,
-                 noTweak=noTweak, timeLim=600)
+                 shortExpOff=shortExpOff, noTweak=noTweak, timeLim=600)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -122,11 +122,12 @@ class MoveToPfsDesign(FpsSequence):
         tolerance = cmdKeys['tolerance'].values[0] if 'tolerance' in cmdKeys else False
         goHome = 'noHome' not in cmdKeys
         twoStepsOff = 'twoStepsOff' in cmdKeys
+        shortExpOff = 'shortExpOff' in cmdKeys
         noTweak = 'noTweak' in cmdKeys
         cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
 
-        return cls(designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, noTweak, cableBLampOn,
-                   **seqKeys)
+        return cls(designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, shortExpOff, noTweak,
+                   cableBLampOn, **seqKeys)
 
 
 class MoveToHome(FpsSequence):
