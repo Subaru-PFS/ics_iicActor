@@ -87,7 +87,7 @@ class ResourceManager(object):
             if required not in self.resources:
                 notConnected.append(required)
                 continue
-            # checking for unavailable resources,
+            # checking for unavailable resources.
             if not self.resources[required].isAvailable(state):
                 isBusy.append(required)
 
@@ -160,8 +160,7 @@ class ResourceManager(object):
                     else:
                         raise RuntimeError(f'dont know what to do with {spsCommand.cmdHead}...')
 
-        ret = list(set(allDeps))
-        return ret
+        return list(set(allDeps))
 
     def freeEnu(self, keyVar):
         """
@@ -180,7 +179,7 @@ class ResourceManager(object):
 
         if shutterState == 'close':
             # freeing bia, fca and rda.
-            keys = [f'{resource}_sm{specNum}' for resource in ['bia', 'fca', 'rda']]
+            keys = [f'{resource}_sm{specNum}' for resource in ['fca', 'rda']]
             # making sure that the resource exist.
             resources = list(set(keys).intersection(self.resources.keys()))
             self.free(resources)
