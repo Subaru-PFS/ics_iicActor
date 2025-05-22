@@ -4,38 +4,7 @@ import iicActor.utils.lib as libUtils
 from ics.iicActor.sps.sequence import SpsSequence
 from ics.utils.sps.config import SpsConfig
 from iicActor.utils import exception
-
-
-class Resource(object):
-    default = 'nominal'
-
-    def __init__(self, name):
-        self.name = name
-        self.available = True
-        self.state = Resource.default
-
-    def isAvailable(self, state):
-        if state != Resource.default and self.state == state:
-            return True
-
-        return self.available
-
-    def lock(self, state):
-        """"""
-        if not self.available:
-            # no need to lock since it's already locked
-            if state != Resource.default and self.state == state:
-                return
-
-            raise exception.ResourceIsBusy(f'{self.name} already busy.')
-
-        self.available = False
-        self.state = state
-
-    def free(self):
-        """"""
-        self.available = True
-        self.state = Resource.default
+from iicActor.utils.resources import resource
 
 
 class ResourceManager(object):
@@ -67,7 +36,7 @@ class ResourceManager(object):
                 if actorName in self.connectedActors or actorName in ResourceManager.ignore:
                     continue
 
-                self.connectedActors[actorName] = Resource(actorName)
+                self.connectedActors[actorName] = resource.Resource.getActor(actorName)
 
             # also check for actors that disappeared.
             disconnected = set(self.connectedActors) - set(actorList)
@@ -96,7 +65,7 @@ class ResourceManager(object):
             if partName in self.spsResources:
                 continue
 
-            self.spsResources[partName] = Resource(partName)
+            self.spsResources[partName] = resource.Resource.getPart(partName)
 
         # also check for parts that are no longer available.
         disconnected = set(self.spsResources) - set(parts)
@@ -107,28 +76,18 @@ class ResourceManager(object):
 
     def request(self, resources):
         """Requesting and locking given resources."""
-
-        def translate(resourceName):
-            """Adding a special case for shutter closed basically."""
-            state = Resource.default
-            # special case when required shutters closed
-            if '.closed' in required:
-                resourceName, state = required.split('.')
-
-            return resourceName, state
-
         notConnected = []
         isBusy = []
         locked = []
 
         for required in resources:
-            required, state = translate(required)
+            required, state = resource.Resource.translate(required)
 
             # checking for unconnected resources.
             if required not in self.resources:
                 notConnected.append(required)
                 continue
-            # checking for unavailable resources.self.res
+            # checking for unavailable resources.
             if not self.resources[required].isAvailable(state):
                 isBusy.append(required)
 
@@ -142,7 +101,7 @@ class ResourceManager(object):
         self.logger.info(f'locking resources : {",".join(resources)}')
 
         for required in resources:
-            required, state = translate(required)
+            required, state = resource.Resource.translate(required)
             self.resources[required].lock(state)
             # keeping only the locked resources.
             locked.append(required)
@@ -220,7 +179,7 @@ class ResourceManager(object):
 
         if shutterState == 'close':
             # freeing bia, fca and rda.
-            keys = [f'{resource}_sm{specNum}' for resource in ['bia', 'fca', 'rda']]
+            keys = [f'{resource}_sm{specNum}' for resource in ['fca', 'rda']]
             # making sure that the resource exist.
             resources = list(set(keys).intersection(self.resources.keys()))
             self.free(resources)

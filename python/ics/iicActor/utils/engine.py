@@ -3,7 +3,7 @@ from ics.utils.threading import singleShot
 from ics.utils.visit import visitManager
 from iicActor.utils import keyRepo
 from iicActor.utils import registry
-from iicActor.utils import resourceManager
+from iicActor.utils.resources import resourceManager
 
 
 class ExecMode:

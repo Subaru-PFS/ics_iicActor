@@ -1,6 +1,6 @@
 import ics.utils.sps.lamps.utils.lampState as lampState
-from ics.iicActor.sps.sequence import SpsSequence
 from ics.iicActor.sps.expose import SpsExpose
+from ics.iicActor.sps.sequence import SpsSequence
 
 
 class TimedLampsSequence(SpsSequence):
@@ -75,7 +75,9 @@ class TimedLampsSequence(SpsSequence):
             spsExpose = SpsExpose.specify(self, exptype, exptime, cams,
                                           doLamps=doLamps, doIIS=doIIS,
                                           doShutterTiming=doShutterTiming,
-                                          doTest=self.doTest, doScienceCheck=self.doScienceCheck, slideSlit=slideSlit,
+                                          doTest=self.doTest,
+                                          doScienceCheck=self.doScienceCheck, skipBiaCheck=self.skipBiaCheck,
+                                          slideSlit=slideSlit,
                                           **windowKeys)
             list.append(self, spsExpose)
 

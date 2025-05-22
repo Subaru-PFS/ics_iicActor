@@ -12,13 +12,15 @@ class SpsSequence(sequence.Sequence):
     doScienceCheck = False
     """"""
 
-    def __init__(self, cams, *args, isWindowed=False, forceGrating=False, returnWhenShutterClose=False, **kwargs):
+    def __init__(self, cams, *args, isWindowed=False, forceGrating=False, returnWhenShutterClose=False,
+                 skipBiaCheck=False, **kwargs):
         self.cams = cams
 
         sequence.Sequence.__init__(self, *args, **kwargs)
 
         self.forceGrating = forceGrating
         self.returnWhenShutterClose = returnWhenShutterClose
+        self.skipBiaCheck = skipBiaCheck
         self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
 
     @property
@@ -40,7 +42,6 @@ class SpsSequence(sequence.Sequence):
     @property
     def remainingExposures(self):
         return [subCmd for subCmd in self.remainingCmds if isinstance(subCmd, SpsExpose)]
-
 
     def initialize(self, engine, cmd):
         """
@@ -104,7 +105,8 @@ class SpsSequence(sequence.Sequence):
             for nExposure in range(duplicate):
                 # creating SpsExpose command object.
                 spsExpose = SpsExpose.specify(self, exptype, expTime, cams,
-                                              doTest=self.doTest, doScienceCheck=self.doScienceCheck,
+                                              doTest=self.doTest,
+                                              doScienceCheck=self.doScienceCheck, skipBiaCheck=self.skipBiaCheck,
                                               slideSlit=slideSlit, **windowKeys)
                 list.append(self, spsExpose)
 
