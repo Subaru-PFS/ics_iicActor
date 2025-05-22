@@ -6,36 +6,6 @@ from ics.utils.sps.config import SpsConfig
 from iicActor.utils import exception
 
 
-class Resource(object):
-    default = 'nominal'
-
-    def __init__(self, name):
-        self.name = name
-        self.available = True
-        self.state = Resource.default
-
-    def isAvailable(self, state):
-        if state != Resource.default and self.state == state:
-            return True
-
-        return self.available
-
-    def lock(self, state):
-        """"""
-        if not self.available:
-            # no need to lock since it's already locked
-            if state != Resource.default and self.state == state:
-                return
-
-            raise exception.ResourceIsBusy(f'{self.name} already busy.')
-
-        self.available = False
-        self.state = state
-
-    def free(self):
-        """"""
-        self.available = True
-        self.state = Resource.default
 
 
 class ResourceManager(object):
@@ -108,21 +78,14 @@ class ResourceManager(object):
     def request(self, resources):
         """Requesting and locking given resources."""
 
-        def translate(resourceName):
-            """Adding a special case for shutter closed basically."""
-            state = Resource.default
-            # special case when required shutters closed
-            if '.closed' in required:
-                resourceName, state = required.split('.')
-
-            return resourceName, state
-
         notConnected = []
         isBusy = []
         locked = []
 
         for required in resources:
-            required, state = translate(required)
+            print(required)
+            required, state = required.translate()
+            print(required, state)
 
             # checking for unconnected resources.
             if required not in self.resources:
@@ -201,7 +164,8 @@ class ResourceManager(object):
                     else:
                         raise RuntimeError(f'dont know what to do with {spsCommand.cmdHead}...')
 
-        return list(set(allDeps))
+        ret = list(set(allDeps))
+        return ret
 
     def freeEnu(self, keyVar):
         """
