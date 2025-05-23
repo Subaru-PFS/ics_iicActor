@@ -95,6 +95,7 @@ class SpsExpose(VisitedCmd):
         """Prepare visit by setting it, generating keys, and verifying configuration."""
         self.visit = visit
         self.genKeys(self.sequence.getCmd())
+        dINSROT = None
 
         # Manage lightSources for different exposure types
         if not self.visitManager.activeField:
@@ -104,8 +105,8 @@ class SpsExpose(VisitedCmd):
         if self.sequence.isPfiExposure and self.exptype == 'object':
             self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
 
-        # Compute the change in INSROT since convergence.
-        dINSROT = self.getDeltaINSROT()
+            # Compute the change in INSROT since convergence.
+            dINSROT = self.getDeltaINSROT()
 
         # Obtain and register pfsConfig
         self.pfsConfig = self.makePfsConfig(dINSROT=dINSROT)
@@ -113,10 +114,6 @@ class SpsExpose(VisitedCmd):
 
     def getDeltaINSROT(self):
         """Compute the change in INSROT (instrument rotation) between the visit0 and the current visit."""
-        # Only compute if the sequence is a PFI exposure
-        if not self.sequence.isPfiExposure:
-            return None
-
         try:
             # Retrieve the reference visit (visit0) for comparison
             visit0 = self.visitManager.activeField.getVisit0()
