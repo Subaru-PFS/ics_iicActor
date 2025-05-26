@@ -8,28 +8,29 @@ from iicActor.utils.resources import resource
 
 
 class ResourceManager(object):
+    """Manage software/hardware resource availability and locking for actor commands."""
+
     ignore = ['hub', 'keys', 'msg', 'iic', 'gen2', 'sequencepanel']
 
-    """ Placeholder to reject/accept incoming jobs based on the availability of the software/hardware. """
-
     def __init__(self, actor):
+        """Initialize the resource manager and attach callbacks."""
         self.actor = actor
         self.logger = logging.getLogger('resourceManager')
         self.connectedActors = dict()
         self.spsResources = dict()
-
         self.spsConfig = None
         self.attachCallbacks()
 
     @property
     def resources(self):
+        """Return a combined dict of connected actor and SPS resources."""
         return dict([it for it in self.connectedActors.items()] + [it for it in self.spsResources.items()])
 
     def attachCallbacks(self):
-        """Attaching callbacks for hub.actors and sps.spsModules"""
+        """Attach hub/sps model callbacks to track resource availability."""
 
         def connectedActors(keyVar):
-            """Always keep an up-to-date inventory of the connected actors."""
+            """Track current list of connected actors."""
             actorList = list(map(str, keyVar.getValue()))
 
             for actorName in actorList:
@@ -38,22 +39,21 @@ class ResourceManager(object):
 
                 self.connectedActors[actorName] = resource.Resource.getActor(actorName)
 
-            # also check for actors that disappeared.
+            # Remove disconnected actors
             disconnected = set(self.connectedActors) - set(actorList)
 
             for actorName in disconnected:
                 self.connectedActors.pop(actorName, None)
 
         def spsConfig(keyVar):
-            """Always keep an up-to-date inventory of the spsConfig and resources."""
+            """Track changes to spsModules and reload related resources."""
             self.spsConfig = self.reloadSpsResources()
 
         self.actor.models['hub'].keyVarDict['actors'].addCallback(connectedActors)
         self.actor.models['sps'].keyVarDict['spsModules'].addCallback(spsConfig)
 
     def reloadSpsResources(self):
-        """Reloading spsConfig and resources."""
-        # getting all the current operational parts.
+        """Rebuild spsConfig and sps resource pool."""
         try:
             spsConfig = SpsConfig.fromModel(self.actor.models['sps'])
         except ValueError:
@@ -62,12 +62,13 @@ class ResourceManager(object):
         parts = list(map(str, sum([specModule.opeSubSys for specModule in spsConfig.values()], [])))
 
         for partName in parts:
+            # just ignore in that case.
             if partName in self.spsResources:
                 continue
 
             self.spsResources[partName] = resource.Resource.getPart(partName)
 
-        # also check for parts that are no longer available.
+        # Remove any parts no longer available
         disconnected = set(self.spsResources) - set(parts)
         for partName in disconnected:
             self.spsResources.pop(partName, None)
@@ -75,7 +76,7 @@ class ResourceManager(object):
         return spsConfig
 
     def request(self, resources):
-        """Requesting and locking given resources."""
+        """Try to lock a list of resource names, raise if unavailable."""
         notConnected = []
         isBusy = []
         locked = []
@@ -109,9 +110,8 @@ class ResourceManager(object):
         return locked
 
     def free(self, locked):
-        """Freeing resources."""
-        # filtering what's actually locked.
-        locked = [key for key in locked if (key in self.resources and not self.resources[key].available)]
+        """Free a list of locked resource names."""
+        locked = [key for key in locked if key in self.resources and not self.resources[key].available]
 
         # if nothing to be freed just return.
         if not locked:
@@ -122,11 +122,11 @@ class ResourceManager(object):
             self.resources[resource].free()
 
     def inspect(self, sequence):
-        """Inspect sequence object and find-out what resources needs to be booked."""
+        """Extract required resources from a given command sequence."""
         # just get the list of all actors that will be called as start.
         allDeps = list(set([subCmd.actor for subCmd in sequence.subCmds]))
 
-        # most fps command use mcs as well.
+        # MCS implicitly needed for some FPS commands
         if 'fps' in allDeps:
             for fpsCommand in list(set([subCmd.cmdHead for subCmd in sequence.subCmds if subCmd.actor == 'fps'])):
                 # This command requires fps only, might be the only one, actually.
@@ -163,14 +163,7 @@ class ResourceManager(object):
         return list(set(allDeps))
 
     def freeEnu(self, keyVar):
-        """
-        Free the bia, fca, and rda resources associated with the specified spectrograph module.
-
-        Parameters
-        ----------
-        keyVar : opscore.actor.keyvar.KeyVar
-            The KeyVar object associated with the spectrograph module shutter.
-        """
+        """Free RDA, and FCA resources for the specified spectrograph."""
         specNum = int(keyVar.actor[-1])
         try:
             shutterState = self.actor.models[keyVar.actor].keyVarDict['shutters'].getValue()
@@ -178,7 +171,7 @@ class ResourceManager(object):
             return
 
         if shutterState == 'close':
-            # freeing bia, fca and rda.
+            # freeing fca and rda, as we decided that bia should be still off while reading.
             keys = [f'{resource}_sm{specNum}' for resource in ['fca', 'rda']]
             # making sure that the resource exist.
             resources = list(set(keys).intersection(self.resources.keys()))
