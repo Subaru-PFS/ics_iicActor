@@ -16,7 +16,7 @@ class ScienceObject(SpsSequence):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         windowKeys = translate.windowKeys(cmdKeys)

@@ -12,7 +12,7 @@ class MasterBiases(Biases):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct MasterBiases object."""
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False, defaultDuplicate=25)
 
@@ -35,7 +35,7 @@ class MasterDarks(Darks):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct MasterDarks object."""
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False, defaultDuplicate=25)
 
@@ -83,7 +83,7 @@ class DitheredFlats(TimedLampsSequence):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
@@ -134,7 +134,7 @@ class FiberProfiles(TimedLampsSequence):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, hexapodOff=False):
         """Defining rules to construct ScienceObject object."""
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
@@ -187,7 +187,7 @@ class ShutterDriftFlats(SpsSequence):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
 
@@ -203,7 +203,7 @@ class DriftFlats(ShutterDriftFlats, TimedLampsSequence):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
@@ -238,7 +238,7 @@ class DomeFlat(SpsSequence):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         windowKeys = translate.windowKeys(cmdKeys)

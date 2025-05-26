@@ -45,7 +45,7 @@ class DitheredFlats(SpsSequence):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys, forceHalogen=True)
@@ -75,7 +75,7 @@ class Arcs(SpsSequence):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
@@ -102,7 +102,7 @@ class Flats(SpsSequence):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         windowKeys = translate.windowKeys(cmdKeys)
@@ -159,7 +159,7 @@ class DitheredArcs(SpsSequence):
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
         seqKeys = translate.seqKeys(cmdKeys)
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
         pixelStep = cmdKeys['pixelStep'].values[0]
@@ -193,7 +193,7 @@ class DetThroughFocus(SpsSequence):
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
         seqKeys = translate.seqKeys(cmdKeys)
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
         # translating from given position and tilt.
@@ -227,7 +227,7 @@ class FpaThroughFocus(SpsSequence):
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
@@ -262,7 +262,7 @@ class SlitThroughFocus(SpsSequence):
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
         seqKeys = translate.seqKeys(cmdKeys)
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
         # translating from given position and tilt.
@@ -307,7 +307,7 @@ class DefocusedArcs(SpsSequence):
     def fromCmdKeys(cls, iicActor, cmdKeys):
         """Defining rules to construct ScienceObject object."""
         seqKeys = translate.seqKeys(cmdKeys)
-        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         dcbOn, dcbOff = translate.dcbKeys(cmdKeys)
         # basic np.linspace.

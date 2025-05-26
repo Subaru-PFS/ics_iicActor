@@ -110,6 +110,14 @@ class SpsSequence(sequence.Sequence):
                                               slideSlit=slideSlit, **windowKeys)
                 list.append(self, spsExpose)
 
+    @staticmethod
+    def keysToCam(iicActor, cmdKeys):
+        """Identify the cameras based on the provided command keywords."""
+        if iicActor.spsConfig is None:
+            raise RuntimeError('Could not figure out spsConfig, please check spsActor...')
+
+        return iicActor.spsConfig.keysToCam(cmdKeys)
+
     def instantiate(self, actor, cmdStr, **kwargs):
         """Return right SubCmd type based on actor/cmdStr."""
         # this is called by add function.
