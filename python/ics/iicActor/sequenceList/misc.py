@@ -233,7 +233,9 @@ class DotRoachInit(SpsSequence):
 
         # initial exposure
         self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-        self.add('drp', 'processDotRoach', iteration=0, timeLim=120)
+
+        # actually we don't need to wait for that.
+        # self.add('drp', 'processDotRoach', iteration=0, timeLim=120)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -269,24 +271,23 @@ class FastRoachTest(SpsSequence):
     seqtype = 'FastRoachTest'
     useLamps = 'hscLamps'
 
-    def __init__(self, cams, exptime, windowKeys, **seqKeys):
+    def __init__(self, cams, exptime, windowKeys, rootDir, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
+        self.fluxFile = os.path.join(rootDir, 'current', 'allIterations.csv')
 
         self.add('sps', 'erase', cams=cams)
         self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
+        self.add('drp', 'processDotRoach', iteration=1)
 
         self.useDict = dict(cams=cams, exptime=exptime, windowKeys=windowKeys)
 
-    def addPosition(self):
+    def addPosition(self, iterNum, nSpsIteration):
         """Acquire data for a new focus position."""
-        self.add('sps', 'bia on')
-        self.add('peb', 'led on')
-        self.add('fps', 'driveHotRoachOpenLoop')
-        self.add('sps', 'bia off')
-        self.add('peb', 'led off')
+        self.add('fps', 'driveHotRoachCloseLoop', maskFile=self.fluxFile, nSpsIteration=nSpsIteration)
 
         self.add('sps', 'erase', cams=self.useDict['cams'])
         self.expose('domeflat', self.useDict['exptime'], self.useDict['cams'], windowKeys=self.useDict['windowKeys'])
+        self.add('drp', 'processDotRoach', iteration=iterNum+2)
 
     def finish(self):
         self.add('drp', 'stopDotRoach')

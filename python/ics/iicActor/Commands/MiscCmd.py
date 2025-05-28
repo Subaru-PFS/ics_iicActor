@@ -72,6 +72,10 @@ class MiscCmd(object):
                                         keys.Key('fiberGroups', types.Int() * (1,),
                                                  help='which fiberGroups to identify 2->31'),
                                         keys.Key('mode', types.String() * (1,), help='mode for dotRoach'),
+                                        keys.Key("nMcsIteration", types.Int(),
+                                                 help="number of mcsIteration for finding edge of the dot"),
+                                        keys.Key("nSpsIteration", types.Int(),
+                                                 help="number of spsIteration for finding center of the dot"),
                                         )
 
     @property
@@ -154,6 +158,8 @@ class MiscCmd(object):
     def dotRoach(self, cmd):
         """"""
         cmdKeys = cmd.cmd.keywords
+        nMcsIteration = cmdKeys['nMcsIteration'] if 'nMcsIteration' in cmdKeys else 12
+        nSpsIteration = cmdKeys['nSpsIteration'] if 'nSpsIteration' in cmdKeys else 8
 
         # defining all the sequence first.
         homeDesignId = designDB.latestDesignIdMatchingName('cobraHome', exact=True)
@@ -173,7 +179,8 @@ class MiscCmd(object):
         # now roaching is split in two steps.
         dotRoachInit = roachingInit.fromCmdKeys(self.actor, cmd.cmd.keywords)
         # dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords)
-        hideCobras = fpsSequence.HideCobras.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        hideCobras = fpsSequence.HideCobras.fromCmdKeys(self.actor, cmd.cmd.keywords,
+                                                        nMcsIteration=nMcsIteration,  nSpsIteration=nSpsIteration)
 
         # first declare design and going home.
         self.actor.declareFpsDesign(cmd, designId=homeDesignId)
@@ -217,11 +224,16 @@ class MiscCmd(object):
                 cmd.fail('text="dotRoach not completed, stopping here."')
             return
 
-        for iteration in range(12):
+        for iteration in range(nSpsIteration):
             dotRoach.status.hardAmend()
             # add position and run.
-            dotRoach.addPosition()
+            dotRoach.addPosition(iteration, nSpsIteration)
             self.engine.run(cmd, dotRoach, mode=ExecMode.EXECUTE, doFinish=False)
+
+            if dotRoach.status.flag != Flag.FINISHED:
+                if cmd.alive:
+                    cmd.fail('text="dotRoach not completed, stopping here."')
+                return
 
         dotRoach.status.hardAmend()
         dotRoach.finish()
