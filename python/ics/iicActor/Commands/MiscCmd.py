@@ -170,6 +170,7 @@ class MiscCmd(object):
         cableBLampOn = self.actor.actorConfig['fps']['cableBLampOn']
         moveToHomeAll = fpsSequence.MoveToHome(exptime=mcsExptime, designId=homeDesignId, cableBLampOn=cableBLampOn)
         nearDotConvergence = misc.NearDotConvergence(phiCrossingDesignId, maskFile=False, goHome=True, noTweak=True,
+                                                     shortExpOff=True,
                                                      twoStepsOff=False, exptime=mcsExptime, cableBLampOn=cableBLampOn,
                                                      **self.actor.actorConfig['nearDotConvergence'])
         # use pfiLamps by default.
