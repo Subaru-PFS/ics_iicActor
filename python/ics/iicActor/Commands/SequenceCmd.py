@@ -1,5 +1,6 @@
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from opscore.utility.qstr import qstr
 import ics.utils.time as pfsTime
 from ics.utils.threading import singleShot
 from iicActor.utils import exception
@@ -189,7 +190,7 @@ class SequenceCmd(object):
             cmd.fail(f'text="{str(e)}"')
             return
 
-        cmd.finish(f'groupId={groupId},{groupName}')
+        cmd.finish(f'groupId={groupId},{qstr(groupName)}')
 
     @singleShot
     def waitForSequenceCompletion(self, cmd):
