@@ -9,6 +9,7 @@ import iicActor.utils.pfsDesign.opdb as designDB
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.utils.threading import singleShot
+from iicActor.utils.engine import ExecMode
 from iicActor.utils.sequenceStatus import Flag
 
 reload(iicUtils)
@@ -71,6 +72,10 @@ class MiscCmd(object):
                                         keys.Key('fiberGroups', types.Int() * (1,),
                                                  help='which fiberGroups to identify 2->31'),
                                         keys.Key('mode', types.String() * (1,), help='mode for dotRoach'),
+                                        keys.Key("nMcsIteration", types.Int(),
+                                                 help="number of mcsIteration for finding edge of the dot"),
+                                        keys.Key("nSpsIteration", types.Int(),
+                                                 help="number of spsIteration for finding center of the dot"),
                                         )
 
     @property
@@ -153,6 +158,8 @@ class MiscCmd(object):
     def dotRoach(self, cmd):
         """"""
         cmdKeys = cmd.cmd.keywords
+        nMcsIteration = cmdKeys['nMcsIteration'] if 'nMcsIteration' in cmdKeys else 12
+        nSpsIteration = cmdKeys['nSpsIteration'] if 'nSpsIteration' in cmdKeys else 8
 
         # defining all the sequence first.
         homeDesignId = designDB.latestDesignIdMatchingName('cobraHome', exact=True)
@@ -162,15 +169,18 @@ class MiscCmd(object):
         mcsExptime = self.actor.actorConfig['mcs']['exptime']
         cableBLampOn = self.actor.actorConfig['fps']['cableBLampOn']
         moveToHomeAll = fpsSequence.MoveToHome(exptime=mcsExptime, designId=homeDesignId, cableBLampOn=cableBLampOn)
-        nearDotConvergence = misc.NearDotConvergence(phiCrossingDesignId, maskFile=False, goHome=False, noTweak=True,
+        nearDotConvergence = misc.NearDotConvergence(phiCrossingDesignId, maskFile=False, goHome=True, noTweak=True,
                                                      twoStepsOff=False, exptime=mcsExptime, cableBLampOn=cableBLampOn,
                                                      shortExpOff=True, **self.actor.actorConfig['nearDotConvergence'])
         # use pfiLamps by default.
-        roaching = misc.DotRoach if 'hscLamps' in cmdKeys else misc.DotRoachPfiLamps
+        roaching = misc.FastRoachTest if 'hscLamps' in cmdKeys else misc.FastRoachTestPfiLamps
         roachingInit = misc.DotRoachInit if 'hscLamps' in cmdKeys else misc.DotRoachInitPfiLamps
+
         # now roaching is split in two steps.
         dotRoachInit = roachingInit.fromCmdKeys(self.actor, cmd.cmd.keywords)
-        dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        # dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        hideCobras = fpsSequence.HideCobras.fromCmdKeys(self.actor, cmd.cmd.keywords,
+                                                        nMcsIteration=nMcsIteration, nSpsIteration=nSpsIteration)
 
         # first declare design and going home.
         self.actor.declareFpsDesign(cmd, designId=homeDesignId)
@@ -199,12 +209,34 @@ class MiscCmd(object):
                 cmd.fail('text="NearDotConvergence not completed, stopping here."')
             return
 
+        self.engine.run(cmd, hideCobras, doFinish=False)
+        if hideCobras.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="hideCobras not completed, stopping here."')
+            return
+
+        dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords)
         # now proceed to with the actual roaching sequence.
-        self.engine.run(cmd, dotRoach, doFinish=False)
+        self.engine.run(cmd, dotRoach, mode=ExecMode.CHECKIN | ExecMode.EXECUTE, doFinish=False)
 
         if dotRoach.status.flag != Flag.FINISHED:
             if cmd.alive:
                 cmd.fail('text="dotRoach not completed, stopping here."')
             return
 
-        self.genBlackDotsConfig(cmd)
+        for iteration in range(nSpsIteration):
+            dotRoach.status.hardAmend()
+            # add position and run.
+            dotRoach.addPosition(iteration, nSpsIteration)
+            self.engine.run(cmd, dotRoach, mode=ExecMode.EXECUTE, doFinish=False)
+
+            if dotRoach.status.flag != Flag.FINISHED:
+                if cmd.alive:
+                    cmd.fail('text="dotRoach not completed, stopping here."')
+                return
+
+        dotRoach.status.hardAmend()
+        dotRoach.finish()
+        self.engine.run(cmd, dotRoach, mode=ExecMode.EXECUTE | ExecMode.CONCLUDE, doFinish=False)
+
+        cmd.finish()

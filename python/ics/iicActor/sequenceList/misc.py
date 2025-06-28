@@ -233,7 +233,9 @@ class DotRoachInit(SpsSequence):
 
         # initial exposure
         self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-        self.add('drp', 'processDotRoach', iteration=0, timeLim=120)
+
+        # actually we don't need to wait for that.
+        # self.add('drp', 'processDotRoach', iteration=0, timeLim=120)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -264,6 +266,54 @@ class DotRoachInit(SpsSequence):
         return cls(cams, exptime, windowedFlatConfig, maskFile, keepMoving, mode, **config, **seqKeys)
 
 
+class FastRoachTest(SpsSequence):
+    """ fps MoveToPfsDesign command. """
+    seqtype = 'FastRoachTest'
+    useLamps = 'hscLamps'
+
+    def __init__(self, cams, exptime, windowKeys, rootDir, **seqKeys):
+        SpsSequence.__init__(self, cams, **seqKeys)
+        self.fluxFile = os.path.join(rootDir, 'current', 'allIterations.csv')
+
+        self.add('sps', 'erase', cams=cams)
+        self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
+        self.add('drp', 'processDotRoach', iteration=1)
+
+        self.useDict = dict(cams=cams, exptime=exptime, windowKeys=windowKeys)
+
+    def addPosition(self, iterNum, nSpsIteration):
+        """Acquire data for a new focus position."""
+        self.add('fps', 'driveHotRoachCloseLoop', maskFile=self.fluxFile, nSpsIteration=nSpsIteration)
+
+        self.add('sps', 'erase', cams=self.useDict['cams'])
+        self.expose('domeflat', self.useDict['exptime'], self.useDict['cams'], windowKeys=self.useDict['windowKeys'])
+        self.add('drp', 'processDotRoach', iteration=iterNum+2)
+
+    def finish(self):
+        self.add('drp', 'stopDotRoach')
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct ScienceObject object."""
+        cams = iicActor.spsConfig.keysToCam(cmdKeys)
+        seqKeys = translate.seqKeys(cmdKeys)
+
+        windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps].copy()
+        exptime = windowedFlatConfig.pop('exptime')
+        # overriding using user provided exptime.
+        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else exptime
+
+        # load dotRoach config and override with user parameters.
+        config = iicActor.actorConfig['dotRoach'].copy()
+        stepSize = cmdKeys['stepSize'].values[0] if 'stepSize' in cmdKeys else config['stepSize']
+        count = cmdKeys['count'].values[0] if 'count' in cmdKeys else config['count']
+        motor = 'theta' if 'theta' in cmdKeys else config['motor']
+        motor = 'phi' if 'phi' in cmdKeys else motor
+        config.update(stepSize=stepSize, count=count, motor=motor)
+
+        return cls(cams, exptime, windowedFlatConfig, **config, **seqKeys)
+
+
 class DotRoachPfiLamps(DotRoach, TimedLampsSequence):
     useLamps = 'pfiLamps'
 
@@ -275,6 +325,16 @@ class DotRoachPfiLamps(DotRoach, TimedLampsSequence):
 
 
 class DotRoachInitPfiLamps(DotRoachInit, TimedLampsSequence):
+    useLamps = 'pfiLamps'
+
+    # initial exposure
+    def expose(self, exptype, exptime, cams, **windowKeys):
+        exptime = dict(halogen=int(exptime), shutterTiming=False, iis=dict())
+
+        TimedLampsSequence.expose(self, 'flat', exptime, cams, **windowKeys)
+
+
+class FastRoachTestPfiLamps(FastRoachTest, TimedLampsSequence):
     useLamps = 'pfiLamps'
 
     # initial exposure
