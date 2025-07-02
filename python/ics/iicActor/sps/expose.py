@@ -129,6 +129,10 @@ class SpsExpose(VisitedCmd):
         """Retrieve or create pfsConfig and ensure matching arms in sequence."""
         cards = fits.getPfsConfigCards(self.iicActor, self.sequence.getCmd(), self.visitId, expType=self.exptype)
 
+        # Record the (optional) Gen2 group id and name
+        cards.update({'W_GRPID': (self.sequence.parseGroupId(), "Gen2 group id")})
+        cards.update({'W_GRPNAM': (self.sequence.parseGroupName(), "Gen2 group name")})
+
         # dINSROT is not always relevant, for example if PFS is not on the telescope.
         if dINSROT is not None:
             cards.update({'W_DINROT': (dINSROT, "[deg] INSROT delta between sps visit and convergence.")})
