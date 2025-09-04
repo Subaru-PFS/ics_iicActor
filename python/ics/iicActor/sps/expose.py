@@ -127,11 +127,8 @@ class SpsExpose(VisitedCmd):
 
     def makePfsConfig(self, dINSROT=None):
         """Retrieve or create pfsConfig and ensure matching arms in sequence."""
-        cards = fits.getPfsConfigCards(self.iicActor, self.sequence.getCmd(), self.visitId, expType=self.exptype)
-
-        # dINSROT is not always relevant, for example if PFS is not on the telescope.
-        if dINSROT is not None:
-            cards.update({'W_DINROT': (dINSROT, "[deg] INSROT delta between sps visit and convergence.")})
+        cards = fits.getPfsConfigCards(self.iicActor, self.sequence.getCmd(), self.visitId,
+                                       expType=self.exptype, dINSROT=dINSROT)
 
         selectedCams = self.sequence.engine.keyRepo.getSelectedCams(self.sequence.cams)
         camMask = PfsConfig.getCameraMask(selectedCams)
