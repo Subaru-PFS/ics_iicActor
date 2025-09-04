@@ -128,7 +128,8 @@ class SpsExpose(VisitedCmd):
     def makePfsConfig(self, dINSROT=None):
         """Retrieve or create pfsConfig and ensure matching arms in sequence."""
         cards = fits.getPfsConfigCards(self.iicActor, self.sequence.getCmd(), self.visitId,
-                                       expType=self.exptype, dINSROT=dINSROT)
+                                       expType=self.exptype, dINSROT=dINSROT,
+                                       groupId=self.sequence.parseGroupId(), groupName=self.sequence.parseGroupName())
 
         selectedCams = self.sequence.engine.keyRepo.getSelectedCams(self.sequence.cams)
         camMask = PfsConfig.getCameraMask(selectedCams)
