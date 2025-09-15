@@ -23,11 +23,15 @@ class AgCmd(object):
         # associated methods when matched. The callbacks will be
         # passed a single argument, the parsed and typed command.
         #
-        self.vocab = [
-            ('acquireField', f'[@(otf)] [<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] [<tec_off>] {translate.seqArgs}', self.acquireField),
-            ('autoguideStart', f'[@(otf)] [<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] [@(dryRun)] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] [<tec_off>] {translate.seqArgs}', self.autoguideStart),
+        self.vocab = [(
+            'acquireField', f'[@(otf)] [<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] [<fit_dScale>] '
+                            f'[<fit_dInR>] [<exposure_delay>] [<tec_off>] {translate.seqArgs}', self.acquireField),
+            ('autoguideStart', f'[@(otf)] [<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] '
+                               f'[@(dryRun)] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] [<tec_off>] '
+                               f'[<max_correction>] {translate.seqArgs}', self.autoguideStart),
             ('autoguideStop', '', self.autoguideStop),
-            ('startAgFocusSweep', f'[@(otf)] [<designId>] [<exptime>] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] [<tec_off>] {translate.seqArgs}', self.startAgFocusSweep),
+            ('startAgFocusSweep', f'[@(otf)] [<designId>] [<exptime>] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] '
+                                  f'[<tec_off>] {translate.seqArgs}', self.startAgFocusSweep),
             ('addAgFocusPosition', '', self.addAgFocusPosition),
             ('finishAgFocusSweep', '', self.finishAgFocusSweep),
         ]
@@ -48,8 +52,12 @@ class AgCmd(object):
                                         keys.Key("center", types.Float() * (1, 3)),
                                         keys.Key('fit_dScale', types.String(), help='do fit dScale (yes|no)'),
                                         keys.Key('fit_dInR', types.String(), help='do fit dInR (yes|no)'),
-                                        keys.Key("exposure_delay", types.Int(), help='delay in milliseconds between AG cameras'),
-                                        keys.Key('tec_off', types.String(), help='AG cameras thermoelectric coolers turned off'))
+                                        keys.Key("exposure_delay", types.Int(),
+                                                 help='delay in milliseconds between AG cameras'),
+                                        keys.Key('tec_off', types.String(),
+                                                 help='AG cameras thermoelectric coolers turned off'),
+                                        keys.Key('max_correction', types.Float(), help='max correction for guiding'))
+
     @property
     def engine(self):
         return self.actor.engine
@@ -183,7 +191,8 @@ class AgCmd(object):
         # just finalize the sequence.
         self.focusSweep.finalize()
 
-        cmd.finish(f'text="AgFocusSweep iic_sequence_id:{self.focusSweep.sequence_id} visitId:{self.focusSweep.visit.visitId} now finished..."')
+        cmd.finish(
+            f'text="AgFocusSweep iic_sequence_id:{self.focusSweep.sequence_id} visitId:{self.focusSweep.visit.visitId} now finished..."')
         # Making sure that visitId won't be used ever again.
         self.actor.visitManager.getField().lockVisit()
         # no further reference to the object.

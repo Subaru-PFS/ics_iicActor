@@ -69,13 +69,13 @@ class AutoguideStart(AgSequence):
     seqtype = 'autoguideStart'
 
     def __init__(self, otf, designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR,
-                 exposure_delay, tec_off, **seqKeys):
+                 exposure_delay, tec_off, max_correction, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
-        self.add('ag', 'autoguide start', parseVisit=True, otf=otf,
+        self.add('tests', 'autoguide start', parseVisit=True, otf=otf,
                  design_id=designId, exposure_time=exptime, cadence=cadence, center=center, magnitude=magnitude,
                  from_sky=fromSky, dry_run=dryRun, fit_dscale=fit_dScale, fit_dinr=fit_dInR,
-                 exposure_delay=exposure_delay, tec_off=tec_off)
+                 exposure_delay=exposure_delay, tec_off=tec_off, max_correction=max_correction)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -92,6 +92,7 @@ class AutoguideStart(AgSequence):
         fit_dInR = cmdKeys['fit_dInR'].values[0] if 'fit_dInR' in cmdKeys else None
         exposure_delay = cmdKeys['exposure_delay'].values[0] if 'exposure_delay' in cmdKeys else None
         tec_off = cmdKeys['tec_off'].values[0] if 'tec_off' in cmdKeys else None
+        max_correction = cmdKeys['max_correction'].values[0] if 'max_correction' in cmdKeys else None
 
         # get provided designId or get current one.
         if 'designId' in cmdKeys:
@@ -103,7 +104,7 @@ class AutoguideStart(AgSequence):
         designId = False if otf else designId
 
         return cls(otf, designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR,
-                   exposure_delay, tec_off, **seqKeys)
+                   exposure_delay, tec_off, max_correction, **seqKeys)
 
 
 class AutoguideStop(Sequence):
