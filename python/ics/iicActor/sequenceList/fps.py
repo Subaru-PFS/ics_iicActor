@@ -67,7 +67,7 @@ class BoresightLoop(FpsSequence):
     def addPosition(self):
         """Acquire data for a new boresight position."""
         for i in range(self.nExposures):
-            self.append('mcs', 'expose object', exptime=self.exptime, frameId=self.visit.nextFrameId())
+            self.append('mcs', 'expose object', exptime=self.exptime, frameId=self.visit.nextFrameId(), doFibreId=True)
 
     def addReduce(self, startFrame, endFrame):
         """Close out the current boresight acquisition loop and process the data."""
