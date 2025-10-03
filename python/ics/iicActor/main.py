@@ -264,9 +264,9 @@ class IicActor(actorcore.ICC.ICC):
         activeField = self.visitManager.activeField
         designId = 0 if activeField is None else activeField.pfsDesign.pfsDesignId
         visit0 = 0 if activeField is None else activeField.visit0
-        raBoresight = np.NaN if activeField is None else activeField.pfsDesign.raBoresight
-        decBoresight = np.NaN if activeField is None else activeField.pfsDesign.decBoresight
-        posAng = np.NaN if activeField is None else activeField.pfsDesign.posAng
+        raBoresight = np.nan if activeField is None else activeField.pfsDesign.raBoresight
+        decBoresight = np.nan if activeField is None else activeField.pfsDesign.decBoresight
+        posAng = np.nan if activeField is None else activeField.pfsDesign.posAng
         designName = 'None' if activeField is None else activeField.pfsDesign.designName
         designId0 = 0 if activeField is None else activeField.pfsDesign.designId0
         variant = 0 if activeField is None else activeField.pfsDesign.variant
