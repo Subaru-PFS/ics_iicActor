@@ -1,10 +1,10 @@
 import logging
-
-import iicActor.utils.lib as iicUtils
-from ics.utils.opdb import opDB
-from iicActor.utils import exception
-import psycopg2
 import time
+
+import ics.iicActor.utils.lib as iicUtils
+import psycopg2
+from ics.iicActor.utils import exception
+from ics.utils.opdb import opDB
 
 
 def fetchOneEntry(query):
@@ -69,9 +69,12 @@ def getGroupNameFromGroupId(group_id):
 
 def getDeltaINSROT(visit0, spsVisitId):
     """Compute the difference in INSROT (instrument rotation) between spsVisit and visit0."""
-    INSROT0 = fetchOneEntry(f"SELECT insrot FROM tel_status WHERE pfs_visit_id={visit0} and caller='mcs' ORDER BY status_sequence_id DESC LIMIT 1")
-    INSROT = fetchOneEntry(f"SELECT insrot FROM tel_status WHERE pfs_visit_id={spsVisitId} ORDER BY status_sequence_id DESC LIMIT 1")
-    return float(INSROT-INSROT0)
+    INSROT0 = fetchOneEntry(
+        f"SELECT insrot FROM tel_status WHERE pfs_visit_id={visit0} and caller='mcs' ORDER BY status_sequence_id DESC LIMIT 1")
+    INSROT = fetchOneEntry(
+        f"SELECT insrot FROM tel_status WHERE pfs_visit_id={spsVisitId} ORDER BY status_sequence_id DESC LIMIT 1")
+    return float(INSROT - INSROT0)
+
 
 def insertIntoOpDB(tablename, **kwargs):
     """Simple insert into opDB, raising proper IicException."""
@@ -88,7 +91,7 @@ def insertSequence(group_id, sequence_type, name, comments, cmd_str, doRetry=Tru
 
     try:
         opDB.insert('iic_sequence', iic_sequence_id=new_sequence_id, group_id=group_id,
-                    sequence_type=sequence_type,  name=name, comments=comments, cmd_str=cmd_str,
+                    sequence_type=sequence_type, name=name, comments=comments, cmd_str=cmd_str,
                     created_at='now')
     # concurrent insert can fail.
     except psycopg2.errors.UniqueViolation as e:

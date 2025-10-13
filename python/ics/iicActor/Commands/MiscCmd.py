@@ -3,13 +3,13 @@ from importlib import reload
 import ics.iicActor.sequenceList.fps as fpsSequence
 import ics.iicActor.sequenceList.misc as misc
 import ics.iicActor.utils.lib as iicUtils
+import ics.iicActor.utils.pfsDesign.opdb as designDB
 import ics.iicActor.utils.translate as translate
 import ics.utils.cmd as cmdUtils
-import iicActor.utils.pfsDesign.opdb as designDB
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from ics.iicActor.utils.sequenceStatus import Flag
 from ics.utils.threading import singleShot
-from iicActor.utils.sequenceStatus import Flag
 
 reload(iicUtils)
 reload(designDB)

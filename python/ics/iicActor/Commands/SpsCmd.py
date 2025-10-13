@@ -7,9 +7,9 @@ import ics.iicActor.sequenceList.sps.science as science
 import ics.iicActor.utils.translate as translate
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from ics.iicActor.utils.engine import ExecMode
+from ics.iicActor.utils.sequenceStatus import Flag
 from ics.utils.threading import singleShot
-from iicActor.utils.engine import ExecMode
-from iicActor.utils.sequenceStatus import Flag
 
 reload(base)
 reload(calib)
@@ -37,8 +37,9 @@ class SpsCmd(object):
             ('scienceTrace', f'{timedFlatArgs} {windowingArgs} {commonArgs}', self.scienceTrace),
             ('domeFlat', f'<exptime> {windowingArgs} {commonArgs}', self.domeFlat),
             ('scienceObject', f'<exptime> {windowingArgs} {commonArgs}', self.scienceObject),
-            ('fiberProfiles', f'{timedFlatArgs} [<pixelRange>] [<interleaveDark>] [@skipOtherRedResolution] [<nTraceBefore>] [<nTraceAfter>] {commonArgs}', self.fiberProfiles),
-
+            ('fiberProfiles',
+             f'{timedFlatArgs} [<pixelRange>] [<interleaveDark>] [@skipOtherRedResolution] [<nTraceBefore>] [<nTraceAfter>] {commonArgs}',
+             self.fiberProfiles),
             ('sps', f'@startExposures <exptime> {windowingArgs} {commonArgs}', self.startExposureLoop),
             ('sps', f'@erase {commonArgs}', self.erase),
 
@@ -118,8 +119,10 @@ class SpsCmd(object):
                                                  help='IIS lamp on time'),
                                         keys.Key('iisKrypton', types.Float(),
                                                  help='IIS Kr lamp on time'),
-                                        keys.Key('nTraceBefore', types.Int(), help='nTrace in Home before dithered fiberProfiles'),
-                                        keys.Key('nTraceAfter', types.Int(), help='nTrace in Home after dithered fiberProfiles'),
+                                        keys.Key('nTraceBefore', types.Int(),
+                                                 help='nTrace in Home before dithered fiberProfiles'),
+                                        keys.Key('nTraceAfter', types.Int(),
+                                                 help='nTrace in Home after dithered fiberProfiles'),
                                         )
 
     @property

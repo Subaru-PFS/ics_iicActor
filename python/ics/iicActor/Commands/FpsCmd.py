@@ -2,15 +2,15 @@ from importlib import reload
 
 import ics.iicActor.sequenceList.fps as fpsSequence
 import ics.iicActor.utils.lib as iicUtils
+import ics.iicActor.utils.pfsDesign.opdb as designDB
 import ics.iicActor.utils.translate as translate
 import ics.utils.cmd as cmdUtils
-import iicActor.utils.pfsDesign.opdb as designDB
 import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 import pandas as pd
+from ics.iicActor.utils.engine import ExecMode
 from ics.utils.threading import singleShot
-from iicActor.utils.engine import ExecMode
 from pfs.datamodel.pfsConfig import TargetType
 
 reload(fpsSequence)
@@ -41,7 +41,8 @@ class FpsCmd(object):
             ('moveToPfsDesign',
              f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [@(twoStepsOff)] [@(noTweak)] [<nIteration>] [<tolerance>] [@shortExpOff] {translate.seqArgs}',
              self.moveToPfsDesign),
-            ('moveToHome', f'[@(all)] [<exptime>] [<designId>] [<maskFile>] [<wrtMaskFile>] [@thetaCCW] {translate.seqArgs}',
+            ('moveToHome',
+             f'[@(all)] [<exptime>] [<designId>] [<maskFile>] [<wrtMaskFile>] [@thetaCCW] {translate.seqArgs}',
              self.moveToHome),
             ('genPfsConfigFromMcs', f'[<designId>] {translate.seqArgs}', self.genPfsConfigFromMcs),
             ('cobraMoveAngles', '@(phi|theta) <angle> [@(genPfsConfig)] [<maskFile>]', self.cobraMoveAngles),

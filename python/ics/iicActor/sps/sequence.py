@@ -1,6 +1,6 @@
+import ics.iicActor.utils.sequence as sequence
+import ics.iicActor.utils.translate as translate
 import ics.utils.cmd as cmdUtils
-import iicActor.utils.sequence as sequence
-import iicActor.utils.translate as translate
 from ics.iicActor.sps.expose import SpsExpose
 from ics.iicActor.sps.subcmd import DcbCmd, LampsCmd
 from ics.iicActor.utils.subcmd import SubCmd

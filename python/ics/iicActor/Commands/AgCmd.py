@@ -5,8 +5,8 @@ import ics.iicActor.utils.lib as iicUtils
 import ics.iicActor.utils.translate as translate
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
+from ics.iicActor.utils.engine import ExecMode
 from ics.utils.threading import singleShot
-from iicActor.utils.engine import ExecMode
 
 reload(agSequence)
 reload(iicUtils)

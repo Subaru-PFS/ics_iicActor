@@ -1,5 +1,5 @@
 import ics.iicActor.utils.opdb as opdbUtils
-import iicActor.utils.translate as translate
+import ics.iicActor.utils.translate as translate
 from ics.iicActor.utils.sequence import Sequence
 from ics.iicActor.utils.visited import VisitedCmd, VisitedSequence
 

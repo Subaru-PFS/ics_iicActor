@@ -1,6 +1,6 @@
 import os
 
-import iicActor.utils.translate as translate
+import ics.iicActor.utils.translate as translate
 from ics.iicActor.sequenceList.fps import MoveToPfsDesign, FpsSequence
 from ics.iicActor.sps.sequence import SpsSequence
 from ics.iicActor.sps.timedLamps import TimedLampsSequence

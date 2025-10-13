@@ -1,6 +1,6 @@
-import iicActor.utils.translate as translate
+import ics.iicActor.utils.translate as translate
 from ics.iicActor.sps.sequence import SpsSequence
-from iicActor.utils.sequenceStatus import Flag
+from ics.iicActor.utils.sequenceStatus import Flag
 
 
 class ScienceObject(SpsSequence):

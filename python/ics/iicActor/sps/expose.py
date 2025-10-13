@@ -6,11 +6,11 @@ import ics.utils.sps.fits as fits
 import numpy as np
 import pfs.utils.pfsConfigUtils as pfsConfigUtils
 import pfscore.gen2 as gen2
+from ics.iicActor.utils import exception
 from ics.iicActor.utils.pfsConfig.illumination import updateFiberStatus
 from ics.iicActor.utils.subcmd import CmdRet
 from ics.iicActor.utils.visited import VisitedCmd
 from ics.utils.fits import mhs as fitsMhs
-from iicActor.utils import exception
 from opscore.utility.qstr import qstr
 from pfs.datamodel import PfsConfig, InstrumentStatusFlag
 

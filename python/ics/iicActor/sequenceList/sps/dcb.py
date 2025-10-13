@@ -1,4 +1,4 @@
-import iicActor.utils.translate as translate
+import ics.iicActor.utils.translate as translate
 import numpy as np
 from ics.iicActor.sps.sequence import SpsSequence
 from ics.utils.sps.defocus import defocused_exposure_times_single_position

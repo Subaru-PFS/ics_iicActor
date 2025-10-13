@@ -1,4 +1,4 @@
-import iicActor.utils.translate as translate
+import ics.iicActor.utils.translate as translate
 from ics.iicActor.utils.visited import VisitedSequence
 
 
