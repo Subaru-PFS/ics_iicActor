@@ -3,13 +3,13 @@
 import os
 
 import actorcore.ICC
+import ics.iicActor.utils.pfsDesign.merge as mergeDesign
 import ics.iicActor.utils.pfsDesign.opdb as designDB
-import iicActor.utils.pfsDesign.merge as mergeDesign
 import numpy as np
 import pandas as pd
+from ics.iicActor.utils import engine
+from ics.iicActor.utils import keyBuffer
 from ics.utils.sps.spectroIds import getSite
-from iicActor.utils import engine
-from iicActor.utils import keyBuffer
 from pfs.datamodel.pfsConfig import PfsDesign, TargetType
 from pfs.utils.fiberids import FiberIds
 from pfs.utils.pfsConfigUtils import getDateDir

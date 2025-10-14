@@ -1,4 +1,4 @@
-from iicActor.utils import exception
+from ics.iicActor.utils import exception
 
 
 class Resource(object):

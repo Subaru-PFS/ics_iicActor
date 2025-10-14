@@ -1,7 +1,4 @@
-from ics.iicActor.sequenceList.fps import FpsSequence
-from ics.iicActor.sps.sequence import SpsSequence
-from ics.iicActor.utils.sequence import Sequence
-from iicActor.utils import exception
+from ics.iicActor.utils import exception
 
 
 class Registry(dict):

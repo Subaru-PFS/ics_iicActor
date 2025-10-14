@@ -1,9 +1,9 @@
 import ics.iicActor.utils.opdb as opdbUtils
+from ics.iicActor.utils import keyRepo
+from ics.iicActor.utils import registry
+from ics.iicActor.utils.resources import resourceManager
 from ics.utils.threading import singleShot
 from ics.utils.visit import visitManager
-from iicActor.utils import keyRepo
-from iicActor.utils import registry
-from iicActor.utils.resources import resourceManager
 
 
 class ExecMode:

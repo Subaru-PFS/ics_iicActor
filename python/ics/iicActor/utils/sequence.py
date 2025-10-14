@@ -1,10 +1,10 @@
 import ics.iicActor.utils.opdb as opdbUtils
 import ics.utils.time as pfsTime
+from ics.iicActor.utils import exception
 from ics.iicActor.utils.lib import makeCmdStr
+from ics.iicActor.utils.sequenceStatus import Status, Flag
 from ics.iicActor.utils.subcmd import SubCmd
 from ics.utils.fits import mhs as fitsMhs
-from iicActor.utils import exception
-from iicActor.utils.sequenceStatus import Status, Flag
 
 
 class Sequence(list):

@@ -1,6 +1,6 @@
 from importlib import reload
 
-import iicActor.utils.pfsDesign.opdb as designDB
+import ics.iicActor.utils.pfsDesign.opdb as designDB
 import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
@@ -24,13 +24,11 @@ class TopCmd(object):
         self.vocab = [
             ('ping', '', self.ping),
             ('status', '', self.status),
-
             ('declareCurrentPfsDesign', '<designId> [<variant>]', self.declareCurrentPfsDesign),
             ('createVariants', '[<nVariants>] [<addVariants>] [<designId0>] [<sigma>] [<randomFraction>] [@(doHex)]',
              self.createVariants),
             ('getAllVariants', '<designId0>', self.getAllVariants),
             ('getMaxVariants', '<designId0>', self.getMaxVariants),
-
             ('finishField', '', self.finishField),
             ('ingestPfsDesign', '<designId> [<designedAt>] [<toBeObservedAt>]', self.ingestPfsDesign),
         ]
@@ -39,13 +37,12 @@ class TopCmd(object):
         self.keys = keys.KeysDictionary("iic_iic", (1, 1),
                                         keys.Key('designId', types.Long(), help='selected pfsDesignId'),
                                         keys.Key('designId0', types.Long(), help='selected pfsDesignId0'),
-
                                         keys.Key('variant', types.Int(), help='selected pfsDesign variant'),
                                         keys.Key('nVariants', types.Int(), help='number of variants to be created'),
                                         keys.Key('addVariants', types.Int(), help='number of variants to be added'),
                                         keys.Key('sigma', types.Float(), help='sigma for random position noise'),
-                                        keys.Key('randomFraction', types.Float(), help='fraction of cobras set to random position'),
-
+                                        keys.Key('randomFraction', types.Float(),
+                                                 help='fraction of cobras set to random position'),
                                         keys.Key('caller', types.String(), help='visit caller'),
                                         keys.Key('designedAt', types.String(), help=''),
                                         keys.Key('toBeObservedAt', types.String(), help=''),

@@ -1,9 +1,10 @@
+import ics.utils.time as pfsTime
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
-from opscore.utility.qstr import qstr
-import ics.utils.time as pfsTime
+from ics.iicActor.utils import exception
 from ics.utils.threading import singleShot
-from iicActor.utils import exception
+from opscore.utility.qstr import qstr
+
 
 class SequenceCmd(object):
 

@@ -1,10 +1,10 @@
 import logging
 
-import iicActor.utils.lib as libUtils
+import ics.iicActor.utils.lib as libUtils
 from ics.iicActor.sps.sequence import SpsSequence
+from ics.iicActor.utils import exception
+from ics.iicActor.utils.resources import resource
 from ics.utils.sps.config import SpsConfig
-from iicActor.utils import exception
-from iicActor.utils.resources import resource
 
 
 class ResourceManager(object):
