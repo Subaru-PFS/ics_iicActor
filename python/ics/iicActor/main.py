@@ -230,7 +230,7 @@ class IicActor(actorcore.ICC.ICC):
         except ValueError:
             return
 
-        self.logger.info(f'fpsConfig={designId},{visit0},{status}')
+        self.logger.info(f'fpsConfig=0x{designId:016x},{visit0},{status}')
 
         if status == 'Done' and self.visitManager.activeField:
             self.visitManager.activeField.loadPfsConfig0(designId, visit0)
