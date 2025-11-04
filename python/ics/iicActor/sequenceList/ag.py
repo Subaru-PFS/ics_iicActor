@@ -72,7 +72,7 @@ class AutoguideStart(AgSequence):
                  exposure_delay, tec_off, max_correction, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
-        self.add('tests', 'autoguide start', parseVisit=True, otf=otf,
+        self.add('ag', 'autoguide start', parseVisit=True, otf=otf,
                  design_id=designId, exposure_time=exptime, cadence=cadence, center=center, magnitude=magnitude,
                  from_sky=fromSky, dry_run=dryRun, fit_dscale=fit_dScale, fit_dinr=fit_dInR,
                  exposure_delay=exposure_delay, tec_off=tec_off, max_correction=max_correction)
