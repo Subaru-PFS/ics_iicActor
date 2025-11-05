@@ -29,12 +29,13 @@ class AcquireField(AgSequence):
     seqtype = 'acquireField'
 
     def __init__(self, designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, exposure_delay, tec_off,
-                 **seqKeys):
+                 visit0, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
         self.add('ag', 'acquire_field', parseVisit=True,
                  design_id=designId, exposure_time=exptime, guide=guide, magnitude=magnitude, dry_run=dryRun,
-                 fit_dscale=fit_dScale, fit_dinr=fit_dInR, exposure_delay=exposure_delay, tec_off=tec_off)
+                 fit_dscale=fit_dScale, fit_dinr=fit_dInR, exposure_delay=exposure_delay, tec_off=tec_off,
+                 visit0=visit0)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -56,8 +57,12 @@ class AcquireField(AgSequence):
         else:
             designId = iicActor.visitManager.getCurrentDesignId()
 
+        # Grabbing visit0 if possible.
+        visit0 = False
+        pfsConfig0 = iicActor.visitManager.getField().pfsConfig0
+        visit0 = pfsConfig0.visit if pfsConfig0 and pfsConfig0.pfsDesignId == designId else visit0
 
-        return cls(designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, exposure_delay, tec_off,
+        return cls(designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, exposure_delay, tec_off, visit0,
                    **seqKeys)
 
 
@@ -66,13 +71,13 @@ class AutoguideStart(AgSequence):
     seqtype = 'autoguideStart'
 
     def __init__(self, designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR,
-                 exposure_delay, tec_off, max_correction, **seqKeys):
+                 exposure_delay, tec_off, max_correction, visit0, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
         self.add('ag', 'autoguide start', parseVisit=True,
                  design_id=designId, exposure_time=exptime, cadence=cadence, center=center, magnitude=magnitude,
                  from_sky=fromSky, dry_run=dryRun, fit_dscale=fit_dScale, fit_dinr=fit_dInR,
-                 exposure_delay=exposure_delay, tec_off=tec_off, max_correction=max_correction)
+                 exposure_delay=exposure_delay, tec_off=tec_off, max_correction=max_correction, visit0=visit0)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -96,9 +101,13 @@ class AutoguideStart(AgSequence):
         else:
             designId = iicActor.visitManager.getCurrentDesignId()
 
+        # Grabbing visit0 if possible.
+        visit0 = False
+        pfsConfig0 = iicActor.visitManager.getField().pfsConfig0
+        visit0 = pfsConfig0.visit if pfsConfig0 and pfsConfig0.pfsDesignId == designId else visit0
 
         return cls(designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR,
-                   exposure_delay, tec_off, max_correction, **seqKeys)
+                   exposure_delay, tec_off, max_correction, visit0, **seqKeys)
 
 
 class AutoguideStop(Sequence):
