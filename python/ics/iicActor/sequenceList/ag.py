@@ -28,11 +28,11 @@ class AcquireField(AgSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'acquireField'
 
-    def __init__(self, otf, designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, exposure_delay, tec_off,
+    def __init__(self, designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, exposure_delay, tec_off,
                  **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
-        self.add('ag', 'acquire_field', parseVisit=True, otf=otf,
+        self.add('ag', 'acquire_field', parseVisit=True,
                  design_id=designId, exposure_time=exptime, guide=guide, magnitude=magnitude, dry_run=dryRun,
                  fit_dscale=fit_dScale, fit_dinr=fit_dInR, exposure_delay=exposure_delay, tec_off=tec_off)
 
@@ -42,7 +42,6 @@ class AcquireField(AgSequence):
         seqKeys = translate.seqKeys(cmdKeys)
 
         exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
-        otf = True if 'otf' in cmdKeys else False
         guide = 'no' if 'guideOff' in cmdKeys else None
         magnitude = cmdKeys['magnitude'].values[0] if 'magnitude' in cmdKeys else None
         dryRun = 'yes' if 'dryRun' in cmdKeys else None
@@ -57,10 +56,8 @@ class AcquireField(AgSequence):
         else:
             designId = iicActor.visitManager.getCurrentDesignId()
 
-        # override designId if otf.
-        designId = False if otf else designId
 
-        return cls(otf, designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, exposure_delay, tec_off,
+        return cls(designId, exptime, guide, magnitude, dryRun, fit_dScale, fit_dInR, exposure_delay, tec_off,
                    **seqKeys)
 
 
@@ -68,11 +65,11 @@ class AutoguideStart(AgSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'autoguideStart'
 
-    def __init__(self, otf, designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR,
+    def __init__(self, designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR,
                  exposure_delay, tec_off, max_correction, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
-        self.add('ag', 'autoguide start', parseVisit=True, otf=otf,
+        self.add('ag', 'autoguide start', parseVisit=True,
                  design_id=designId, exposure_time=exptime, cadence=cadence, center=center, magnitude=magnitude,
                  from_sky=fromSky, dry_run=dryRun, fit_dscale=fit_dScale, fit_dinr=fit_dInR,
                  exposure_delay=exposure_delay, tec_off=tec_off, max_correction=max_correction)
@@ -81,7 +78,6 @@ class AutoguideStart(AgSequence):
     def fromCmdKeys(cls, iicActor, cmdKeys):
         seqKeys = translate.seqKeys(cmdKeys)
 
-        otf = True if 'otf' in cmdKeys else False
         fromSky = 'yes' if 'fromSky' in cmdKeys else None
         exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
         cadence = cmdKeys['cadence'].values[0] if 'cadence' in cmdKeys else None
@@ -100,10 +96,8 @@ class AutoguideStart(AgSequence):
         else:
             designId = iicActor.visitManager.getCurrentDesignId()
 
-        # override designId if otf.
-        designId = False if otf else designId
 
-        return cls(otf, designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR,
+        return cls(designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR,
                    exposure_delay, tec_off, max_correction, **seqKeys)
 
 
@@ -131,10 +125,10 @@ class FocusSweep(AgSequence):
     seqtype = 'agFocusSweep'
     insertVisitSet = True
 
-    def __init__(self, otf, designId, exptime, fit_dScale, fit_dInR, exposure_delay, tec_off, **seqKeys):
+    def __init__(self, designId, exptime, fit_dScale, fit_dInR, exposure_delay, tec_off, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
-        self.parseKwargs = dict(otf=otf, design_id=designId, exposure_time=exptime, fit_dScale=fit_dScale,
+        self.parseKwargs = dict(design_id=designId, exposure_time=exptime, fit_dScale=fit_dScale,
                                 fit_dInR=fit_dInR,
                                 exposure_delay=exposure_delay, tec_off=tec_off)
 
@@ -144,7 +138,6 @@ class FocusSweep(AgSequence):
         seqKeys = translate.seqKeys(cmdKeys)
 
         exptime = int(cmdKeys['exptime'].values[0]) if 'exptime' in cmdKeys else None
-        otf = True if 'otf' in cmdKeys else False
         fit_dScale = cmdKeys['fit_dScale'].values[0] if 'fit_dScale' in cmdKeys else None
         fit_dInR = cmdKeys['fit_dInR'].values[0] if 'fit_dInR' in cmdKeys else None
         exposure_delay = cmdKeys['exposure_delay'].values[0] if 'exposure_delay' in cmdKeys else None
@@ -159,7 +152,7 @@ class FocusSweep(AgSequence):
         # Need to get a new visit, just easier this way.
         pfsDesign, visit0 = iicActor.visitManager.declareNewField(designId, genVisit0=True)
 
-        return cls(otf, designId, exptime, fit_dScale, fit_dInR, exposure_delay, tec_off, **seqKeys)
+        return cls(designId, exptime, fit_dScale, fit_dInR, exposure_delay, tec_off, **seqKeys)
 
     def addPosition(self):
         """Acquire data for a new focus position."""

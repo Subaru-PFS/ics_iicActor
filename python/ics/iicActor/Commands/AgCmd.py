@@ -24,13 +24,13 @@ class AgCmd(object):
         # passed a single argument, the parsed and typed command.
         #
         self.vocab = [(
-            'acquireField', f'[@(otf)] [<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] [<fit_dScale>] '
+            'acquireField', f'[<designId>] [<exptime>] [<magnitude>] [@(guideOff)] [@(dryRun)] [<fit_dScale>] '
                             f'[<fit_dInR>] [<exposure_delay>] [<tec_off>] {translate.seqArgs}', self.acquireField),
-            ('autoguideStart', f'[@(otf)] [<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] '
+            ('autoguideStart', f'[<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] '
                                f'[@(dryRun)] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] [<tec_off>] '
                                f'[<max_correction>] {translate.seqArgs}', self.autoguideStart),
             ('autoguideStop', '', self.autoguideStop),
-            ('startAgFocusSweep', f'[@(otf)] [<designId>] [<exptime>] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] '
+            ('startAgFocusSweep', f'[<designId>] [<exptime>] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] '
                                   f'[<tec_off>] {translate.seqArgs}', self.startAgFocusSweep),
             ('addAgFocusPosition', '', self.addAgFocusPosition),
             ('finishAgFocusSweep', '', self.finishAgFocusSweep),
@@ -64,14 +64,12 @@ class AgCmd(object):
 
     def acquireField(self, cmd):
         """
-        `iic acquireField [@otf] [designId=???] [exptime=???] [magnitude=???] [@guideOff] [@dryRun] [name=\"SSS\"] [comments=\"SSS\"]`
+        `iic acquireField [designId=???] [exptime=???] [magnitude=???] [@guideOff] [@dryRun] [name=\"SSS\"] [comments=\"SSS\"]`
 
         Ag acquire field
 
         Parameters
         ---------
-        otf : `bool`
-            on the fly mode.
         designId : `int`
            optional pfsDesignId.
         exptime : `int`
@@ -94,14 +92,12 @@ class AgCmd(object):
 
     def autoguideStart(self, cmd):
         """
-        `iic autoguideStart [@otf] [exptime=???] [cadence=???] [center=???] [magnitude=???] [@guideOff] [@dryRun] [name=\"SSS\"] [comments=\"SSS\"]`
+        `iic autoguideStart [exptime=???] [cadence=???] [center=???] [magnitude=???] [@guideOff] [@dryRun] [name=\"SSS\"] [comments=\"SSS\"]`
 
         Ag autoguide start.
 
         Parameters
         ---------
-        otf : `bool`
-            on the fly mode.
         designId : `int`
            optional pfsDesignId.
         exptime : `int`
