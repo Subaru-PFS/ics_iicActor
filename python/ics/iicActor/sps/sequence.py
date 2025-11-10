@@ -94,7 +94,7 @@ class SpsSequence(sequence.Sequence):
 
         return ''.join(selectedArms)
 
-    def expose(self, exptype, exptime, cams, duplicate=1, windowKeys=None, slideSlit=None):
+    def expose(self, exptype, exptime, cams, duplicate=1, windowKeys=None, slideSlit=None, mcsExposureBefore=None):
         """Append duplicate * sps expose to sequence."""
         # being nice about input arguments.
         exptime = [exptime] if not isinstance(exptime, list) else exptime
@@ -107,7 +107,8 @@ class SpsSequence(sequence.Sequence):
                 spsExpose = SpsExpose.specify(self, exptype, expTime, cams,
                                               doTest=self.doTest,
                                               doScienceCheck=self.doScienceCheck, skipBiaCheck=self.skipBiaCheck,
-                                              slideSlit=slideSlit, **windowKeys)
+                                              slideSlit=slideSlit, mcsExposureBefore=mcsExposureBefore, **windowKeys
+                                              )
                 list.append(self, spsExpose)
 
     @staticmethod

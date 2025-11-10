@@ -8,10 +8,16 @@ class ScienceObject(SpsSequence):
     seqtype = 'scienceObject'
     doScienceCheck = True
 
-    def __init__(self, cams, exptime, duplicate, windowKeys, **seqKeys):
-        SpsSequence.__init__(self, cams, isWindowed=bool(windowKeys), **seqKeys)
+    def __init__(self, cams, exptime, duplicate, windowKeys, mcsExposureBefore, **seqKeys):
+        isWindowed = bool(windowKeys)
+        SpsSequence.__init__(self, cams, isWindowed=isWindowed, **seqKeys)
 
-        self.expose('object', exptime, cams, duplicate=duplicate, windowKeys=windowKeys)
+        # forcing to None for windowed exposure if specified in config file.
+        if isWindowed and mcsExposureBefore['skipWindowed']:
+            mcsExposureBefore['enabled'] = False
+
+        self.expose('object', exptime, cams,
+                    duplicate=duplicate, windowKeys=windowKeys, mcsExposureBefore=mcsExposureBefore)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -21,14 +27,18 @@ class ScienceObject(SpsSequence):
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         windowKeys = translate.windowKeys(cmdKeys)
 
-        return cls(cams, exptime, duplicate, windowKeys, **seqKeys)
+        config = iicActor.actorConfig['scienceExposure']
+        mcsExposureBefore = config.get('mcsExposureBefore')
+
+        return cls(cams, exptime, duplicate, windowKeys, mcsExposureBefore, **seqKeys)
 
 
 class ScienceObjectLoop(ScienceObject):
     """ Biases sequence """
 
-    def __init__(self, cams, exptime, duplicate, windowKeys, **seqKeys):
-        ScienceObject.__init__(self, cams, exptime, 1, windowKeys, **seqKeys)
+    def __init__(self, cams, exptime, duplicate, windowKeys, mcsExposureBefore, **seqKeys):
+        mcsExposureBefore['enabled'] = False
+        ScienceObject.__init__(self, cams, exptime, 1, windowKeys, mcsExposureBefore, **seqKeys)
 
     def commandLogic(self, *args, **kwargs):
         """Declare sequence as complete, that is the nominal end for a sequence."""
