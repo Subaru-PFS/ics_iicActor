@@ -18,13 +18,14 @@ from pfs.datamodel import PfsConfig, InstrumentStatusFlag
 class SpsExpose(VisitedCmd):
     """Handle SPS exposure command specifics, including visit and pfsConfig management."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, mcsExposureBefore=None, **kwargs):
         # Always parse visit information
         super().__init__(*args, parseVisit=True, **kwargs)
 
         self.visit = None
         self.pfsConfig = None
         self.doWritePfsConfig = True
+        self.mcsExposureBefore = mcsExposureBefore
 
         # Extract exposure type from command string
         _, exptype, _ = self.cmdStr.split(' ', 2)
@@ -77,6 +78,10 @@ class SpsExpose(VisitedCmd):
         """Set visit, process command, and finalize by inserting into visit_set."""
         with self.visitManager.getVisit(caller='sps') as visit:
             self.prepareVisit(visit)
+
+            if self.mcsExposureBefore and self.mcsExposureBefore['enabled']:
+                self.callMcsExposure(cmd, visit, **self.mcsExposureBefore)
+
             cmdRet = super().call(cmd)
 
             # Insert into visit_set in the database
@@ -90,6 +95,21 @@ class SpsExpose(VisitedCmd):
             self.release()
 
         return cmdRet
+
+    def callMcsExposure(self, cmd, visit, exptime, doFibreId, **kwargs):
+        """Turn on/off illuminators and take MCS exposure."""
+        doFibreIdArgs = 'doFibreId' if doFibreId else ''
+
+        cmdList = [('sps', 'bia on', 10), ('peb', 'led on', 10),
+                   ('mcs', f'expose object exptime={exptime} {doFibreIdArgs} frameId={visit.nextFrameId()}', 30),
+                   ('sps', 'bia off', 10), ('peb', 'led off', 10)]
+
+        # Just go through the script, note that it's no exception are raised, nor it's stopping.
+        for actor, cmdStr, timeLim in cmdList:
+            cmdVar = self.iicActor.cmdr.call(actor=actor, cmdStr=cmdStr, timeLim=timeLim)
+            gen, status = (cmd.warn, 'FAILED') if cmdVar.didFail else (cmd.inform, 'OK')
+
+            gen(f'text="Called {actor} {cmdStr} timeLim={timeLim} status={status}"')
 
     def prepareVisit(self, visit):
         """Prepare visit by setting it, generating keys, and verifying configuration."""
