@@ -134,12 +134,12 @@ class MoveToHome(FpsSequence):
     """ fps MoveToHome command."""
     seqtype = 'moveToHome'
 
-    def __init__(self, exptime, designId, cableBLampOn, thetaCCW=False, **seqKeys):
+    def __init__(self, exptime, designId, cableBLampOn, thetaCCW=False, noMCSexposure=False, **seqKeys):
         FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
 
         # move cobras to home, not supposed to, but meh.
         self.add('fps', 'moveToHome all',
-                 parseVisit=True, exptime=exptime, designId=designId, thetaCCW=thetaCCW,
+                 parseVisit=True, exptime=exptime, designId=designId, thetaCCW=thetaCCW, noMCSexposure=noMCSexposure,
                  timeLim=120)
 
     @classmethod
@@ -148,8 +148,9 @@ class MoveToHome(FpsSequence):
         exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
         cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
         thetaCCW = 'thetaCCW' in cmdKeys
+        noMCSexposure = 'noMCSexposure' in cmdKeys
 
-        return cls(exptime, designId, cableBLampOn, thetaCCW, **seqKeys)
+        return cls(exptime, designId, cableBLampOn, thetaCCW, noMCSexposure, **seqKeys)
 
 
 class GenPfsConfigFromMcs(FpsSequence):
