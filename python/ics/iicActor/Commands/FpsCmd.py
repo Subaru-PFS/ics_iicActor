@@ -39,11 +39,15 @@ class FpsCmd(object):
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
 
             ('moveToPfsDesign',
-             f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [@(twoStepsOff)] [@(noTweak)] [<nIteration>] [<tolerance>] [@shortExpOff] {translate.seqArgs}',
+             f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [@(twoStepsOff)] [@(noTweak)] [<nIteration>] '
+             f'[<tolerance>] [@shortExpOff] {translate.seqArgs}',
              self.moveToPfsDesign),
+
             ('moveToHome',
-             f'[@(all)] [<exptime>] [<designId>] [<maskFile>] [<wrtMaskFile>] [@thetaCCW] {translate.seqArgs}',
+             f'[@(all)] [<exptime>] [<designId>] [<maskFile>] [<wrtMaskFile>] [@thetaCCW] [@noMCSexposure] '
+             f'{translate.seqArgs}',
              self.moveToHome),
+
             ('genPfsConfigFromMcs', f'[<designId>] {translate.seqArgs}', self.genPfsConfigFromMcs),
             ('cobraMoveAngles', '@(phi|theta) <angle> [@(genPfsConfig)] [<maskFile>]', self.cobraMoveAngles),
             ('cobraMoveSteps', '@(phi|theta) <stepsize> [@(genPfsConfig)] [<maskFile>]', self.cobraMoveSteps),
