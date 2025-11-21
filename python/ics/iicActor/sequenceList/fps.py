@@ -135,7 +135,7 @@ class MoveToHome(FpsSequence):
     seqtype = 'moveToHome'
 
     def __init__(self, exptime, designId, cableBLampOn, thetaCCW=False, noMCSexposure=False, **seqKeys):
-        FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
+        FpsSequence.__init__(self, doTurnOnIlluminator=not noMCSexposure, cableBLampOn=cableBLampOn, **seqKeys)
 
         # move cobras to home, not supposed to, but meh.
         self.add('fps', 'moveToHome all',
