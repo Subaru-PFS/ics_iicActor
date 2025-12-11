@@ -56,6 +56,73 @@ class DitheredFlats(SpsSequence):
         return cls(cams, exptime, dcbOn, dcbOff, positions, duplicate, hexapodOff, **seqKeys)
 
 
+class FiberProfiles(SpsSequence):
+    """ Dithered Flats sequence """
+    seqtype = 'fiberProfiles'
+
+    def __init__(self, cams, exptime, dcbOn, dcbOff, positions, duplicate, hexapodOff, interleaveDark, nTraceBefore,
+                 nTraceAfter,
+                 **seqKeys):
+        SpsSequence.__init__(self, cams, **seqKeys)
+
+        # adding dcbOn and dcbOff commands.
+        if any(dcbOn.values()):
+            self.head.add('dcb', 'lamps', **dcbOn)
+
+        if any(dcbOff.values()):
+            self.tail.add('dcb', 'lamps', **dcbOff)
+
+        # taking a trace in home to start.
+        self.add('sps', 'slit start', cams=cams)
+        self.add('sps', 'slit home', cams=cams)
+        # taking nTraceBefore images in home first.
+        self.takeOneDuplicate(exptime, cams, int(duplicate * nTraceBefore), interleaveDark)
+
+        for position in positions:
+            self.add('sps', 'slit dither', x=position, pixels=True, abs=True, cams=cams)
+            self.takeOneDuplicate(exptime, cams, duplicate, interleaveDark)
+
+        # taking a trace in home to end.
+        self.add('sps', 'slit home', cams=cams)
+        self.takeOneDuplicate(exptime, cams, int(duplicate * nTraceAfter), interleaveDark)
+
+        # Turn hexapod off only if it was off in the first place.
+        if hexapodOff:
+            self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys, hexapodOff=False):
+        """Defining rules to construct ScienceObject object."""
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
+        seqKeys = translate.seqKeys(cmdKeys)
+        exptime, duplicate = translate.spsExposureKeys(cmdKeys)
+        dcbOn, dcbOff = translate.dcbKeys(cmdKeys, forceHalogen=True)
+        positions = translate.fiberProfilesKeys(cmdKeys)
+        interleaveDark = cmdKeys['interleaveDark'].values[0] if 'interleaveDark' in cmdKeys else False
+
+        actorConfig = iicActor.actorConfig['fiberProfiles']
+        nTraceBefore = cmdKeys['nTraceBefore'].values[0] if 'nTraceBefore' in cmdKeys else actorConfig['nTraceBefore']
+        nTraceAfter = cmdKeys['nTraceAfter'].values[0] if 'nTraceAfter' in cmdKeys else actorConfig['nTraceAfter']
+
+        return cls(cams, exptime, dcbOn, dcbOff, positions, duplicate, hexapodOff, interleaveDark, nTraceBefore,
+                   nTraceAfter,
+                   **seqKeys)
+
+    def takeOneDuplicate(self, exptime, cams, duplicate, interleaveDark):
+        """take one duplicate, interleave for nir arm if necessary."""
+        nirCam = [cam for cam in cams if cam.arm == 'n']
+
+        for i in range(duplicate):
+            self.expose('flat', exptime, cams, duplicate=1)
+            # interleave dark for nir.
+            if nirCam and interleaveDark:
+                SpsSequence.expose(self, 'dark', interleaveDark, nirCam, duplicate=1)
+
+    def setComments(self, rdaPosition):
+        """Setting default comments."""
+        self.comments = 'brn arm' if rdaPosition == 'low' else 'bmn arm'
+
+
 class Arcs(SpsSequence):
     """ Biases sequence """
     seqtype = 'arcs'
