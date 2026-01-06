@@ -1,6 +1,5 @@
 import logging
 
-import ics.iicActor.utils.opdb as opdbUtils
 import ics.utils.cmd as cmdUtils
 import ics.utils.sps.fits as fits
 import numpy as np
@@ -85,7 +84,8 @@ class SpsExpose(VisitedCmd):
             cmdRet = super().call(cmd)
 
             # Insert into visit_set in the database
-            opdbUtils.insertVisitSet('sps', sequence_id=self.sequence.sequence_id, pfs_visit_id=self.visitId)
+            self.sequence.engine.opdb.insertVisitSet('sps', sequence_id=self.sequence.sequence_id,
+                                                     pfs_visit_id=self.visitId)
 
             # Write pfsConfig if required, should not happen but let's be careful.
             if self.doWritePfsConfig:
@@ -138,8 +138,8 @@ class SpsExpose(VisitedCmd):
             # Retrieve the reference visit (visit0) for comparison
             visit0 = self.visitManager.activeField.getVisit0()
             # Compute the delta INSROT between now and visit0.
-            dINSROT = opdbUtils.getDeltaINSROT(visit0, self.visitId)
-        except (ValueError, exception.OpDBFailure):
+            dINSROT = self.sequence.engine.opdb.getDeltaINSROT(visit0, self.visitId)
+        except (ValueError, TypeError, exception.OpDBFailure):
             # Handle cases where INSROT calculation fails
             dINSROT = float(fitsMhs.INVALID)
 
@@ -161,8 +161,8 @@ class SpsExpose(VisitedCmd):
             pfsConfig.setInstrumentStatusFlag(InstrumentStatusFlag.INSROT_MISMATCH)
 
         # Insert into opdb immediately
-        opdbUtils.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=pfsConfig.visit0,
-                                     camMask=pfsConfig.camMask, instStatusFlag=pfsConfig.instStatusFlag)
+        self.sequence.engine.opdb.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=pfsConfig.visit0,
+                                                     camMask=pfsConfig.camMask, instStatusFlag=pfsConfig.instStatusFlag)
 
         # Ensure pfsConfig arms match those used in current sequence
         pfsConfig.arms = self.sequence.matchPfsConfigArms(pfsConfig.arms)

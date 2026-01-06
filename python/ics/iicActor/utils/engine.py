@@ -34,6 +34,7 @@ class Engine(object):
         self.visitManager = visitManager.VisitManager(actor)
         self.registry = registry.Registry(self)
         self.keyRepo = keyRepo.KeyRepo(self)
+        self.opdb = opdbUtils.OpdbHandler(self)
 
     @singleShot
     def runInThread(self, *args, **kwargs):
@@ -120,7 +121,7 @@ class Engine(object):
         """
         # If doContinue is True, retrieve the latest matching group ID
         if doContinue:
-            return opdbUtils.fetchLastGroupIdMatchingName(groupName)
+            return self.opdb.fetchLastGroupIdMatchingName(groupName)
 
         # Otherwise, create a new group ID for the sequence
-        return opdbUtils.insertSequenceGroup(groupName)
+        return self.opdb.insertSequenceGroup(groupName)

@@ -1,4 +1,3 @@
-import ics.iicActor.utils.opdb as opdbUtils
 import ics.iicActor.utils.translate as translate
 from ics.iicActor.utils.sequence import Sequence
 from ics.iicActor.utils.visited import VisitedCmd, VisitedSequence
@@ -21,7 +20,7 @@ class AgSequence(VisitedSequence):
         VisitedSequence.finalize(self)
         # ag command are ignored when it comes to visit_set, so making it happen manually.
         if self.insertVisitSet:
-            opdbUtils.insertVisitSet(self.seqtype, sequence_id=self.sequence_id, pfs_visit_id=self.visit.visitId)
+            self.engine.opdb.insertVisitSet(self.seqtype, sequence_id=self.sequence_id, pfs_visit_id=self.visit.visitId)
 
 
 class AcquireField(AgSequence):

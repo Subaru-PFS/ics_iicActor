@@ -1,6 +1,5 @@
 import os
 
-import ics.iicActor.utils.opdb as opdbUtils
 import ics.utils.sps.lamps.utils.lampState as lampState
 import numpy as np
 
@@ -27,10 +26,10 @@ def seqKeys(cmdKeys):
 
 def resolveGroupId(cmdKeys):
     """Resolve groupId from command keys, supporting -1 as the latest."""
-    groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
+    groupId = int(cmdKeys['groupId'].values[0]) if 'groupId' in cmdKeys else None
 
     if groupId == -1:
-        groupId = opdbUtils.fetchLastGroupId()
+        pass
     elif groupId is not None and groupId < 0:
         raise ValueError(f"Invalid groupId: {groupId}. Use -1 for latest or a non-negative integer (>= 0).")
 
