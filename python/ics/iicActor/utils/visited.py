@@ -1,4 +1,3 @@
-import ics.iicActor.utils.opdb as opdbUtils
 from ics.iicActor.utils.sequence import Sequence
 from ics.iicActor.utils.subcmd import SubCmd
 
@@ -79,4 +78,4 @@ class VisitedSequence(Sequence):
         self.visit.unlock()
         Sequence.finalize(self)
         # finally insert into visit_set table
-        opdbUtils.insertVisitSet(self.caller, sequence_id=self.sequence_id, pfs_visit_id=self.visit.visitId)
+        self.engine.opdb.insertVisitSet(self.caller, sequence_id=self.sequence_id, pfs_visit_id=self.visit.visitId)

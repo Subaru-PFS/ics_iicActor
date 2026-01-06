@@ -1,4 +1,3 @@
-import ics.iicActor.utils.opdb as opdbUtils
 import ics.utils.time as pfsTime
 from ics.iicActor.utils import exception
 from ics.iicActor.utils.lib import makeCmdStr
@@ -82,6 +81,11 @@ class Sequence(list):
     def initialize(self, engine, cmd):
         """Attach command"""
         self.engine = engine
+
+        # replacing with actual last groupId.
+        if self.group_id == -1:
+            self.group_id = self.engine.opdb.fetchLastGroupId()
+
         self.setCmd(cmd)
 
         # strip name and comments from rawCmd since it is redundant opdb/keyword scheme.
@@ -100,8 +104,10 @@ class Sequence(list):
     def startup(self):
         """Attach engine and attach cmd"""
         # initial insert into opdb.
-        self.sequence_id = opdbUtils.insertSequence(group_id=self.group_id, sequence_type=self.seqtype, name=self.name,
-                                                    comments=self.comments, cmd_str=self.cmdStr)
+        self.sequence_id = self.engine.opdb.insertSequence(group_id=self.group_id, sequence_type=self.seqtype,
+                                                           name=self.name,
+                                                           comments=self.comments,
+                                                           cmd_str=self.cmdStr)
         # declare active and generate allKeys.
         self.activate()
 
@@ -157,7 +163,7 @@ class Sequence(list):
         """Finalizing sequence."""
         cmd = self.getCmd()
         # insert sequence_status
-        opdbUtils.insertSequenceStatus(sequence_id=self.sequence_id, status=self.status)
+        self.engine.opdb.insertSequenceStatus(sequence_id=self.sequence_id, status=self.status)
         # process tail, catch exception there, do not care.
         for subCmd in self.tail:
             try:
@@ -218,7 +224,8 @@ class Sequence(list):
 
     def parseGroupName(self):
         """Parse a mhs compliant argument for groupName."""
-        return "no available value" if self.group_id is None else opdbUtils.getGroupNameFromGroupId(self.group_id)
+        return "no available value" if self.group_id is None else self.engine.opdb.getGroupNameFromGroupId(
+            self.group_id)
 
 
 class CmdList(list):
