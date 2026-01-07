@@ -28,7 +28,7 @@ class ScienceObject(SpsSequence):
         windowKeys = translate.windowKeys(cmdKeys)
 
         config = iicActor.actorConfig['scienceExposure']
-        mcsExposureBefore = config.get('mcsExposureBefore')
+        mcsExposureBefore = config.get('mcsExposureBefore').copy()
 
         return cls(cams, exptime, duplicate, windowKeys, mcsExposureBefore, **seqKeys)
 
