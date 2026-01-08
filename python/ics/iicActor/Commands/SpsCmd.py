@@ -36,7 +36,7 @@ class SpsCmd(object):
             ('scienceArc', f'{timedArcArgs} {commonArgs}', self.scienceArc),
             ('scienceTrace', f'{timedFlatArgs} {windowingArgs} {commonArgs}', self.scienceTrace),
             ('domeFlat', f'<exptime> {windowingArgs} {commonArgs}', self.domeFlat),
-            ('scienceObject', f'<exptime> {windowingArgs} {commonArgs}', self.scienceObject),
+            ('scienceObject', f'<exptime> {windowingArgs} [@skipMcsExposure] {commonArgs}', self.scienceObject),
             ('fiberProfiles',
              f'{timedFlatArgs} [<pixelRange>] [<interleaveDark>] [@skipOtherRedResolution] [<nTraceBefore>] [<nTraceAfter>] {commonArgs}',
              self.fiberProfiles),
