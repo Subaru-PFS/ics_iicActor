@@ -12,10 +12,6 @@ class ScienceObject(SpsSequence):
         isWindowed = bool(windowKeys)
         SpsSequence.__init__(self, cams, isWindowed=isWindowed, **seqKeys)
 
-        # forcing to None for windowed exposure if specified in config file.
-        if isWindowed and mcsExposureBefore['skipWindowed']:
-            mcsExposureBefore['enabled'] = False
-
         self.expose('object', exptime, cams,
                     duplicate=duplicate, windowKeys=windowKeys, mcsExposureBefore=mcsExposureBefore)
 
@@ -26,9 +22,14 @@ class ScienceObject(SpsSequence):
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         windowKeys = translate.windowKeys(cmdKeys)
+        isWindowed = bool(windowKeys)
 
         config = iicActor.actorConfig['scienceExposure']
         mcsExposureBefore = config.get('mcsExposureBefore').copy()
+
+        # Forcing to False for windowed exposure if specified in config file or directly specified in command.
+        if (isWindowed and mcsExposureBefore['skipWindowed']) or 'skipMcsExposure' in cmdKeys:
+            mcsExposureBefore['enabled'] = False
 
         return cls(cams, exptime, duplicate, windowKeys, mcsExposureBefore, **seqKeys)
 
