@@ -13,7 +13,7 @@ class SpsSequence(sequence.Sequence):
     """"""
 
     def __init__(self, cams, *args, isWindowed=False, forceGrating=False, returnWhenShutterClose=False,
-                 skipBiaCheck=False, **kwargs):
+                 skipBiaCheck=False, forcePfsConfig=False, **kwargs):
         self.cams = cams
 
         sequence.Sequence.__init__(self, *args, **kwargs)
@@ -21,6 +21,7 @@ class SpsSequence(sequence.Sequence):
         self.forceGrating = forceGrating
         self.returnWhenShutterClose = returnWhenShutterClose
         self.skipBiaCheck = skipBiaCheck
+        self.forcePfsConfig = forcePfsConfig
         self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
 
     @property

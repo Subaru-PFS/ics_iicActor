@@ -3,7 +3,7 @@ import os
 import ics.utils.sps.lamps.utils.lampState as lampState
 import numpy as np
 
-seqArgs = '[<name>] [<comments>] [@doTest] [@noDeps] [@forceGrating] [@returnWhenShutterClose] [@skipBiaCheck] [<groupId>] [<head>] [<tail>]'
+seqArgs = '[<name>] [<comments>] [@doTest] [@noDeps] [@forceGrating] [@returnWhenShutterClose] [@skipBiaCheck] [@forcePfsConfig] [<groupId>] [<head>] [<tail>]'
 
 
 def seqKeys(cmdKeys):
@@ -13,15 +13,16 @@ def seqKeys(cmdKeys):
     doTest = 'doTest' in cmdKeys
     noDeps = 'noDeps' in cmdKeys
     forceGrating = 'forceGrating' in cmdKeys
-    skipBiaCheck = 'skipBiaCheck' in cmdKeys
     returnWhenShutterClose = 'returnWhenShutterClose' in cmdKeys
+    skipBiaCheck = 'skipBiaCheck' in cmdKeys
+    forcePfsConfig = 'forcePfsConfig' in cmdKeys
     head = cmdKeys['head'].values if 'head' in cmdKeys else None
     tail = cmdKeys['tail'].values if 'tail' in cmdKeys else None
     groupId = resolveGroupId(cmdKeys)
 
     return dict(name=name, comments=comments, doTest=doTest, noDeps=noDeps, forceGrating=forceGrating,
-                returnWhenShutterClose=returnWhenShutterClose, skipBiaCheck=skipBiaCheck, head=head, tail=tail,
-                groupId=groupId, cmdKeys=cmdKeys)
+                returnWhenShutterClose=returnWhenShutterClose, skipBiaCheck=skipBiaCheck, forcePfsConfig=forcePfsConfig,
+                head=head, tail=tail, groupId=groupId, cmdKeys=cmdKeys)
 
 
 def resolveGroupId(cmdKeys):

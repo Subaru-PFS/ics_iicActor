@@ -156,7 +156,16 @@ class SpsExpose(VisitedCmd):
         selectedCams = self.sequence.engine.keyRepo.getSelectedCams(self.sequence.cams)
         camMask = PfsConfig.getCameraMask(selectedCams)
 
-        pfsConfig = self.visitManager.activeField.makePfsConfig(self.visitId, cards=cards, camMask=camMask)
+        isNonScienceExp = self.exptype in ['bias', 'dark', 'test']
+
+        forcePfsConfig = (
+                self.sequence.forcePfsConfig  # user explicitly requested to bypass pfsConfig checks
+                or isNonScienceExp  # pfsConfig0 is not meaningful for these exposure types
+                or not self.sequence.isPfiExposure  # no PFI involvement, so cobra positions are irrelevant
+        )
+
+        pfsConfig = self.visitManager.activeField.makePfsConfig(self.visitId, cards=cards, camMask=camMask,
+                                                                forcePfsConfig=forcePfsConfig)
 
         # setting INSROT_MISMATCH in pfsConfig if dINSROT > threshold
         if dINSROT not in {None, float(fitsMhs.INVALID)} and abs(dINSROT) > self.iicActor.actorConfig['maxDeltaINSROT']:
