@@ -240,6 +240,9 @@ class IicActor(actorcore.ICC.ICC):
 
         if status == 'Done' and self.visitManager.activeField:
             self.visitManager.activeField.loadPfsConfig0(designId, visit0)
+        elif status == 'inProgress' and self.visitManager.activeField:
+            # Cobras are about to move, resetting pfsConfig0.
+            self.visitManager.activeField.setPfsConfig0(None)
 
     def updateFiberIlluminationCB(self, keyVar):
         """Callback called whenever sps.fiberIllumination is generated."""
