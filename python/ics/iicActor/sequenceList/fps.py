@@ -139,7 +139,8 @@ class MoveToHome(FpsSequence):
 
         # move cobras to home, not supposed to, but meh.
         self.add('fps', 'moveToHome all',
-                 parseVisit=True, exptime=exptime, designId=designId, thetaCCW=thetaCCW, noMCSexposure=noMCSexposure,
+                 parseVisit=not noMCSexposure, exptime=exptime, designId=designId,
+                 thetaCCW=thetaCCW, noMCSexposure=noMCSexposure,
                  timeLim=120)
 
     @classmethod

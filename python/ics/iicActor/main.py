@@ -99,9 +99,6 @@ class IicActor(actorcore.ICC.ICC):
                 self.visitManager.finishField()
                 self.genPfsDesignKey(cmd)
                 return
-            # if pfi is connected, you do not want to declare a new field, unless you specifically asked for it.
-            if not genVisit0:
-                return
         else:
             # no merging for pfi, at least for now.
             mergedDesign = self.mergeDesignFromCurrentSetup()
@@ -207,7 +204,7 @@ class IicActor(actorcore.ICC.ICC):
         designId = f'0x{designId:016x}' if designId else designId
         return self.actorData.persistKey('fpsDesignId', designId)
 
-    def declareFpsDesign(self, cmd, designId=None, variant=0):
+    def declareFpsDesign(self, cmd, designId=None, variant=0, genVisit0=True):
         """Declare current FpsDesignId, note that if only pfi is connected FpsDesignId==PfsDesignId."""
         cmdKeys = cmd.cmd.keywords
         designId = cmdKeys['designId'].values[0] if designId is None else designId
@@ -223,7 +220,7 @@ class IicActor(actorcore.ICC.ICC):
         # persist fps.pfsDesignId.
         self.setFpsDesignId(designId)
         # generate PfsDesign, specifically asking for to generate visit0.
-        self.genPfsDesign(cmd, genVisit0=True)
+        self.genPfsDesign(cmd, genVisit0=genVisit0)
 
     def fpsConfigCB(self, keyVar):
         """Callback called whenever fps.pfsConfig is generated."""

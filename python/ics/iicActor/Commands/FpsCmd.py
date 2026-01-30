@@ -254,6 +254,7 @@ class FpsCmd(object):
            To be inserted in opdb:iic_sequence.comments.
         """
         cmdKeys = cmd.cmd.keywords
+        genVisit0 = 'noMCSexposure' not in cmdKeys
 
         maskFileArgs = translate.getMaskFileArgsFromCmd(cmdKeys, self.actor.actorConfig)
 
@@ -261,7 +262,7 @@ class FpsCmd(object):
         keys = cmdUtils.cmdVarToKeys(cmdVar)
         designId = int(keys['fpsDesignId'].values[0], 16)
 
-        self.actor.declareFpsDesign(cmd, designId=designId)
+        self.actor.declareFpsDesign(cmd, designId=designId, genVisit0=genVisit0)
         activePfsDesign = self.actor.engine.visitManager.activeField.pfsDesign
         toBeMoved = activePfsDesign.targetType == TargetType.HOME
 
