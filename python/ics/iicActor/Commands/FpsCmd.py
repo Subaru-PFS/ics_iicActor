@@ -285,10 +285,6 @@ class FpsCmd(object):
             if self.actor.engine.visitManager.activeField.pfsConfig0:
                 self.actor.engine.visitManager.activeField.pfsConfig0.targetType[toBeMoved] = TargetType.HOME
 
-        # that should be greatly discouraged, we have to reset pfsConfig0 in that case.
-        if 'noMcsExposure' in cmdKeys:
-            self.actor.engine.visitManager.activeField.setPfsConfig0(None)
-
         if cmd.isAlive():
             cmd.finish()
 
