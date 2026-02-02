@@ -44,7 +44,7 @@ class FpsCmd(object):
              self.moveToPfsDesign),
 
             ('moveToHome',
-             f'[@(all)] [<exptime>] [<designId>] [<maskFile>] [<wrtMaskFile>] [@thetaCCW] [@noMCSexposure] '
+             f'[@(phi|theta|all)] [<exptime>] [<designId>] [<maskFile>] [<wrtMaskFile>] [@thetaCCW] [@noMCSexposure] '
              f'{translate.seqArgs}',
              self.moveToHome),
 
