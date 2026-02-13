@@ -255,10 +255,16 @@ class FpsCmd(object):
         """
         cmdKeys = cmd.cmd.keywords
         genVisit0 = 'noMCSexposure' not in cmdKeys
+        if 'theta' in cmdKeys:
+            homingType = 'theta'
+        elif 'phi' in cmdKeys:
+            homingType = 'phi'
+        else:
+            homingType = 'all'
 
         maskFileArgs = translate.getMaskFileArgsFromCmd(cmdKeys, self.actor.actorConfig)
 
-        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=f'createHomeDesign {maskFileArgs}'.strip(), timeLim=10)
+        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=f'createHomeDesign {homingType} {maskFileArgs}'.strip(), timeLim=10)
         keys = cmdUtils.cmdVarToKeys(cmdVar)
         designId = int(keys['fpsDesignId'].values[0], 16)
 
