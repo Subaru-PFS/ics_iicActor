@@ -71,11 +71,11 @@ class IicActor(actorcore.ICC.ICC):
             for spectrographId in range(1, 5):
                 enuActor = f'enu_sm{spectrographId}'
                 self.addModels([enuActor])
-                self.buffer.attachCallback('sps', f'sm{spectrographId}LightSource', self.genPfsDesign)
+                self.buffer.attachCallback('sps', f'sm{spectrographId}LightSource', self._onDesignInputsChanged)
                 self.models[enuActor].keyVarDict['redResolution'].addCallback(self.engine.resourceManager.freeEnu)
 
             for dcb in {'dcb', 'dcb2'}:
-                self.buffer.attachCallback(dcb, 'designId', self.genPfsDesign)
+                self.buffer.attachCallback(dcb, 'designId', self._onDesignInputsChanged)
 
             self.models['fps'].keyVarDict['pfsConfig'].addCallback(self.fpsConfigCB)
             self.models['sps'].keyVarDict['fiberIllumination'].addCallback(self.updateFiberIlluminationCB)
@@ -87,28 +87,32 @@ class IicActor(actorcore.ICC.ICC):
         for actor in ['hub', 'sps', 'dcb', 'dcb2']:
             self.cmdr.bgCall(callFunc=None, actor=actor, cmdStr='status')
 
-    def genPfsDesign(self, cmd=None, genVisit0=False):
-        """Called from sps.smXLightSource or dcb.designId callbacks, this reset the current field and attempt to
-        regenerate a new design file based on the current config."""
+    def _onDesignInputsChanged(self, cmd=None):
+        """Called from callbacks only."""
         cmd = self.bcast if cmd is None else cmd
 
+        # no merging for pfi, at least for now.
         if self.pfiConnected:
-            # fpsDesignId was not declared since pfi is connected, make sure to reset the current PfsField.
-            designId, designedAt = self.getFpsDesignId(), None
+            designId = self.getFpsDesignId()
+            # fpsDesignId was not declared since pfi is connected, make sure to reset the current PfsField
             if designId is None:
                 self.visitManager.finishField()
                 self.genPfsDesignKey(cmd)
-                return
+            return
+        # pfi is not connected: merge SuNSS/DCB/AFL designs.
         else:
-            # no merging for pfi, at least for now.
             mergedDesign = self.mergeDesignFromCurrentSetup()
             designId, designedAt = self.writePfsDesign(mergedDesign)
 
+        self.declarePfsDesign(cmd, designId, genVisit0=False, designedAt=designedAt)
+
+    def declarePfsDesign(self, cmd, designId, genVisit0=False, designedAt=None):
+        """declarePfsDesign."""
         # declaring and loading a new PfsDesign, genVisit0 if a fps.convergence is expected.
         pfsDesign, visit0 = self.visitManager.declareNewField(designId, genVisit0=genVisit0)
+        # Gen PfsDesign keyword.
         self.genPfsDesignKey(cmd)
-
-        # Ingest design.
+        # Ingest design into opdb.
         designDB.ingest(cmd, pfsDesign, designed_at=designedAt)
 
     def mergeDesignFromCurrentSetup(self):
@@ -178,7 +182,6 @@ class IicActor(actorcore.ICC.ICC):
         Returns (designId, designedAt), where designedAt is 'now' if the
         design file was written, or None if it already existed.
         """
-
         designedAt = None
 
         # Check if designFile already exists.
@@ -220,7 +223,7 @@ class IicActor(actorcore.ICC.ICC):
         # persist fps.pfsDesignId.
         self.setFpsDesignId(designId)
         # generate PfsDesign, specifically asking for to generate visit0.
-        self.genPfsDesign(cmd, genVisit0=genVisit0)
+        self.declarePfsDesign(cmd, designId, genVisit0=genVisit0)
 
     def fpsConfigCB(self, keyVar):
         """Callback called whenever fps.pfsConfig is generated."""
