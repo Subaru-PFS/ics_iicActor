@@ -45,8 +45,7 @@ class FpsCmd(object):
 
             ('moveToHome',
              f'[@(phi|theta|all)] [<exptime>] [<designId>] [<maskFile>] [<wrtMaskFile>] [@thetaCCW] [@noMCSexposure] '
-             f'{translate.seqArgs}',
-             self.moveToHome),
+             f'[@genPfsConfig] {translate.seqArgs}', self.moveToHome),
 
             ('genPfsConfigFromMcs', f'[<designId>] {translate.seqArgs}', self.genPfsConfigFromMcs),
             ('cobraMoveAngles', '@(phi|theta) <angle> [@(genPfsConfig)] [<maskFile>]', self.cobraMoveAngles),
@@ -254,7 +253,7 @@ class FpsCmd(object):
            To be inserted in opdb:iic_sequence.comments.
         """
         cmdKeys = cmd.cmd.keywords
-        genVisit0 = 'noMCSexposure' not in cmdKeys
+        genPfsConfig = not 'noMCSexposure' in cmdKeys or 'genPfsConfig' in cmdKeys
         if 'theta' in cmdKeys:
             homingType = 'theta'
         elif 'phi' in cmdKeys:
@@ -268,7 +267,7 @@ class FpsCmd(object):
         keys = cmdUtils.cmdVarToKeys(cmdVar)
         designId = int(keys['fpsDesignId'].values[0], 16)
 
-        self.actor.declareFpsDesign(cmd, designId=designId, genVisit0=genVisit0)
+        self.actor.declareFpsDesign(cmd, designId=designId, genVisit0=genPfsConfig)
         activePfsDesign = self.actor.engine.visitManager.activeField.pfsDesign
         toBeMoved = activePfsDesign.targetType == TargetType.HOME
 
