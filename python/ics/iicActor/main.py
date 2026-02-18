@@ -293,17 +293,18 @@ class IicActor(actorcore.ICC.ICC):
 
     def genPfsConfigKey(self, cmd, pfsConfig):
         """Generate pfsConfig keyword."""
-        cmd.inform('pfsConfig=0x%016x,%d,"%s",%.6f,%.6f,%.6f,"%s",0x%016x,%d,"%s"' % (pfsConfig.pfsDesignId,
-                                                                                      pfsConfig.visit,
-                                                                                      getDateDir(pfsConfig),
-                                                                                      pfsConfig.raBoresight,
-                                                                                      pfsConfig.decBoresight,
-                                                                                      pfsConfig.posAng,
-                                                                                      pfsConfig.designName,
-                                                                                      pfsConfig.designId0,
-                                                                                      pfsConfig.variant,
-                                                                                      pfsConfig.decodeInstrumentStatusFlag()
-                                                                                      ))
+        cmd.inform('pfsConfig=0x%016x,%d,%d,"%s",%.6f,%.6f,%.6f,"%s",0x%016x,%d,"%s"' % (pfsConfig.pfsDesignId,
+                                                                                         pfsConfig.visit,
+                                                                                         pfsConfig.visit0,
+                                                                                         getDateDir(pfsConfig),
+                                                                                         pfsConfig.raBoresight,
+                                                                                         pfsConfig.decBoresight,
+                                                                                         pfsConfig.posAng,
+                                                                                         pfsConfig.designName,
+                                                                                         pfsConfig.designId0,
+                                                                                         pfsConfig.variant,
+                                                                                         pfsConfig.decodeInstrumentStatusFlag()
+                                                                                         ))
 
 
 def main():
