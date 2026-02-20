@@ -6,7 +6,7 @@ class FpsSequence(VisitedSequence):
     caller = 'fps'
 
     def __init__(self, *args, doTurnOnIlluminator=False, cableBLampOn=False, **kwargs):
-        VisitedSequence.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         if doTurnOnIlluminator:
             self.turnOnIlluminators(cableBLampOn)
@@ -39,8 +39,8 @@ class BoresightLoop(FpsSequence):
     """
     seqtype = 'boresightLoop'
 
-    def __init__(self, exptime, nExposures, cableBLampOn, **seqKeys):
-        FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
+    def __init__(self, exptime, nExposures, **fpsKeys):
+        super().__init__(**fpsKeys)
 
         self.exptime = exptime
         self.nExposures = nExposures
@@ -58,11 +58,11 @@ class BoresightLoop(FpsSequence):
         """Defining rules to construct BoresightLoop object."""
         seqKeys = translate.seqKeys(cmdKeys)
 
-        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else 2.0
+        exptime = translate.resolveMcsExptime(cmdKeys, iicActor.actorConfig)
         nExposures = cmdKeys['nExposures'].values[0] if 'nExposures' in cmdKeys else 2
-        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
 
-        return cls(exptime, nExposures, cableBLampOn, **seqKeys)
+        return cls(exptime, nExposures, **illuminators, **seqKeys)
 
     def addPosition(self):
         """Acquire data for a new boresight position."""
@@ -78,8 +78,8 @@ class FpsLoop(FpsSequence):
     """Run an MCS+FPS loop, without moving cobras."""
     seqtype = 'fpsLoop'
 
-    def __init__(self, exptime, cnt, cableBLampOn, **seqKeys):
-        FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
+    def __init__(self, exptime, cnt, **fpsKeys):
+        super().__init__(**fpsKeys)
 
         timeLim = 30 + (15 + exptime) * cnt
         self.add('fps', 'testLoop', parseVisit=True, exptime=exptime, cnt=cnt, timeLim=timeLim)
@@ -89,82 +89,127 @@ class FpsLoop(FpsSequence):
         """Defining rules to construct FpsLoop object."""
         seqKeys = translate.seqKeys(cmdKeys)
 
-        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else 1.0
+        exptime = translate.resolveMcsExptime(cmdKeys, iicActor.actorConfig)
         cnt = cmdKeys['cnt'].values[0] if 'cnt' in cmdKeys else 1
-        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
 
-        return cls(exptime, cnt, cableBLampOn, **seqKeys)
+        return cls(exptime, cnt, **seqKeys, **illuminators)
 
 
 class MoveToPfsDesign(FpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'moveToPfsDesign'
 
-    def __init__(self, designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, shortExpOff, noTweak,
-                 cableBLampOn, **seqKeys):
-        FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
-
-        # Removing maskFile for now, it's broken on fps side (per INSTRM-2192)
-        maskFile = False
+    def __init__(self, designId, nIteration, tolerance, exptime, noHome, twoStepsOff, shortExpOff, noTweak,
+                 maskFile, **fpsKeys):
+        super().__init__(**fpsKeys)
 
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
-                 tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=goHome, twoStepsOff=twoStepsOff,
+                 tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=not noHome, twoStepsOff=twoStepsOff,
                  shortExpOff=shortExpOff, noTweak=noTweak, timeLim=600)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
         seqKeys = translate.seqKeys(cmdKeys)
-        exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
-        maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
 
-        nIteration = cmdKeys['nIteration'].values[0] if 'nIteration' in cmdKeys else False
-        tolerance = cmdKeys['tolerance'].values[0] if 'tolerance' in cmdKeys else False
-        goHome = 'noHome' not in cmdKeys
-        twoStepsOff = 'twoStepsOff' in cmdKeys
-        shortExpOff = 'shortExpOff' in cmdKeys
-        noTweak = 'noTweak' in cmdKeys
-        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
+        # maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
+        # Removing maskFile for now, it's broken on fps side (per INSTRM-2192)
+        maskFile = False
 
-        return cls(designId, nIteration, tolerance, exptime, maskFile, goHome, twoStepsOff, shortExpOff, noTweak,
-                   cableBLampOn, **seqKeys)
+        moveToPfsDesignConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'moveToPfsDesign')
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
+
+        return cls(designId, maskFile=maskFile, **moveToPfsDesignConfig, **seqKeys, **illuminators)
 
 
 class MoveToHome(FpsSequence):
     """ fps MoveToHome command."""
     seqtype = 'moveToHome'
 
-    def __init__(self, exptime, designId, cableBLampOn, thetaCCW=False, noMCSexposure=False,
-                 phi=False, theta=False, all=False, genPfsConfig=False, **seqKeys):
-        FpsSequence.__init__(self, doTurnOnIlluminator=not noMCSexposure, cableBLampOn=cableBLampOn, **seqKeys)
+    def __init__(self, exptime, designId, noMCSexposure=False, phi=False, theta=False, all=False, parseVisit=True,
+                 **fpsKeys):
+        super().__init__(**fpsKeys)
 
         # move cobras to home, not supposed to, but meh.
         self.add('fps', 'moveToHome', phi=phi, theta=theta, all=all,
-                 parseVisit=genPfsConfig, exptime=exptime, designId=designId,
-                 thetaCCW=thetaCCW, noMCSexposure=noMCSexposure,
+                 parseVisit=parseVisit, exptime=exptime, designId=designId, noMCSexposure=noMCSexposure,
                  timeLim=120)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
         seqKeys = translate.seqKeys(cmdKeys)
-        exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
-        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
-        thetaCCW = 'thetaCCW' in cmdKeys
+        exptime = translate.resolveMcsExptime(cmdKeys, iicActor.actorConfig)
+
         noMCSexposure = 'noMCSexposure' in cmdKeys
-        genPfsConfig = not 'noMCSexposure' in cmdKeys or 'genPfsConfig' in cmdKeys
+        parseVisit = not noMCSexposure or 'genPfsConfig' in cmdKeys
         phi = 'phi' in cmdKeys
         theta = 'theta' in cmdKeys
         all = 'all' in cmdKeys or (not phi and not theta)
 
-        return cls(exptime, designId, cableBLampOn, thetaCCW, noMCSexposure, phi, theta, all, genPfsConfig, **seqKeys)
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
+
+        return cls(exptime, designId, noMCSexposure, phi, theta, all, parseVisit, **seqKeys, **illuminators)
+
+
+class NearDotConvergence(MoveToPfsDesign):
+    seqtype = 'nearDotConvergence'
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys, designId):
+        """Defining rules to construct NearDotConvergence object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+
+        maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
+        nearDotConvergenceConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'nearDotConvergence')
+
+        return cls(designId, maskFile=maskFile, **nearDotConvergenceConfig, **seqKeys, **illuminators)
+
+
+class DotCrossing(FpsSequence):
+    """ fps cobraMoveSteps crossing loop. """
+    seqtype = 'dotCrossing'
+
+    def __init__(self, exptime, count, stepSize, **fpsKeys):
+        super().__init__(**fpsKeys)
+
+        if not hasattr(self, 'motor'):
+            raise AttributeError('DotCrossing subclasses must define motor')
+
+        self.add('mcs', 'expose object', parseFrameId=True, exptime=exptime, doFibreId=True)
+
+        for iterNum in range(count):
+            self.add('fps', f'cobraMoveSteps {self.motor}', stepsize=stepSize)
+            self.add('mcs', 'expose object', parseFrameId=True, exptime=exptime, doFibreId=True)
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct DotCrossing object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
+        dotCrossingConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'dotCrossing')
+
+        return cls(**dotCrossingConfig, **seqKeys, **illuminators)
+
+
+class PhiCrossing(DotCrossing):
+    motor = 'phi'
+    seqtype = 'phiCrossing'
+
+
+class ThetaCrossing(DotCrossing):
+    motor = 'theta'
+    seqtype = 'thetaCrossing'
 
 
 class GenPfsConfigFromMcs(FpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'genPfsConfigFromMcs'
 
-    def __init__(self, exptime, designId, cableBLampOn, **seqKeys):
-        FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
+    def __init__(self, exptime, designId, **fpsKeys):
+        super().__init__(**fpsKeys)
 
         self.add('mcs', 'expose object', exptime=exptime, parseFrameId=True, doFibreId=True)
         self.add('fps', 'genPfsConfigFromMcs', parseVisit=True, designId=designId)
@@ -173,10 +218,11 @@ class GenPfsConfigFromMcs(FpsSequence):
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
         """Defining rules to construct DotCrossing object."""
         seqKeys = translate.seqKeys(cmdKeys)
-        exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
-        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
 
-        return cls(exptime, designId, cableBLampOn, **seqKeys)
+        exptime = translate.resolveMcsExptime(cmdKeys, iicActor.actorConfig)
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
+
+        return cls(exptime, designId, **seqKeys, **illuminators)
 
 
 class GenBlackDotsConfig(GenPfsConfigFromMcs):
@@ -187,8 +233,8 @@ class CobraMoveAngles(FpsSequence):
     """ fps MotorOntimeSearch command. """
     seqtype = 'cobraMoveAngles'
 
-    def __init__(self, phi, theta, angle, maskFile, genPfsConfig, exptime, designId, cableBLampOn, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys, doTurnOnIlluminator=genPfsConfig, cableBLampOn=cableBLampOn)
+    def __init__(self, phi, theta, angle, maskFile, genPfsConfig, exptime, designId, **fpsKeys):
+        super().__init__(**fpsKeys)
 
         self.add('fps', f'cobraMoveAngles', phi=phi, theta=theta, angle=angle, maskFile=maskFile)
 
@@ -207,18 +253,18 @@ class CobraMoveAngles(FpsSequence):
         maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
 
         genPfsConfig = 'genPfsConfig' in cmdKeys
-        exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
-        cableBLampOn = genPfsConfig and iicActor.actorConfig['fps']['cableBLampOn']
+        exptime = translate.resolveMcsExptime(cmdKeys, iicActor.actorConfig)
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
 
-        return cls(phi, theta, angle, maskFile, genPfsConfig, exptime, designId, cableBLampOn, **seqKeys)
+        return cls(phi, theta, angle, maskFile, genPfsConfig, exptime, designId, **seqKeys, **illuminators)
 
 
 class CobraMoveSteps(FpsSequence):
     """ fps MotorOntimeSearch command. """
     seqtype = 'cobraMoveSteps'
 
-    def __init__(self, phi, theta, stepSize, maskFile, genPfsConfig, exptime, designId, cableBLampOn, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys, doTurnOnIlluminator=genPfsConfig, cableBLampOn=cableBLampOn)
+    def __init__(self, phi, theta, stepSize, maskFile, genPfsConfig, exptime, designId, **fpsKeys):
+        super().__init__(**fpsKeys)
 
         self.add('fps', f'cobraMoveSteps', phi=phi, theta=theta, stepsize=stepSize, maskFile=maskFile)
 
@@ -237,173 +283,7 @@ class CobraMoveSteps(FpsSequence):
         maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
 
         genPfsConfig = 'genPfsConfig' in cmdKeys
-        exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
-        cableBLampOn = genPfsConfig and iicActor.actorConfig['fps']['cableBLampOn']
+        exptime = translate.resolveMcsExptime(cmdKeys, iicActor.actorConfig)
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
 
-        return cls(phi, theta, stepSize, maskFile, genPfsConfig, exptime, designId, cableBLampOn, **seqKeys)
-
-
-class MovePhiToAngle(FpsSequence):
-    """ fps MovePhiToAngle command. """
-    seqtype = 'movePhiToAngle'
-    timePerIteration = 150
-
-    def __init__(self, angle, nIteration, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
-        timeLim = nIteration * MovePhiToAngle.timePerIteration
-
-        self.add('fps', 'movePhiToAngle', parseVisit=True, angle=angle, iteration=nIteration, timeLim=timeLim)
-
-    @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
-        """Defining rules to construct FpsLoop object."""
-        seqKeys = translate.seqKeys(cmdKeys)
-
-        angle = cmdKeys['angle'].values[0]
-        nIteration = cmdKeys['nIteration'].values[0]
-
-        return cls(angle, nIteration, **seqKeys)
-
-
-class MoveToSafePosition(FpsSequence):
-    """ fps MoveToSafePosition command. """
-    seqtype = 'moveToSafePosition'
-
-    def __init__(self, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
-
-        self.add('fps', 'moveToSafePosition', parseVisit=True, timeLim=600)
-
-    @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
-        """Defining rules to construct FpsLoop object."""
-        seqKeys = translate.seqKeys(cmdKeys)
-        return cls(**seqKeys)
-
-
-class GotoVerticalFromPhi60(FpsSequence):
-    """ fps GotoVerticalFromPhi60 command. """
-    seqtype = 'gotoVerticalFromPhi60'
-
-    def __init__(self, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
-
-        self.add('fps', 'moveToSafePosition', parseVisit=True, timeLim=600)
-
-    @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
-        """Defining rules to construct FpsLoop object."""
-        seqKeys = translate.seqKeys(cmdKeys)
-        return cls(**seqKeys)
-
-
-class MakeMotorMap(FpsSequence):
-    """ fps MakeMotorMap command. """
-    seqtype = 'makeMotorMap'
-    timePerRepeat = 150
-
-    def __init__(self, phi, theta, stepsize, repeat, slowOnly, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
-        timeLim = repeat * MakeMotorMap.timePerRepeat
-
-        self.add('fps', 'makeMotorMap', parseVisit=True,
-                 phi=phi, theta=theta, stepsize=stepsize, repeat=repeat, slowOnly=slowOnly, timeLim=timeLim)
-
-    @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
-        """Defining rules to construct FpsLoop object."""
-        seqKeys = translate.seqKeys(cmdKeys)
-
-        phi = 'phi' in cmdKeys
-        theta = 'theta' in cmdKeys
-        stepsize = cmdKeys['stepsize'].values[0]
-        repeat = cmdKeys['repeat'].values[0]
-        slowOnly = 'slowOnly' in cmdKeys
-
-        return cls(phi, theta, stepsize, repeat, slowOnly, **seqKeys)
-
-
-class MakeOntimeMap(FpsSequence):
-    """ fps MakeOntimeMap command. """
-    seqtype = 'makeOntimeMap'
-
-    def __init__(self, phi, theta, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
-
-        self.add('fps', 'makeOntimeMap', parseVisit=True, phi=phi, theta=theta, timeLim=600)
-
-    @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
-        """Defining rules to construct FpsLoop object."""
-        seqKeys = translate.seqKeys(cmdKeys)
-
-        phi = 'phi' in cmdKeys
-        theta = 'theta' in cmdKeys
-
-        return cls(phi, theta, **seqKeys)
-
-
-class AngleConvergenceTest(FpsSequence):
-    """ fps AngleConvergenceTest command. """
-    seqtype = 'angleConvergenceTest'
-
-    def __init__(self, phi, theta, angleTargets, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
-
-        self.add('fps', 'angleConvergenceTest', parseVisit=True,
-                 phi=phi, theta=theta, angleTargets=angleTargets, timeLim=600)
-
-    @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
-        """Defining rules to construct FpsLoop object."""
-        seqKeys = translate.seqKeys(cmdKeys)
-
-        phi = 'phi' in cmdKeys
-        theta = 'theta' in cmdKeys
-        angleTargets = cmdKeys['angleTargets'].values[0]
-
-        return cls(phi, theta, angleTargets, **seqKeys)
-
-
-class TargetConvergenceTest(FpsSequence):
-    """ fps TargetConvergenceTest command. """
-    seqtype = 'targetConvergenceTest'
-
-    def __init__(self, ontime, speed, totalTargets, maxsteps, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
-        timeLim = int(TargetConvergenceTest.timeLim / speed)
-
-        self.add('fps', 'targetConvergenceTest', parseVisit=True,
-                 ontime=ontime, speed=speed, totalTargets=totalTargets, maxsteps=maxsteps, timeLim=timeLim)
-
-    @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
-        """Defining rules to construct FpsLoop object."""
-        seqKeys = translate.seqKeys(cmdKeys)
-
-        ontime = 'ontime' in cmdKeys
-        speed = 'speed' in cmdKeys
-        totalTargets = cmdKeys['totalTargets'].values[0]
-        maxsteps = cmdKeys['maxsteps'].values[0]
-
-        return cls(ontime, speed, totalTargets, maxsteps, **seqKeys)
-
-
-class MotorOntimeSearch(FpsSequence):
-    """ fps MotorOntimeSearch command. """
-    seqtype = 'motorOntimeSearch'
-
-    def __init__(self, phi, theta, **seqKeys):
-        FpsSequence.__init__(self, **seqKeys)
-
-        self.add('fps', 'motorOntimeSearch', parseVisit=True, phi=phi, theta=theta, timeLim=600)
-
-    @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
-        """Defining rules to construct FpsLoop object."""
-        seqKeys = translate.seqKeys(cmdKeys)
-
-        phi = 'phi' in cmdKeys
-        theta = 'theta' in cmdKeys
-
-        return cls(phi, theta, **seqKeys)
+        return cls(phi, theta, stepSize, maskFile, genPfsConfig, exptime, designId, **seqKeys, **illuminators)

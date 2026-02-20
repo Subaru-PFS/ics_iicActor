@@ -10,6 +10,7 @@ import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 import pandas as pd
 from ics.iicActor.utils.engine import ExecMode
+from ics.iicActor.utils.sequenceStatus import Flag
 from ics.utils.threading import singleShot
 from pfs.datamodel.pfsConfig import TargetType
 
@@ -44,24 +45,18 @@ class FpsCmd(object):
              self.moveToPfsDesign),
 
             ('moveToHome',
-             f'[@(phi|theta|all)] [<exptime>] [<designId>] [<maskFile>] [<wrtMaskFile>] [@thetaCCW] [@noMCSexposure] '
+             f'[@(phi|theta|all)] [<exptime>] [<designId>] [<maskFile>] [<wrtMaskFile>] [@noMCSexposure] '
              f'[@genPfsConfig] {translate.seqArgs}', self.moveToHome),
 
             ('genPfsConfigFromMcs', f'[<designId>] {translate.seqArgs}', self.genPfsConfigFromMcs),
             ('cobraMoveAngles', '@(phi|theta) <angle> [@(genPfsConfig)] [<maskFile>]', self.cobraMoveAngles),
             ('cobraMoveSteps', '@(phi|theta) <stepsize> [@(genPfsConfig)] [<maskFile>]', self.cobraMoveSteps),
-            # from here not really used.
 
-            ('movePhiToAngle', f'<angle> <nIteration> {translate.seqArgs}', self.movePhiToAngle),
-            ('moveToSafePosition', f'{translate.seqArgs}', self.moveToSafePosition),
-            ('gotoVerticalFromPhi60', f'{translate.seqArgs}', self.gotoVerticalFromPhi60),
-            ('makeMotorMap', f'@(phi|theta) <stepsize> <repeat> [@slowOnly] {translate.seqArgs}', self.makeMotorMap),
-            ('makeOntimeMap', f'@(phi|theta) {translate.seqArgs}', self.makeOntimeMap),
-            ('angleConvergenceTest', f'@(phi|theta) <angleTargets> {translate.seqArgs}', self.angleConvergenceTest),
-            ('targetConvergenceTest', f'@(ontime|speed) <totalTargets> <maxsteps> {translate.seqArgs}',
-             self.targetConvergenceTest),
-            ('motorOntimeSearch', f'@(phi|theta) {translate.seqArgs}', self.motorOntimeSearch),
-
+            ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {translate.seqArgs}', self.dotCrossing),
+            ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {translate.seqArgs}', self.dotCrossing),
+            ('nearDotConvergence',
+             f'@(phi|theta) [<designId>] [<exptime>] [<maskFile>] [@(noHome)] {translate.seqArgs}',
+             self.nearDotConvergenceCmd),
         ]
 
         # Define typed command arguments for the above commands.
@@ -81,6 +76,7 @@ class FpsCmd(object):
                                         keys.Key("cnt", types.Int(), default=1, help="times to run loop"),
                                         keys.Key("angle", types.Int(), help="arm angle"),
                                         keys.Key("stepsize", types.Int(), help="step size of motor"),
+                                        keys.Key('count', types.Int(), help='nExposure'),
                                         keys.Key("repeat", types.Int(),
                                                  help="number of iteration for motor map generation"),
                                         keys.Key("angleTargets", types.Int(),
@@ -263,7 +259,8 @@ class FpsCmd(object):
 
         maskFileArgs = translate.getMaskFileArgsFromCmd(cmdKeys, self.actor.actorConfig)
 
-        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=f'createHomeDesign {homingType} {maskFileArgs}'.strip(), timeLim=10)
+        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=f'createHomeDesign {homingType} {maskFileArgs}'.strip(),
+                                      timeLim=10)
         keys = cmdUtils.cmdVarToKeys(cmdVar)
         designId = int(keys['fpsDesignId'].values[0], 16)
 
@@ -351,161 +348,49 @@ class FpsCmd(object):
         cobraMoveSteps = fpsSequence.CobraMoveSteps.fromCmdKeys(self.actor, cmdKeys, designId=designId)
         self.engine.runInThread(cmd, cobraMoveSteps)
 
-    def movePhiToAngle(self, cmd):
-        """
-        `iic movePhiToAngle angle=N nIteration=N [name=\"SSS\"] [comments=\"SSS\"]`
-
-        Move Phi arm to angle.
-
-        Parameters
-        ---------
-        angle : `int`
-           specified angle .
-        nIteration : `int`
-           Number of iteration.
-        name : `str`
-           To be inserted in opdb:iic_sequence.name.
-        comments : `str`
-           To be inserted in opdb:iic_sequence.comments.
-        """
+    def nearDotConvergence(self, cmd, designName=None, doFinish=True):
+        """"""
         cmdKeys = cmd.cmd.keywords
 
-        movePhiToAngle = fpsSequence.MovePhiToAngle.fromCmdKeys(self.actor, cmdKeys)
-        self.engine.runInThread(cmd, movePhiToAngle)
+        designName = 'phiCrossing-2022-06-19' if 'phi' in cmdKeys else designName
+        designName = 'thetaCrossing-2022-06-19' if 'theta' in cmdKeys else designName
 
-    def moveToSafePosition(self, cmd):
-        """
-        `iic moveToSafePosition [name=\"SSS\"] [comments=\"SSS\"]`
+        # get dotCrossing designId from opdb or use provided new one.
+        if 'designId' in cmdKeys:
+            designId = cmdKeys['designId'].values[0]
+        else:
+            designId = designDB.latestDesignIdMatchingName(designName)
 
-        Move cobras to safe position.
+        # declare/insert current design as nearDotDesign.
+        self.actor.declareFpsDesign(cmd, designId=designId)
 
-        Parameters
-        ---------
-        name : `str`
-           To be inserted in opdb:iic_sequence.name.
-        comments : `str`
-           To be inserted in opdb:iic_sequence.comments.
-        """
-        cmdKeys = cmd.cmd.keywords
+        # run nearDotConvergence.
+        nearDotConvergence = fpsSequence.NearDotConvergence.fromCmdKeys(self.actor, cmdKeys, designId=designId)
+        self.engine.run(cmd, nearDotConvergence, doFinish=doFinish)
 
-        moveToSafePosition = fpsSequence.MoveToSafePosition.fromCmdKeys(self.actor, cmdKeys)
-        self.engine.runInThread(cmd, moveToSafePosition)
+        return nearDotConvergence
 
-    def gotoVerticalFromPhi60(self, cmd):
-        """
-        `iic gotoVerticalFromPhi60 [name=\"SSS\"] [comments=\"SSS\"]`
+    @singleShot
+    def dotCrossing(self, cmd):
+        """"""
+        cmdName = cmd.cmd.name
 
-        Go to vertical from phi 60deg.
+        # converge to near dot in the first place.
+        nearDotConvergence = self.nearDotConvergence(cmd, designName=cmdName, doFinish=False)
+        # something happened, convergence did not complete, we need to stop here.
+        if nearDotConvergence.status.flag != Flag.FINISHED:
+            if cmd.alive:
+                cmd.fail('text="NearDotConvergence not completed, stopping here."')
+            return
 
-        Parameters
-        ---------
-        name : `str`
-           To be inserted in opdb:iic_sequence.name.
-        comments : `str`
-           To be inserted in opdb:iic_sequence.comments.
-        """
-        cmdKeys = cmd.cmd.keywords
+        # retrieving which crossing is required.
+        DotCrossing = fpsSequence.PhiCrossing if cmdName == 'phiCrossing' else fpsSequence.ThetaCrossing
 
-        gotoVerticalFromPhi60 = fpsSequence.GotoVerticalFromPhi60.fromCmdKeys(self.actor, cmdKeys)
-        self.engine.runInThread(cmd, gotoVerticalFromPhi60)
+        # run dotCrossing.
+        dotCrossing = DotCrossing.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        self.engine.run(cmd, dotCrossing)
 
-    def makeMotorMap(self, cmd):
-        """
-        `iic makeMotorMap phi|theta stepsize=N repeat=N [@slowOnly] [name=\"SSS\"] [comments=\"SSS\"]`
-
-        Make motorMap (phi or theta).
-
-        Parameters
-        ---------
-        stepsize : `int`
-           Step size.
-        repeat : `int`
-           Number of repeat.
-        slowOnly : `bool`
-           only slow mode.
-        name : `str`
-           To be inserted in opdb:iic_sequence.name.
-        comments : `str`
-           To be inserted in opdb:iic_sequence.comments.
-        """
-        cmdKeys = cmd.cmd.keywords
-
-        makeMotorMap = fpsSequence.MakeMotorMap.fromCmdKeys(self.actor, cmdKeys)
-        self.engine.runInThread(cmd, makeMotorMap)
-
-    def makeOntimeMap(self, cmd):
-        """
-        `iic makeOntimeMap phi|theta [name=\"SSS\"] [comments=\"SSS\"]`
-
-        Make an on-time map (phi or theta).
-
-        Parameters
-        ---------
-        name : `str`
-           To be inserted in opdb:iic_sequence.name.
-        comments : `str`
-           To be inserted in opdb:iic_sequence.comments.
-        """
-        cmdKeys = cmd.cmd.keywords
-
-        makeOntimeMap = fpsSequence.MakeOntimeMap.fromCmdKeys(self.actor, cmdKeys)
-        self.engine.runInThread(cmd, makeOntimeMap)
-
-    def angleConvergenceTest(self, cmd):
-        """
-        `iic angleConvergenceTest phi|theta angleTargets=N [name=\"SSS\"] [comments=\"SSS\"]`
-
-        Perform an angle convergence test (phi or theta).
-
-        Parameters
-        ---------
-        angleTargets : `int`
-           angle targets.
-        name : `str`
-           To be inserted in opdb:iic_sequence.name.
-        comments : `str`
-           To be inserted in opdb:iic_sequence.comments.
-        """
-        cmdKeys = cmd.cmd.keywords
-
-        angleConvergenceTest = fpsSequence.AngleConvergenceTest.fromCmdKeys(self.actor, cmdKeys)
-        self.engine.runInThread(cmd, angleConvergenceTest)
-
-    def targetConvergenceTest(self, cmd):
-        """
-        `iic targetConvergenceTest ontime|speed totalTargets=N maxsteps=N [name=\"SSS\"] [comments=\"SSS\"]`
-
-        Perform a target convergence test (ontime or speed).
-
-        Parameters
-        ---------
-        totalTargets : `int`
-           Total targets.
-        maxsteps : `int`
-           Maximum number of steps.
-        name : `str`
-           To be inserted in opdb:iic_sequence.name.
-        comments : `str`
-           To be inserted in opdb:iic_sequence.comments."""
-        cmdKeys = cmd.cmd.keywords
-
-        targetConvergenceTest = fpsSequence.TargetConvergenceTest.fromCmdKeys(self.actor, cmdKeys)
-        self.engine.runInThread(cmd, targetConvergenceTest)
-
-    def motorOntimeSearch(self, cmd):
-        """
-        `iic motorOntimeSearch phi|theta [name=\"SSS\"] [comments=\"SSS\"]`
-
-        Perform a motor on-time search sequence (phi or theta).
-
-        Parameters
-        ---------
-        name : `str`
-           To be inserted in opdb:iic_sequence.name.
-        comments : `str`
-           To be inserted in opdb:iic_sequence.comments.
-        """
-        cmdKeys = cmd.cmd.keywords
-
-        motorOnTimeSearch = fpsSequence.MotorOnTimeSearch.fromCmdKeys(self.actor, cmdKeys)
-        self.engine.runInThread(cmd, motorOnTimeSearch)
+    @singleShot
+    def nearDotConvergenceCmd(self, cmd):
+        """Needs a dedicated command function for threading."""
+        return self.nearDotConvergence(cmd)

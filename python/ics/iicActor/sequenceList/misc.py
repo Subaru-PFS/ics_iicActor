@@ -6,61 +6,6 @@ from ics.iicActor.sps.sequence import SpsSequence
 from ics.iicActor.sps.timedLamps import TimedLampsSequence
 
 
-class NearDotConvergence(MoveToPfsDesign):
-    seqtype = 'nearDotConvergence'
-
-    @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys, designId):
-        """Defining rules to construct NearDotConvergence object."""
-        seqKeys = translate.seqKeys(cmdKeys)
-        exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
-        maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
-
-        config = iicActor.actorConfig['nearDotConvergence'].copy()
-        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
-        config.update(exptime=exptime, cableBLampOn=cableBLampOn)
-
-        return cls(designId, maskFile=maskFile, goHome=True, noTweak=True, twoStepsOff=False, shortExpOff=False,
-                   **config, **seqKeys)
-
-
-class DotCrossing(FpsSequence):
-    """ fps MoveToPfsDesign command. """
-    seqtype = 'dotCrossing'
-
-    def __init__(self, stepSize, count, exptime, cableBLampOn, **seqKeys):
-        FpsSequence.__init__(self, doTurnOnIlluminator=True, cableBLampOn=cableBLampOn, **seqKeys)
-
-        self.add('mcs', 'expose object', parseFrameId=True, exptime=exptime, doFibreId=True)
-
-        for iterNum in range(count):
-            self.add('fps', f'cobraMoveSteps {self.motor}', stepsize=stepSize)
-            self.add('mcs', 'expose object', parseFrameId=True, exptime=exptime, doFibreId=True)
-
-    @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
-        """Defining rules to construct DotCrossing object."""
-        seqKeys = translate.seqKeys(cmdKeys)
-        exptime = translate.mcsExposureKeys(cmdKeys, iicActor.actorConfig)
-        cableBLampOn = iicActor.actorConfig['fps']['cableBLampOn']
-
-        config = iicActor.actorConfig['dotCrossing'].copy()
-        config.update(exptime=exptime, cableBLampOn=cableBLampOn)
-        # updating config with optional args
-        for arg in [optArg for optArg in ['stepSize', 'count'] if optArg in cmdKeys]:
-            config[arg] = cmdKeys[arg].values[0]
-
-        return cls(**config, **seqKeys)
-
-
-class PhiCrossing(DotCrossing):
-    motor = 'phi'
-    seqtype = 'phiCrossing'
-
-
-class ThetaCrossing(DotCrossing):
-    motor = 'theta'
-    seqtype = 'thetaCrossing'
 
 
 class FiberIdentification(SpsSequence):
@@ -191,10 +136,9 @@ class DotRoach(SpsSequence):
         cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
 
-        windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps].copy()
-        exptime = windowedFlatConfig.pop('exptime')
-        # overriding using user provided exptime.
-        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else exptime
+        windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps]
+        windowedConfig = translate.windowKeys(cmdKeys, windowedFlatConfig)
+        exptime = translate.resolveExptime(cmdKeys, windowedFlatConfig)
 
         # construct maskFile path.
         maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'moveAll'
@@ -211,7 +155,7 @@ class DotRoach(SpsSequence):
         keepMoving = 'keepMoving' in cmdKeys
         mode = cmdKeys['mode'].values[0] if 'mode' in cmdKeys else 'fast'
 
-        return cls(cams, exptime, windowedFlatConfig, maskFile, keepMoving, mode, **config, **seqKeys)
+        return cls(cams, exptime, windowedConfig, maskFile, keepMoving, mode, **config, **seqKeys)
 
 
 class DotRoachInit(SpsSequence):
@@ -241,10 +185,10 @@ class DotRoachInit(SpsSequence):
         cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
 
-        windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps].copy()
-        exptime = windowedFlatConfig.pop('exptime')
-        # overriding using user provided exptime.
-        exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else exptime
+        windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps]
+
+        exptime = translate.resolveExptime(cmdKeys, windowedFlatConfig)
+        windowedConfig = translate.windowKeys(cmdKeys, windowedFlatConfig)
 
         # construct maskFile path.
         maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'moveAll'
@@ -261,7 +205,7 @@ class DotRoachInit(SpsSequence):
         keepMoving = 'keepMoving' in cmdKeys
         mode = cmdKeys['mode'].values[0] if 'mode' in cmdKeys else 'fast'
 
-        return cls(cams, exptime, windowedFlatConfig, maskFile, keepMoving, mode, **config, **seqKeys)
+        return cls(cams, exptime, windowedConfig, maskFile, keepMoving, mode, **config, **seqKeys)
 
 
 class DotRoachPfiLamps(DotRoach, TimedLampsSequence):

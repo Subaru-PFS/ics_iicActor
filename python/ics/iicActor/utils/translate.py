@@ -48,13 +48,15 @@ def spsExposureKeys(cmdKeys, doRaise=True, defaultDuplicate=1):
     return exptime, duplicate
 
 
-def windowKeys(cmdKeys):
-    """ Identify which spectrograph(cameras) is required to take data. """
+def windowKeys(cmdKeys, configDict=None):
+    """Resolve window-related keys from cmdKeys first, then configDict."""
     keys = dict()
 
     for key in ['window', 'blueWindow', 'redWindow']:
         if key in cmdKeys:
             keys[key] = cmdKeys[key].values
+        elif configDict and key in configDict:
+            keys[key] = configDict[key]
 
     return keys
 
@@ -99,11 +101,62 @@ def dcbKeys(cmdKeys, forceHalogen=False):
     return dcbOn, dcbOff
 
 
-def mcsExposureKeys(cmdKeys, actorConfig):
-    mcsConfig = actorConfig['mcs']
-    # setting mcs exptime consistently.
-    exptime = cmdKeys['exptime'].values[0] if 'exptime' in cmdKeys else mcsConfig['exptime']
-    return exptime
+def resolveKeys(cmdKeys, configDict, *keys, default=None):
+    """Return dict of keys resolved from cmdKeys, then configDict, else default."""
+    resolved = dict()
+
+    for key in keys:
+        if key in cmdKeys:
+            values = cmdKeys[key].values
+            if len(values)==0:
+                values = True
+            elif len(values)==1:
+                values = values[0]
+            resolved[key] = values
+
+        elif configDict and key in configDict:
+            resolved[key] = configDict[key]
+        else:
+            resolved[key] = default
+
+    return resolved
+
+
+def resolveKey(cmdKeys, configDict, key, default=None):
+    """Return single key resolved from cmdKeys, then configDict, else default."""
+    return resolveKeys(cmdKeys, configDict, key, default=default)[key]
+
+
+def resolveAllKeys(cmdKeys, configDict, default=None):
+    """Return dict resolving all configDict keys from cmdKeys, then configDict, else default."""
+    if not configDict:
+        return dict()
+    return resolveKeys(cmdKeys, configDict, *configDict.keys(), default=default)
+
+
+def resolveCmdConfig(cmdKeys, actorConfig, sectionName, default=None):
+    """Return config section resolved from cmdKeys, then actorConfig[sectionName], else default."""
+    configDict = actorConfig.get(sectionName, {})
+    return resolveAllKeys(cmdKeys, configDict, default=default)
+
+
+def resolveExptime(cmdKeys, configDict):
+    """Return exptime resolved from command or configDict."""
+    return resolveKey(cmdKeys, configDict, 'exptime')
+
+
+def resolveMcsExptime(cmdKeys, actorConfig):
+    """Return MCS exposure time resolved from command or actorConfig."""
+    return resolveExptime(cmdKeys, actorConfig['mcs'])
+
+
+def illuminatorKeys(actorConfig, requiredState=True):
+    base = actorConfig['illuminators']
+    illuminators = {**base,
+                    'doTurnOnIlluminator': base['doTurnOnIlluminator'] and requiredState,
+                    'cableBLampOn': base['cableBLampOn'] and requiredState}
+
+    return illuminators
 
 
 def ditheredFlatsKeys(cmdKeys):

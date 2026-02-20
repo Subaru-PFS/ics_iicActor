@@ -168,7 +168,8 @@ class SpsExpose(VisitedCmd):
                                                                 forcePfsConfig=forcePfsConfig)
 
         # setting INSROT_MISMATCH in pfsConfig if dINSROT > threshold
-        if dINSROT not in {None, float(fitsMhs.INVALID)} and abs(dINSROT) > self.iicActor.actorConfig['maxDeltaINSROT']:
+        maxDeltaINSROT = self.iicActor.actorConfig['pfsConfig']['maxDeltaINSROT']
+        if dINSROT not in {None, float(fitsMhs.INVALID)} and abs(dINSROT) > maxDeltaINSROT:
             pfsConfig.setInstrumentStatusFlag(InstrumentStatusFlag.INSROT_MISMATCH)
 
         # Insert into opdb immediately
