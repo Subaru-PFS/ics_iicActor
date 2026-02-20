@@ -48,19 +48,6 @@ def spsExposureKeys(cmdKeys, doRaise=True, defaultDuplicate=1):
     return exptime, duplicate
 
 
-def windowKeys(cmdKeys, configDict=None):
-    """Resolve window-related keys from cmdKeys first, then configDict."""
-    keys = dict()
-
-    for key in ['window', 'blueWindow', 'redWindow']:
-        if key in cmdKeys:
-            keys[key] = cmdKeys[key].values
-        elif configDict and key in configDict:
-            keys[key] = configDict[key]
-
-    return keys
-
-
 def lampsKeys(cmdKeys):
     def toIisArg(name):
         return f'iis{name.capitalize()}'
@@ -108,9 +95,9 @@ def resolveKeys(cmdKeys, configDict, *keys, default=None):
     for key in keys:
         if key in cmdKeys:
             values = cmdKeys[key].values
-            if len(values)==0:
+            if len(values) == 0:
                 values = True
-            elif len(values)==1:
+            elif len(values) == 1:
                 values = values[0]
             resolved[key] = values
 
@@ -157,6 +144,13 @@ def illuminatorKeys(actorConfig, requiredState=True):
                     'cableBLampOn': base['cableBLampOn'] and requiredState}
 
     return illuminators
+
+
+def windowKeys(cmdKeys, configDict=None):
+    """Resolve window-related keys from cmdKeys first, then configDict."""
+    resolved = resolveKeys(cmdKeys, configDict, 'window', 'blueWindow', 'redWindow')
+    filtered = {k: v for k, v in resolved.items() if v is not None}  # remove undefined values
+    return filtered
 
 
 def ditheredFlatsKeys(cmdKeys):

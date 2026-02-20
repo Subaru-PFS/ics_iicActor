@@ -3,7 +3,7 @@ from importlib import reload
 import ics.iicActor.sequenceList.fps as fpsSequenceList
 import ics.iicActor.sequenceList.misc as miscSequenceList
 import ics.iicActor.sequenceList.sps as spsSequenceList
-import ics.iicActor.sps as spsSequence
+import ics.iicActor.sps.sequence as spsSequence
 import ics.iicActor.utils.lib as iicUtils
 import ics.iicActor.utils.pfsDesign.opdb as designDB
 import ics.iicActor.utils.translate as translate
@@ -37,8 +37,8 @@ class MiscCmd(object):
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
             ('dotRoach', f'[<exptime>] [<maskFile>] [@(hscLamps)] [<mode>] {identArgs} {translate.seqArgs}',
              self.dotRoach),
-            ('thetaPhiScan', 'startNewScan', self.startNewThetaPhiScan),
-            ('thetaPhiScan', f'takeNextScan <groupId> [<thetaAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
+            ('thetaPhiScan', 'start', self.startNewThetaPhiScan),
+            ('thetaPhiScan', f'takeNextTheta <groupId> [<thetaAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
              self.takeNextThetaPhiScan)
         ]
 
@@ -117,7 +117,7 @@ class MiscCmd(object):
         nearDotConvergenceConfig = {**self.actor.actorConfig['nearDotConvergence'], 'noHome': True}
         moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True, **illuminators)
         nearDotConvergence = fpsSequenceList.NearDotConvergence(phiCrossingDesignId,
-                                                            **nearDotConvergenceConfig, **illuminators)
+                                                                **nearDotConvergenceConfig, **illuminators)
         # use pfiLamps by default.
         roaching = miscSequenceList.DotRoach if 'hscLamps' in cmdKeys else miscSequenceList.DotRoachPfiLamps
         roachingInit = miscSequenceList.DotRoachInit if 'hscLamps' in cmdKeys else miscSequenceList.DotRoachInitPfiLamps
@@ -180,15 +180,21 @@ class MiscCmd(object):
         cmdKeys = cmd.cmd.keywords
         groupId = cmdKeys['groupId'].values[0]
         thetaAngle = cmdKeys['thetaAngle'].values[0] if 'thetaAngle' in cmdKeys else None
+        name = f'theta_{thetaAngle:03d}'
 
         mcsExptime = self.actor.actorConfig['mcs']['exptime']
         illuminators = self.actor.actorConfig['illuminators']
         thetaPhiScanConfig = self.actor.actorConfig['thetaPhiScan']
         scienceTraceConfig = thetaPhiScanConfig['scienceTrace']
-        lampsKeys = dict(halogen=int(translate.resolveExptime(cmdKeys, scienceTraceConfig)))
+        moveToPfsDesignConfig = thetaPhiScanConfig['moveToPfsDesign']
+
+        lampsKeys = dict(halogen=int(translate.resolveExptime(cmdKeys, scienceTraceConfig)),
+                         iis=dict(),
+                         shutterTiming=0)
+        __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
+        windowKeys = translate.windowKeys(cmdKeys, scienceTraceConfig)
 
         cams = spsSequence.SpsSequence.keysToCam(self.actor, cmdKeys, configDict=scienceTraceConfig['idDict'])
-        __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
 
         homeDesignId = self._runFpsCreateDesign(f'createHomeDesign all')
         self.actor.declareFpsDesign(cmd, designId=homeDesignId)
@@ -196,7 +202,31 @@ class MiscCmd(object):
         moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True, **illuminators)
         self.engine.run(cmd, moveToHomeAll, doFinish=False)
 
-        scienceTrace = spsSequenceList.calib.ScienceTrace()
+        scienceTrace = spsSequenceList.calib.ScienceTrace(cams, lampsKeys, duplicate, windowKeys,
+                                                          name=name,
+                                                          comments='cobraHome')
+        self.engine.run(cmd, scienceTrace, doFinish=False)
 
+        phiAngles = thetaPhiScanConfig['phiAngles']
 
+        for phiAngle in phiAngles:
+            designName = f'thetaPhiScan_{thetaAngle:03d}_{phiAngle:03d}'
 
+            # going to phi home
+            if phiAngle == 0:
+                designId = self._runFpsCreateDesign(f'createHomeDesign phi designName={designName}')
+                moveCobra = fpsSequenceList.MoveToHome(designId=designId, exptime=mcsExptime, phi=True, **illuminators)
+            else:
+                designId = self._runFpsCreateDesign(
+                    f'createThetaPhiScanDesign thetaAngle={thetaAngle:d} phiAngle={phiAngle:d} designName={designName}')
+                moveCobra = fpsSequenceList.MoveToPfsDesign(designId=designId, **moveToPfsDesignConfig, **illuminators)
+
+            self.actor.declareFpsDesign(cmd, designId=designId)
+            self.engine.run(cmd, moveCobra, doFinish=False)
+
+            scienceTrace = spsSequenceList.calib.ScienceTrace(cams, lampsKeys, duplicate, windowKeys,
+                                                              name=name,
+                                                              comments=designName)
+            self.engine.run(cmd, scienceTrace, doFinish=False)
+
+        cmd.finish()

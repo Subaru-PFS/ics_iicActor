@@ -73,7 +73,7 @@ class FpsCmd(object):
                                                  help="number of exposures to take at each position"),
                                         keys.Key('exptime', types.Float() * (1,), help='exptime list (seconds)'),
 
-                                        keys.Key("cnt", types.Int(), default=1, help="times to run loop"),
+                                        keys.Key("cnt", types.Int(), help="times to run loop"),
                                         keys.Key("angle", types.Int(), help="arm angle"),
                                         keys.Key("stepsize", types.Int(), help="step size of motor"),
                                         keys.Key('count', types.Int(), help='nExposure'),

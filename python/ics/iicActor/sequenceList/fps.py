@@ -101,7 +101,7 @@ class MoveToPfsDesign(FpsSequence):
     seqtype = 'moveToPfsDesign'
 
     def __init__(self, designId, nIteration, tolerance, exptime, noHome, twoStepsOff, shortExpOff, noTweak,
-                 maskFile, **fpsKeys):
+                 maskFile=False, **fpsKeys):
         super().__init__(**fpsKeys)
 
         # move to pfsDesign.
