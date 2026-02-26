@@ -38,7 +38,7 @@ class MiscCmd(object):
             ('dotRoach', f'[<exptime>] [<maskFile>] [@(hscLamps)] [<mode>] {identArgs} {translate.seqArgs}',
              self.dotRoach),
             ('thetaPhiScan', 'start', self.startNewThetaPhiScan),
-            ('thetaPhiScan', f'takeNextTheta <groupId> [<thetaAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
+            ('thetaPhiScan', f'takeNextTheta [<groupId>] [<thetaAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
              self.takeNextThetaPhiScan)
         ]
 
@@ -177,23 +177,41 @@ class MiscCmd(object):
 
     def takeNextThetaPhiScan(self, cmd):
         """"""
+
+        def getRemainingThetas(groupId):
+            scannedThetas = self.engine.opdb.getScannedThetaFromThetaPhiScanId(groupId)
+            remainingThetas = list(set(thetaAngles) - set(scannedThetas))
+            remainingThetas.sort()
+            return remainingThetas
+
         cmdKeys = cmd.cmd.keywords
-        groupId = cmdKeys['groupId'].values[0]
+        groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
         thetaAngle = cmdKeys['thetaAngle'].values[0] if 'thetaAngle' in cmdKeys else None
-        name = f'theta_{thetaAngle:03d}'
 
         mcsExptime = self.actor.actorConfig['mcs']['exptime']
         illuminators = self.actor.actorConfig['illuminators']
         thetaPhiScanConfig = self.actor.actorConfig['thetaPhiScan']
         scienceTraceConfig = thetaPhiScanConfig['scienceTrace']
         moveToPfsDesignConfig = thetaPhiScanConfig['moveToPfsDesign']
+        phiAngles = thetaPhiScanConfig['phiAngles']
+        thetaAngles = thetaPhiScanConfig['thetaAngles']
 
-        lampsKeys = dict(halogen=int(translate.resolveExptime(cmdKeys, scienceTraceConfig)),
-                         iis=dict(),
-                         shutterTiming=0)
+        if groupId is None:
+            groupId = self.engine.opdb.latestThetaPhiScanId()
+
+        remainingThetas = getRemainingThetas(groupId)
+        cmd.inform(
+            f'text="ThetaPhiScan groupId={groupId} remaining thetaAngles: {",".join(map(str, remainingThetas))}"')
+
+        if thetaAngle is None:
+            thetaAngle = remainingThetas[0]
+
+        cmd.inform(f'text="ThetaPhiScan groupId={groupId} thetaAngle={thetaAngle:d} deg START"')
+
+        name = f'theta_{thetaAngle:03d}'
+        lampsKeys = dict(halogen=int(translate.resolveExptime(cmdKeys, scienceTraceConfig)))
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         windowKeys = translate.windowKeys(cmdKeys, scienceTraceConfig)
-
         cams = spsSequence.SpsSequence.keysToCam(self.actor, cmdKeys, configDict=scienceTraceConfig['idDict'])
 
         homeDesignId = self._runFpsCreateDesign(f'createHomeDesign all')
@@ -203,11 +221,10 @@ class MiscCmd(object):
         self.engine.run(cmd, moveToHomeAll, doFinish=False)
 
         scienceTrace = spsSequenceList.calib.ScienceTrace(cams, lampsKeys, duplicate, windowKeys,
+                                                          groupId=groupId,
                                                           name=name,
                                                           comments='cobraHome')
         self.engine.run(cmd, scienceTrace, doFinish=False)
-
-        phiAngles = thetaPhiScanConfig['phiAngles']
 
         for phiAngle in phiAngles:
             designName = f'thetaPhiScan_{thetaAngle:03d}_{phiAngle:03d}'
@@ -226,7 +243,14 @@ class MiscCmd(object):
 
             scienceTrace = spsSequenceList.calib.ScienceTrace(cams, lampsKeys, duplicate, windowKeys,
                                                               name=name,
-                                                              comments=designName)
+                                                              comments=designName,
+                                                              groupId=groupId)
             self.engine.run(cmd, scienceTrace, doFinish=False)
+            cmd.inform(
+                f'text="ThetaPhiScan groupId={groupId} thetaAngle={thetaAngle:d} deg phiAngle={phiAngle:d} deg DONE"')
 
-        cmd.finish()
+        cmd.inform(f'text="ThetaPhiScan groupId={groupId} thetaAngle={thetaAngle:d} deg FINISHED"')
+        remainingThetas = getRemainingThetas(groupId)
+        cmd.inform(
+            f'text="ThetaPhiScan groupId={groupId} remaining thetaAngles: {",".join(map(str, remainingThetas))}"')
+        cmd.finish(f'nRemainingThetas={len(remainingThetas)}')

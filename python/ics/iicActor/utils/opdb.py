@@ -113,11 +113,13 @@ class OpdbHandler:
 
         def exposureTablePopulated():
             """Check is there is a matching visit in exposure table."""
-            return not self.opdb.query_dataframe(f'SELECT pfs_visit_id FROM {exposure_table} WHERE pfs_visit_id={pfs_visit_id}').empty
+            return not self.opdb.query_dataframe(
+                f'SELECT pfs_visit_id FROM {exposure_table} WHERE pfs_visit_id={pfs_visit_id}').empty
 
         def visitSetPopulated():
             """Check if visit_set table is already populated."""
-            return not self.opdb.query_dataframe(f'SELECT pfs_visit_id FROM visit_set WHERE pfs_visit_id={pfs_visit_id}').empty
+            return not self.opdb.query_dataframe(
+                f'SELECT pfs_visit_id FROM visit_set WHERE pfs_visit_id={pfs_visit_id}').empty
 
         # AG commands are ignored when it comes to visit_set, with the current database design there can be ONLY ONE
         # iic_sequence_id per pfs_visit_id, so I choose to give the priority to sps/fps sequence
@@ -206,3 +208,16 @@ class OpdbHandler:
 
     def getAllVariants(self, designId0):
         return self.opdb.query_dataframe(f'select pfs_design_id,variant from pfs_design where design_id0={designId0}')
+
+    def latestThetaPhiScanId(self, groupName='thetaPhiThroughputScan'):
+        """Retrieve last thetaPhiThroughputScan groupId"""
+        sql = f"""select max(group_id) from sequence_group where group_name='{groupName}'"""
+        maxGroupdId = self.opdb.query_dataframe(sql).squeeze()
+        return maxGroupdId
+
+    def getScannedThetaFromThetaPhiScanId(self, groupId):
+        """Retrieve unique theta from thetaPhiThroughputScan"""
+        sql = f'select * from iic_sequence where group_id={groupId}'
+        df = self.opdb.query_dataframe(sql)
+        df['theta'] = [int(name.split('_')[1]) for name in df.name]
+        return df.theta.unique()
