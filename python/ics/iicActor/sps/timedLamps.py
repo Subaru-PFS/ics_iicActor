@@ -5,11 +5,15 @@ from ics.iicActor.sps.sequence import SpsSequence
 
 class TimedLampsSequence(SpsSequence):
     shutterRequired = False
+    # Gross estimate and over-estimating
+    ccdWipe = 10
+    ccdRead = 50
+    h4Read = 12
+    h4Reset = h4Read * 2
+    margin = 20
 
     def expose(self, exptype, lampKeys, cams, duplicate=1, windowKeys=None, slideSlit=None):
         """Override expose function to handle dcb/pfilamps lampKeys arguments."""
-        windowKeys = dict() if windowKeys is None else windowKeys
-        lampKeys = lampKeys.copy()
 
         def doTimedLamps(timedLamps):
             exptime = 0.0
@@ -25,20 +29,29 @@ class TimedLampsSequence(SpsSequence):
 
         def prepareTotalLampTime(timedLamps):
             [lamp] = [lamp for lamp in ['hgcd', 'hgar'] if lamp in timedLamps]
-            estimatedTime = timedLamps[lamp]
             arms = set([cam.arm for cam in cams])
 
-            estimatedTime += (25 if 'n' in arms else 0)
-            estimatedTime += (50 if 'b' in arms or 'r' in arms or 'm' in arms else 0)
-            estimatedTime *= duplicate
+            wipeTime = self.h4Reset if 'n' in arms else self.ccdWipe
+            readTime = self.h4Read if set(arms) == {'n'} else self.ccdRead
+
+            estimatedTime = wipeTime + timedLamps[lamp]
+            estimatedTime += (duplicate - 1) * (wipeTime + timedLamps[lamp] + readTime)
 
             return estimatedTime, f'prepare {lamp}={estimatedTime}'
 
+        windowKeys = dict() if windowKeys is None else windowKeys
+        lampKeys = lampKeys.copy()
+
         # retrieving iis keys.
-        iisKeys = lampKeys.pop('iis', None)
+        iisKeys = lampKeys.pop('iis', dict())
+        shutterTiming = lampKeys.get('shutterTiming', 0)
 
         doIIS, maxIisLampOnTime, IisCmdStr = doTimedLamps(iisKeys)
         doLamps, maxLampOnTime, lampsCmdStr = doTimedLamps(lampKeys)
+
+        # setting shutter exptime accordingly.
+        doShutterTiming = shutterTiming > 0
+        exptime = shutterTiming if doShutterTiming else max(maxLampOnTime, maxIisLampOnTime)
 
         # small note here, the longer wait will happen in the expose command, not prepare.
         # pfilamps.waitForReadySignal() is where its happening, ~2s for qth, immediate for neon,krypton,argon,xenon.
@@ -53,16 +66,9 @@ class TimedLampsSequence(SpsSequence):
             self.add(actor='lamps', cmdStr=lampsCmdStr)
             self.add(actor='lamps', cmdStr='waitForReadySignal', timeLim=240)
             self.add(actor='lamps', cmdStr='go noWait')
-            # enforce shutterTiming and doLamps to False.
-            lampKeys['shutterTiming'] = False
-            doLamps = False
-
-        if lampKeys['shutterTiming']:
-            exptime = lampKeys['shutterTiming']
-            doShutterTiming = True
-        else:
-            exptime = max(maxLampOnTime, maxIisLampOnTime)
+            # enforce doShutterTiming and doLamps to False.
             doShutterTiming = False
+            doLamps = False
 
         for nExposure in range(duplicate):
             # adding iis and lamps prepare commands.

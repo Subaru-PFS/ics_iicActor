@@ -49,6 +49,25 @@ def spsExposureKeys(cmdKeys, doRaise=True, defaultDuplicate=1):
 
 
 def lampsKeys(cmdKeys):
+    """
+    Build lamp timing dictionary from cmdKeys.
+
+    If 'doShutterTiming' is set, a fixed overhead (5 s) is added to all lamp
+    durations so lamps stay ON slightly longer than the shutter exposure.
+
+    In that mode:
+        lampOnTime = requestedTime + overhead
+        shutterTiming = max(requestedTime)
+
+    Note: keys already include the overhead, so
+        max(requested + overhead) - overhead = max(requested)
+
+    If 'doShutterTiming' is not set:
+        overhead = 0 and shutterTiming = 0.
+
+    Raises ValueError if no lamp timing is specified.
+    """
+
     def toIisArg(name):
         return f'iis{name.capitalize()}'
 
