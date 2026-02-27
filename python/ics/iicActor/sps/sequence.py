@@ -113,12 +113,12 @@ class SpsSequence(sequence.Sequence):
                 list.append(self, spsExpose)
 
     @staticmethod
-    def keysToCam(iicActor, cmdKeys):
+    def keysToCam(iicActor, cmdKeys, configDict=None):
         """Identify the cameras based on the provided command keywords."""
         if iicActor.spsConfig is None:
             raise RuntimeError('Could not figure out spsConfig, please check spsActor...')
 
-        return iicActor.spsConfig.keysToCam(cmdKeys)
+        return iicActor.spsConfig.keysToCam(cmdKeys, configDict=configDict)
 
     def instantiate(self, actor, cmdStr, **kwargs):
         """Return right SubCmd type based on actor/cmdStr."""

@@ -1,7 +1,9 @@
 from importlib import reload
 
-import ics.iicActor.sequenceList.fps as fpsSequence
-import ics.iicActor.sequenceList.misc as misc
+import ics.iicActor.sequenceList.fps as fpsSequenceList
+import ics.iicActor.sequenceList.misc as miscSequenceList
+import ics.iicActor.sequenceList.sps as spsSequenceList
+import ics.iicActor.sps.sequence as spsSequence
 import ics.iicActor.utils.lib as iicUtils
 import ics.iicActor.utils.pfsDesign.opdb as designDB
 import ics.iicActor.utils.translate as translate
@@ -10,10 +12,11 @@ import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.iicActor.utils.sequenceStatus import Flag
 from ics.utils.threading import singleShot
+from opscore.utility.qstr import qstr
 
 reload(iicUtils)
 reload(designDB)
-reload(misc)
+reload(miscSequenceList)
 
 
 class MiscCmd(object):
@@ -31,14 +34,12 @@ class MiscCmd(object):
         commonArgs = f'{identArgs} [<duplicate>] {translate.seqArgs}'
 
         self.vocab = [
-            ('phiCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {translate.seqArgs}', self.dotCrossing),
-            ('thetaCrossing', f'[<stepSize>] [<count>] [<exptime>] [<designId>] {translate.seqArgs}', self.dotCrossing),
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
-            ('nearDotConvergence', f'@(phi|theta) [<exptime>] [<designId>] [<maskFile>] {translate.seqArgs}',
-             self.nearDotConvergenceCmd),
-            ('genBlackDotsConfig', f'[<maskFile>] {translate.seqArgs}', self.genBlackDotsConfigCmd),
             ('dotRoach', f'[<exptime>] [<maskFile>] [@(hscLamps)] [<mode>] {identArgs} {translate.seqArgs}',
              self.dotRoach),
+            ('thetaPhiScan', 'start', self.startNewThetaPhiScan),
+            ('thetaPhiScan', f'takeNextTheta [<groupId>] [<thetaAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
+             self.takeNextThetaPhiScan)
         ]
 
         # Define typed command arguments for the above commands.
@@ -62,91 +63,43 @@ class MiscCmd(object):
                                         keys.Key('groupId', types.Int(), help='optional groupId'),
                                         keys.Key('head', types.String() * (1,), help='cmdStr list to process before'),
                                         keys.Key('tail', types.String() * (1,), help='cmdStr list to process after'),
-
-                                        keys.Key('stepSize', types.Int(), help='cobra step size in steps'),
-                                        keys.Key('count', types.Int(), help='nExposure'),
                                         keys.Key('maskFile', types.String() * (1,),
                                                  help='filename containing which fibers to expose.'),
                                         keys.Key('designId', types.Long(), help='selected nearDot designId'),
                                         keys.Key('fiberGroups', types.Int() * (1,),
                                                  help='which fiberGroups to identify 2->31'),
                                         keys.Key('mode', types.String() * (1,), help='mode for dotRoach'),
+                                        keys.Key("thetaAngle", types.Int(), units='deg',
+                                                 help="Designed theta angle (deg)"),
                                         )
 
     @property
     def engine(self):
         return self.actor.engine
 
-    @singleShot
-    def nearDotConvergenceCmd(self, cmd):
-        """Needs a dedicated command function for threading."""
-        return self.nearDotConvergence(cmd)
+    def _runFpsCreateDesign(self, createDesignCmdStr):
+        """Send createDesign command to fps actor and return the resulting designId."""
+        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=createDesignCmdStr.strip(), timeLim=10)
+        keys = cmdUtils.cmdVarToKeys(cmdVar)
+        designId = int(keys['fpsDesignId'].values[0], 16)
 
-    def nearDotConvergence(self, cmd, designName=None, doFinish=True):
-        """"""
-        cmdKeys = cmd.cmd.keywords
-
-        designName = 'phiCrossing-2022-06-19' if 'phi' in cmdKeys else designName
-        designName = 'thetaCrossing-2022-06-19' if 'theta' in cmdKeys else designName
-
-        # get dotCrossing designId from opdb or use provided new one.
-        if 'designId' in cmdKeys:
-            designId = cmdKeys['designId'].values[0]
-        else:
-            designId = designDB.latestDesignIdMatchingName(designName)
-
-        # declare/insert current design as nearDotDesign.
-        self.actor.declareFpsDesign(cmd, designId=designId)
-
-        # run nearDotConvergence.
-        nearDotConvergence = misc.NearDotConvergence.fromCmdKeys(self.actor, cmdKeys, designId=designId)
-        self.engine.run(cmd, nearDotConvergence, doFinish=doFinish)
-
-        return nearDotConvergence
-
-    @singleShot
-    def dotCrossing(self, cmd):
-        """"""
-        cmdName = cmd.cmd.name
-
-        # converge to near dot in the first place.
-        nearDotConvergence = self.nearDotConvergence(cmd, designName=cmdName, doFinish=False)
-        # something happened, convergence did not complete, we need to stop here.
-        if nearDotConvergence.status.flag != Flag.FINISHED:
-            if cmd.alive:
-                cmd.fail('text="NearDotConvergence not completed, stopping here."')
-            return
-
-        # retrieving which crossing is required.
-        DotCrossing = misc.PhiCrossing if cmdName == 'phiCrossing' else misc.ThetaCrossing
-
-        # run dotCrossing.
-        dotCrossing = DotCrossing.fromCmdKeys(self.actor, cmd.cmd.keywords)
-        self.engine.run(cmd, dotCrossing)
+        return designId
 
     def fiberIdentification(self, cmd):
         """"""
-        fiberIdentification = misc.FiberIdentification.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        fiberIdentification = miscSequenceList.FiberIdentification.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, fiberIdentification)
-
-    @singleShot
-    def genBlackDotsConfigCmd(self, cmd):
-        """Needs a dedicated command function for threading."""
-        return self.genBlackDotsConfig(cmd)
 
     def genBlackDotsConfig(self, cmd):
         """"""
         cmdKeys = cmd.cmd.keywords
 
         maskFileArgs = translate.getMaskFileArgsFromCmd(cmdKeys, self.actor.actorConfig)
-
-        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=f'createBlackDotDesign {maskFileArgs}'.strip(), timeLim=10)
-        keys = cmdUtils.cmdVarToKeys(cmdVar)
-        designId = int(keys['fpsDesignId'].values[0], 16)
+        designId = self._runFpsCreateDesign(f'createBlackDotDesign {maskFileArgs}')
 
         self.actor.declareFpsDesign(cmd, designId=designId)
 
-        genPfsConfigFromMcs = fpsSequence.GenBlackDotsConfig.fromCmdKeys(self.actor, cmdKeys, designId=designId)
+        genPfsConfigFromMcs = fpsSequenceList.GenBlackDotsConfig.fromCmdKeys(self.actor, cmdKeys, designId=designId)
         self.engine.run(cmd, genPfsConfigFromMcs)
 
     @singleShot
@@ -160,14 +113,14 @@ class MiscCmd(object):
 
         # exptime in cmdKeys means SPS exptime but the sequence interpret it as MCS exptime, so we have to patch it.
         mcsExptime = self.actor.actorConfig['mcs']['exptime']
-        cableBLampOn = self.actor.actorConfig['fps']['cableBLampOn']
-        moveToHomeAll = fpsSequence.MoveToHome(exptime=mcsExptime, designId=homeDesignId, cableBLampOn=cableBLampOn)
-        nearDotConvergence = misc.NearDotConvergence(phiCrossingDesignId, maskFile=False, goHome=False, noTweak=True,
-                                                     twoStepsOff=False, exptime=mcsExptime, cableBLampOn=cableBLampOn,
-                                                     shortExpOff=True, **self.actor.actorConfig['nearDotConvergence'])
+        illuminators = self.actor.actorConfig['illuminators']
+        nearDotConvergenceConfig = {**self.actor.actorConfig['nearDotConvergence'], 'noHome': True}
+        moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True, **illuminators)
+        nearDotConvergence = fpsSequenceList.NearDotConvergence(phiCrossingDesignId,
+                                                                **nearDotConvergenceConfig, **illuminators)
         # use pfiLamps by default.
-        roaching = misc.DotRoach if 'hscLamps' in cmdKeys else misc.DotRoachPfiLamps
-        roachingInit = misc.DotRoachInit if 'hscLamps' in cmdKeys else misc.DotRoachInitPfiLamps
+        roaching = miscSequenceList.DotRoach if 'hscLamps' in cmdKeys else miscSequenceList.DotRoachPfiLamps
+        roachingInit = miscSequenceList.DotRoachInit if 'hscLamps' in cmdKeys else miscSequenceList.DotRoachInitPfiLamps
         # now roaching is split in two steps.
         dotRoachInit = roachingInit.fromCmdKeys(self.actor, cmd.cmd.keywords)
         dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords)
@@ -208,3 +161,96 @@ class MiscCmd(object):
             return
 
         self.genBlackDotsConfig(cmd)
+
+    def startNewThetaPhiScan(self, cmd):
+        """"""
+        cmdKeys = cmd.cmd.keywords
+        doContinue = 'continue' in cmdKeys
+        groupName = cmdKeys['groupName'].values[0] if 'groupName' in cmdKeys else 'thetaPhiThroughputScan'
+        try:
+            groupId = self.engine.requestGroupId(groupName, doContinue=doContinue)
+        except Exception as e:
+            cmd.fail(f'text="{str(e)}"')
+            return
+
+        cmd.finish(f'groupId={groupId},{qstr(groupName)}')
+
+    def takeNextThetaPhiScan(self, cmd):
+        """"""
+
+        def getRemainingThetas(groupId):
+            scannedThetas = self.engine.opdb.getScannedThetaFromThetaPhiScanId(groupId)
+            remainingThetas = list(set(thetaAngles) - set(scannedThetas))
+            remainingThetas.sort()
+            return remainingThetas
+
+        cmdKeys = cmd.cmd.keywords
+        groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
+        thetaAngle = cmdKeys['thetaAngle'].values[0] if 'thetaAngle' in cmdKeys else None
+
+        mcsExptime = self.actor.actorConfig['mcs']['exptime']
+        illuminators = self.actor.actorConfig['illuminators']
+        thetaPhiScanConfig = self.actor.actorConfig['thetaPhiScan']
+        scienceTraceConfig = thetaPhiScanConfig['scienceTrace']
+        moveToPfsDesignConfig = thetaPhiScanConfig['moveToPfsDesign']
+        phiAngles = thetaPhiScanConfig['phiAngles']
+        thetaAngles = thetaPhiScanConfig['thetaAngles']
+
+        if groupId is None:
+            groupId = self.engine.opdb.latestThetaPhiScanId()
+
+        remainingThetas = getRemainingThetas(groupId)
+        cmd.inform(
+            f'text="ThetaPhiScan groupId={groupId} remaining thetaAngles: {",".join(map(str, remainingThetas))}"')
+
+        if thetaAngle is None:
+            thetaAngle = remainingThetas[0]
+
+        cmd.inform(f'text="ThetaPhiScan groupId={groupId} thetaAngle={thetaAngle:d} deg START"')
+
+        name = f'theta_{thetaAngle:03d}'
+        lampsKeys = dict(halogen=int(translate.resolveExptime(cmdKeys, scienceTraceConfig)))
+        __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
+        windowKeys = translate.windowKeys(cmdKeys, scienceTraceConfig)
+        cams = spsSequence.SpsSequence.keysToCam(self.actor, cmdKeys, configDict=scienceTraceConfig['idDict'])
+
+        homeDesignId = self._runFpsCreateDesign(f'createHomeDesign all')
+        self.actor.declareFpsDesign(cmd, designId=homeDesignId)
+
+        moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True, **illuminators)
+        self.engine.run(cmd, moveToHomeAll, doFinish=False)
+
+        scienceTrace = spsSequenceList.calib.ScienceTrace(cams, lampsKeys, duplicate, windowKeys,
+                                                          groupId=groupId,
+                                                          name=name,
+                                                          comments='cobraHome')
+        self.engine.run(cmd, scienceTrace, doFinish=False)
+
+        for phiAngle in phiAngles:
+            designName = f'thetaPhiScan_{thetaAngle:03d}_{phiAngle:03d}'
+
+            # going to phi home
+            if phiAngle == 0:
+                designId = self._runFpsCreateDesign(f'createHomeDesign phi designName={designName}')
+                moveCobra = fpsSequenceList.MoveToHome(designId=designId, exptime=mcsExptime, phi=True, **illuminators)
+            else:
+                designId = self._runFpsCreateDesign(
+                    f'createThetaPhiScanDesign thetaAngle={thetaAngle:d} phiAngle={phiAngle:d} designName={designName}')
+                moveCobra = fpsSequenceList.MoveToPfsDesign(designId=designId, **moveToPfsDesignConfig, **illuminators)
+
+            self.actor.declareFpsDesign(cmd, designId=designId)
+            self.engine.run(cmd, moveCobra, doFinish=False)
+
+            scienceTrace = spsSequenceList.calib.ScienceTrace(cams, lampsKeys, duplicate, windowKeys,
+                                                              name=name,
+                                                              comments=designName,
+                                                              groupId=groupId)
+            self.engine.run(cmd, scienceTrace, doFinish=False)
+            cmd.inform(
+                f'text="ThetaPhiScan groupId={groupId} thetaAngle={thetaAngle:d} deg phiAngle={phiAngle:d} deg DONE"')
+
+        cmd.inform(f'text="ThetaPhiScan groupId={groupId} thetaAngle={thetaAngle:d} deg FINISHED"')
+        remainingThetas = getRemainingThetas(groupId)
+        cmd.inform(
+            f'text="ThetaPhiScan groupId={groupId} remaining thetaAngles: {",".join(map(str, remainingThetas))}"')
+        cmd.finish(f'nRemainingThetas={len(remainingThetas)}')
