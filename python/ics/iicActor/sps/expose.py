@@ -8,6 +8,7 @@ import pfscore.gen2 as gen2
 from ics.iicActor.utils import exception
 from ics.iicActor.utils.pfsConfig.illumination import updateFiberStatus
 from ics.iicActor.utils.subcmd import CmdRet
+from ics.iicActor.utils.versions import collectVersions
 from ics.iicActor.utils.visited import VisitedCmd
 from ics.utils.fits import mhs as fitsMhs
 from opscore.utility.qstr import qstr
@@ -53,6 +54,17 @@ class SpsExpose(VisitedCmd):
         timeLim = timeOffset + exptime
         exptime = exptime if exptime else None
         return cls(sequence, 'sps', f'expose {exptype}', exptime=exptime, cams=cams, timeLim=timeLim, **kwargs)
+
+    def _shouldForcePfsConfig(self):
+        """Determine whether pfsConfig validation should be bypassed."""
+        isNonScienceExp = self.exptype in ['bias', 'dark', 'test']
+
+        forcePfsConfig = (
+                self.sequence.forcePfsConfig  # user explicitly requested to bypass pfsConfig checks
+                or isNonScienceExp  # pfsConfig0 is not meaningful for these exposure types
+                or not self.sequence.isPfiExposure  # no PFI involvement, so cobra positions are irrelevant
+        )
+        return forcePfsConfig
 
     def getMetadata(self):
         """Format metadata argument."""
@@ -156,16 +168,14 @@ class SpsExpose(VisitedCmd):
         selectedCams = self.sequence.engine.keyRepo.getSelectedCams(self.sequence.cams)
         camMask = PfsConfig.getCameraMask(selectedCams)
 
-        isNonScienceExp = self.exptype in ['bias', 'dark', 'test']
+        forcePfsConfig = self._shouldForcePfsConfig()
+        versions = collectVersions(models=self.iicActor.models)
 
-        forcePfsConfig = (
-                self.sequence.forcePfsConfig  # user explicitly requested to bypass pfsConfig checks
-                or isNonScienceExp  # pfsConfig0 is not meaningful for these exposure types
-                or not self.sequence.isPfiExposure  # no PFI involvement, so cobra positions are irrelevant
-        )
-
-        pfsConfig = self.visitManager.activeField.makePfsConfig(self.visitId, cards=cards, camMask=camMask,
-                                                                forcePfsConfig=forcePfsConfig)
+        pfsConfig = self.visitManager.activeField.makePfsConfig(self.visitId,
+                                                                cards=cards,
+                                                                camMask=camMask,
+                                                                forcePfsConfig=forcePfsConfig,
+                                                                versions=versions)
 
         # setting INSROT_MISMATCH in pfsConfig if dINSROT > threshold
         maxDeltaINSROT = self.iicActor.actorConfig['pfsConfig']['maxDeltaINSROT']
