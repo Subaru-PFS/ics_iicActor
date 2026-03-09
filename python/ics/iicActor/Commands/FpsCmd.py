@@ -352,8 +352,8 @@ class FpsCmd(object):
         """"""
         cmdKeys = cmd.cmd.keywords
 
-        designName = 'phiCrossing-2022-06-19' if 'phi' in cmdKeys else designName
-        designName = 'thetaCrossing-2022-06-19' if 'theta' in cmdKeys else designName
+        designName = 'phiCrossing-2026-01-26' if 'phi' in cmdKeys else designName
+        designName = 'thetaCrossing-2026-03-08' if 'theta' in cmdKeys else designName
 
         # get dotCrossing designId from opdb or use provided new one.
         if 'designId' in cmdKeys:
