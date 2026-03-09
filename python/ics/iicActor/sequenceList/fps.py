@@ -101,13 +101,14 @@ class MoveToPfsDesign(FpsSequence):
     seqtype = 'moveToPfsDesign'
 
     def __init__(self, designId, nIteration, tolerance, exptime, noHome, twoStepsOff, shortExpOff, noTweak,
-                 maskFile=False, **fpsKeys):
+                 skipFiducialInterferenceCheck, maskFile=False, **fpsKeys):
         super().__init__(**fpsKeys)
 
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
                  tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=not noHome, twoStepsOff=twoStepsOff,
-                 shortExpOff=shortExpOff, noTweak=noTweak, timeLim=600)
+                 shortExpOff=shortExpOff, noTweak=noTweak, skipFiducialInterferenceCheck=skipFiducialInterferenceCheck,
+                 timeLim=600)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -163,7 +164,6 @@ class NearDotConvergence(MoveToPfsDesign):
         maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
         illuminators = translate.illuminatorKeys(iicActor.actorConfig)
         nearDotConvergenceConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'nearDotConvergence')
-
         return cls(designId, maskFile=maskFile, **nearDotConvergenceConfig, **seqKeys, **illuminators)
 
 
@@ -189,7 +189,7 @@ class DotCrossing(FpsSequence):
         seqKeys = translate.seqKeys(cmdKeys)
 
         illuminators = translate.illuminatorKeys(iicActor.actorConfig)
-        dotCrossingConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'dotCrossing')
+        dotCrossingConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, cls.seqtype)
 
         return cls(**dotCrossingConfig, **seqKeys, **illuminators)
 
