@@ -1,10 +1,12 @@
+from datetime import datetime, timezone
+
 import numpy as np
 import pandas as pd
+from ics.iicActor.utils.versions import collectVersions
 from pfs.datamodel.pfsConfig import PfsDesign
 from pfs.datamodel.utils import calculate_pfsDesignId
 from pfs.utils.fiberids import FiberIds
 from pfs.utils.pfsDesignUtils import fakeRa, fakeDec, fakeRaDecFromPfiNominal
-from ics.iicActor.utils.versions import collectVersions
 
 
 def fakePfiNominal(fiberId):
@@ -76,5 +78,7 @@ def mergeSuNSSAndDcb(pfsDesigns, designName):
     kwargs = sortFieldsByFiberId(kwargs)
     # adding versions
     kwargs['versions'] = collectVersions()
+    # adding obstime
+    kwargs['obstime'] = datetime.now(timezone.utc).isoformat()
     # Just return the constructed PfsDesign.
     return PfsDesign(**kwargs)
