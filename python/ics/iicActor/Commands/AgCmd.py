@@ -28,7 +28,7 @@ class AgCmd(object):
                             f'[<fit_dInR>] [<exposure_delay>] [<tec_off>] {translate.seqArgs}', self.acquireField),
             ('autoguideStart', f'[<designId>] [<exptime>] [<cadence>] [<center>] [<magnitude>] [@(fromSky)] '
                                f'[@(dryRun)] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] [<tec_off>] '
-                               f'[<max_correction>] {translate.seqArgs}', self.autoguideStart),
+                               f'[<max_correction>] [<filter_bad_shape>] {translate.seqArgs}', self.autoguideStart),
             ('autoguideStop', '', self.autoguideStop),
             ('startAgFocusSweep', f'[<designId>] [<exptime>] [<fit_dScale>] [<fit_dInR>] [<exposure_delay>] '
                                   f'[<tec_off>] {translate.seqArgs}', self.startAgFocusSweep),
@@ -56,7 +56,9 @@ class AgCmd(object):
                                                  help='delay in milliseconds between AG cameras'),
                                         keys.Key('tec_off', types.String(),
                                                  help='AG cameras thermoelectric coolers turned off'),
-                                        keys.Key('max_correction', types.Float(), help='max correction for guiding'))
+                                        keys.Key('max_correction', types.Float(), help='max correction for guiding'),
+                                        keys.Key('filter_bad_shape', types.String(),
+                                                 help='filter_bad_shape (yes|no)'), )
 
     @property
     def engine(self):

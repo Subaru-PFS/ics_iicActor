@@ -70,13 +70,14 @@ class AutoguideStart(AgSequence):
     seqtype = 'autoguideStart'
 
     def __init__(self, designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR,
-                 exposure_delay, tec_off, max_correction, visit0, **seqKeys):
+                 exposure_delay, tec_off, max_correction, visit0, filter_bad_shape, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
         self.add('ag', 'autoguide start', parseVisit=True,
                  design_id=designId, exposure_time=exptime, cadence=cadence, center=center, magnitude=magnitude,
                  from_sky=fromSky, dry_run=dryRun, fit_dscale=fit_dScale, fit_dinr=fit_dInR,
-                 exposure_delay=exposure_delay, tec_off=tec_off, max_correction=max_correction, visit0=visit0)
+                 exposure_delay=exposure_delay, tec_off=tec_off, max_correction=max_correction, visit0=visit0,
+                 filter_bad_shape=filter_bad_shape)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -93,6 +94,7 @@ class AutoguideStart(AgSequence):
         exposure_delay = cmdKeys['exposure_delay'].values[0] if 'exposure_delay' in cmdKeys else None
         tec_off = cmdKeys['tec_off'].values[0] if 'tec_off' in cmdKeys else None
         max_correction = cmdKeys['max_correction'].values[0] if 'max_correction' in cmdKeys else None
+        filter_bad_shape = cmdKeys['filter_bad_shape'].values[0] if 'filter_bad_shape' in cmdKeys else None
 
         # get provided designId or get current one.
         if 'designId' in cmdKeys:
@@ -106,7 +108,7 @@ class AutoguideStart(AgSequence):
         visit0 = pfsConfig0.visit if pfsConfig0 and pfsConfig0.pfsDesignId == designId else visit0
 
         return cls(designId, fromSky, exptime, cadence, center, magnitude, dryRun, fit_dScale, fit_dInR,
-                   exposure_delay, tec_off, max_correction, visit0, **seqKeys)
+                   exposure_delay, tec_off, max_correction, visit0, filter_bad_shape, **seqKeys)
 
 
 class AutoguideStop(Sequence):
