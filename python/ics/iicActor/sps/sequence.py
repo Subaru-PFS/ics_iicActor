@@ -12,13 +12,12 @@ class SpsSequence(sequence.Sequence):
     doScienceCheck = False
     """"""
 
-    def __init__(self, cams, *args, isWindowed=False, forceGrating=False, returnWhenShutterClose=False,
+    def __init__(self, cams, *args, isWindowed=False, returnWhenShutterClose=False,
                  skipBiaCheck=False, forcePfsConfig=False, **kwargs):
         self.cams = cams
 
         sequence.Sequence.__init__(self, *args, **kwargs)
 
-        self.forceGrating = forceGrating
         self.returnWhenShutterClose = returnWhenShutterClose
         self.skipBiaCheck = skipBiaCheck
         self.forcePfsConfig = forcePfsConfig
@@ -66,34 +65,6 @@ class SpsSequence(sequence.Sequence):
             self.comments = translate.setDefaultComments(selectedArms)
 
         super().initialize(engine, cmd)
-
-    def matchPfsConfigArms(self, pfsConfigArms):
-        """
-        Match the arms in the current pfsConfig to the arms being used in the sequence.
-
-        Parameters
-        ----------
-        pfsConfig : `pfs.datamodel.pfsConfig.PfsConfig`
-            Current pfsConfig.
-
-        Returns
-        -------
-        str
-            The arms being used in the sequence, as a string.
-
-        Raises
-        ------
-        ValueError
-            If any of the arms being used in the sequence are not present in the pfsConfig and
-            `forceGrating` is set to `False`.
-        """
-        selectedArms = self.engine.keyRepo.getSelectedArms(self.cams)
-        diffArm = selectedArms - set(pfsConfigArms)
-
-        if len(diffArm) and not self.forceGrating:
-            raise ValueError(f"{','.join(diffArm)} not present in pfsConfig.arms")
-
-        return ''.join(selectedArms)
 
     def expose(self, exptype, exptime, cams, duplicate=1, windowKeys=None, slideSlit=None, mcsExposureBefore=None):
         """Append duplicate * sps expose to sequence."""

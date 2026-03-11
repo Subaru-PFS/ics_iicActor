@@ -38,7 +38,6 @@ class ScienceObjectLoop(ScienceObject):
     """ Biases sequence """
 
     def __init__(self, cams, exptime, duplicate, windowKeys, mcsExposureBefore, **seqKeys):
-        mcsExposureBefore['enabled'] = False
         ScienceObject.__init__(self, cams, exptime, 1, windowKeys, mcsExposureBefore, **seqKeys)
 
     def commandLogic(self, *args, **kwargs):

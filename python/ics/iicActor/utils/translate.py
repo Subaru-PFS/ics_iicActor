@@ -3,7 +3,7 @@ import os
 import ics.utils.sps.lamps.utils.lampState as lampState
 import numpy as np
 
-seqArgs = '[<name>] [<comments>] [@doTest] [@noDeps] [@forceGrating] [@returnWhenShutterClose] [@skipBiaCheck] [@forcePfsConfig] [<groupId>] [<head>] [<tail>]'
+seqArgs = '[<name>] [<comments>] [@doTest] [@noDeps] [@returnWhenShutterClose] [@skipBiaCheck] [@forcePfsConfig] [<groupId>] [<head>] [<tail>]'
 
 
 def seqKeys(cmdKeys):
@@ -12,7 +12,6 @@ def seqKeys(cmdKeys):
     comments = cmdKeys['comments'].values[0] if 'comments' in cmdKeys else ''
     doTest = 'doTest' in cmdKeys
     noDeps = 'noDeps' in cmdKeys
-    forceGrating = 'forceGrating' in cmdKeys
     returnWhenShutterClose = 'returnWhenShutterClose' in cmdKeys
     skipBiaCheck = 'skipBiaCheck' in cmdKeys
     forcePfsConfig = 'forcePfsConfig' in cmdKeys
@@ -20,7 +19,7 @@ def seqKeys(cmdKeys):
     tail = cmdKeys['tail'].values if 'tail' in cmdKeys else None
     groupId = resolveGroupId(cmdKeys)
 
-    return dict(name=name, comments=comments, doTest=doTest, noDeps=noDeps, forceGrating=forceGrating,
+    return dict(name=name, comments=comments, doTest=doTest, noDeps=noDeps,
                 returnWhenShutterClose=returnWhenShutterClose, skipBiaCheck=skipBiaCheck, forcePfsConfig=forcePfsConfig,
                 head=head, tail=tail, groupId=groupId, cmdKeys=cmdKeys)
 

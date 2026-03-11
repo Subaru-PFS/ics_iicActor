@@ -2,7 +2,6 @@ import logging
 
 import ics.utils.cmd as cmdUtils
 import ics.utils.sps.fits as fits
-import numpy as np
 import pfs.utils.pfsConfigUtils as pfsConfigUtils
 import pfscore.gen2 as gen2
 from ics.iicActor.utils import exception
@@ -18,18 +17,15 @@ from pfs.datamodel import PfsConfig, InstrumentStatusFlag
 class SpsExpose(VisitedCmd):
     """Handle SPS exposure command specifics, including visit and pfsConfig management."""
 
-    def __init__(self, *args, mcsExposureBefore=None, **kwargs):
-        # Always parse visit information
-        super().__init__(*args, parseVisit=True, **kwargs)
+    def __init__(self, sequence, exptype, mcsExposureBefore=None, **kwargs):
+        self.exptype = exptype
+        spsExptype = exptype[3:] if exptype[:3] == 'sci' else exptype
+        super().__init__(sequence, 'sps', f'expose {spsExptype}', parseVisit=True, **kwargs)
 
         self.visit = None
         self.pfsConfig = None
         self.doWritePfsConfig = True
         self.mcsExposureBefore = mcsExposureBefore
-
-        # Extract exposure type from command string
-        _, exptype, _ = self.cmdStr.split(' ', 2)
-        self.exptype = exptype.strip()
 
         self.logger = logging.getLogger('spsExpose')
 
@@ -53,16 +49,15 @@ class SpsExpose(VisitedCmd):
         """Specify exposure command with timing limits."""
         timeLim = timeOffset + exptime
         exptime = exptime if exptime else None
-        return cls(sequence, 'sps', f'expose {exptype}', exptime=exptime, cams=cams, timeLim=timeLim, **kwargs)
+        return cls(sequence, exptype, exptime=exptime, cams=cams, timeLim=timeLim, **kwargs)
 
     def _shouldForcePfsConfig(self):
         """Determine whether pfsConfig validation should be bypassed."""
-        isNonScienceExp = self.exptype in ['bias', 'dark', 'test']
+        isNonScienceExp = self.exptype not in ['object', 'sciflat', 'sciarc']
 
         forcePfsConfig = (
                 self.sequence.forcePfsConfig  # user explicitly requested to bypass pfsConfig checks
                 or isNonScienceExp  # pfsConfig0 is not meaningful for these exposure types
-                or not self.sequence.isPfiExposure  # no PFI involvement, so cobra positions are irrelevant
         )
         return forcePfsConfig
 
@@ -90,7 +85,7 @@ class SpsExpose(VisitedCmd):
         with self.visitManager.getVisit(caller='sps') as visit:
             self.prepareVisit(visit)
 
-            if self.mcsExposureBefore and self.mcsExposureBefore['enabled']:
+            if self.mcsExposureBefore and self.mcsExposureBefore['enabled'] and self.sequence.isPfiExposure:
                 self.callMcsExposure(cmd, visit, **self.mcsExposureBefore)
 
             cmdRet = super().call(cmd)
@@ -166,7 +161,7 @@ class SpsExpose(VisitedCmd):
                                        sequenceName=self.sequence.name, sequenceComments=self.sequence.comments)
 
         selectedCams = self.sequence.engine.keyRepo.getSelectedCams(self.sequence.cams)
-        camMask = PfsConfig.getCameraMask(selectedCams)
+        camMask = PfsConfig.toCameraMask(selectedCams)
 
         forcePfsConfig = self._shouldForcePfsConfig()
         versions = collectVersions(models=self.iicActor.models)
@@ -175,7 +170,8 @@ class SpsExpose(VisitedCmd):
                                                                 cards=cards,
                                                                 camMask=camMask,
                                                                 forcePfsConfig=forcePfsConfig,
-                                                                versions=versions)
+                                                                versions=versions,
+                                                                isPfiExposure=self.sequence.isPfiExposure)
 
         # setting INSROT_MISMATCH in pfsConfig if dINSROT > threshold
         maxDeltaINSROT = self.iicActor.actorConfig['pfsConfig']['maxDeltaINSROT']
@@ -185,14 +181,6 @@ class SpsExpose(VisitedCmd):
         # Insert into opdb immediately
         self.sequence.engine.opdb.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=pfsConfig.visit0,
                                                      camMask=pfsConfig.camMask, instStatusFlag=pfsConfig.instStatusFlag)
-
-        # Ensure pfsConfig arms match those used in current sequence
-        pfsConfig.arms = self.sequence.matchPfsConfigArms(pfsConfig.arms)
-
-        # Reporting that the pfsConfig is a direct copy of the pfsDesign
-        isFake = not np.nansum(np.abs(pfsConfig.pfiNominal - pfsConfig.pfiCenter))
-        if self.sequence.isPfiExposure and isFake:
-            self.sequence.getCmd().warn('text="pfsConfig.pfiCenter was faked from the pfsDesign!"')
 
         # writing pfsConfig right away since it doesn't need any further update.
         if self.exptype in ['bias', 'dark']:
