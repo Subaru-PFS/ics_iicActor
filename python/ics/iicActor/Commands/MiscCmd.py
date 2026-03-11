@@ -39,7 +39,9 @@ class MiscCmd(object):
              self.dotRoach),
             ('thetaPhiScan', 'start', self.startNewThetaPhiScan),
             ('thetaPhiScan', f'takeNextTheta [<groupId>] [<thetaAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
-             self.takeNextThetaPhiScan)
+             self.takeNextThetaPhiScan),
+            ('hotRoach', '', self.test),
+            ('hotRoach2', '', self.test2)
         ]
 
         # Define typed command arguments for the above commands.
@@ -254,3 +256,59 @@ class MiscCmd(object):
         cmd.inform(
             f'text="ThetaPhiScan groupId={groupId} remaining thetaAngles: {",".join(map(str, remainingThetas))}"')
         cmd.finish(f'nRemainingThetas={len(remainingThetas)}')
+
+    def test(self, cmd):
+        cmdKeys = cmd.cmd.keywords
+
+        mcsExptime = self.actor.actorConfig['mcs']['exptime']
+        illuminators = self.actor.actorConfig['illuminators']
+        thetaPhiScanConfig = self.actor.actorConfig['thetaPhiScan']
+        scienceTraceConfig = thetaPhiScanConfig['scienceTrace']
+        lampsKeys = dict(halogen=int(translate.resolveExptime(cmdKeys, scienceTraceConfig)))
+        __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
+        windowKeys = translate.windowKeys(cmdKeys, scienceTraceConfig)
+        cams = spsSequence.SpsSequence.keysToCam(self.actor, cmdKeys, configDict=scienceTraceConfig['idDict'])
+
+        homeDesignId = self._runFpsCreateDesign(f'createHomeDesign all')
+        self.actor.declareFpsDesign(cmd, designId=homeDesignId)
+        moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True, **illuminators)
+        self.engine.run(cmd, moveToHomeAll, doFinish=False)
+
+        # take one trace
+        scienceTrace = spsSequenceList.calib.ScienceTrace(cams, lampsKeys, duplicate, windowKeys,
+                                                          name='hotRoach',
+                                                          comments='cobraHome')
+        self.engine.run(cmd, scienceTrace, doFinish=False)
+
+        # run nearDotConvergence.
+        designId = designDB.latestDesignIdMatchingName('phiCrossing-2026-03-10')
+        self.actor.declareFpsDesign(cmd, designId=designId)
+        nearDotConvergence = fpsSequenceList.NearDotConvergence.fromCmdKeys(self.actor, cmdKeys, designId=designId)
+        self.engine.run(cmd, nearDotConvergence, doFinish=False)
+
+        # Run fps hide
+        moveToDot = fpsSequenceList.MoveToDot.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.run(cmd, moveToDot, doFinish=False)
+
+        # take one trace
+        scienceTrace = spsSequenceList.calib.ScienceTrace(cams, lampsKeys, duplicate, windowKeys,
+                                                          name='hotRoach',
+                                                          comments='after_hiding_cobras')
+        self.engine.run(cmd, scienceTrace, doFinish=False)
+
+        cmd.finish()
+
+    def test2(self, cmd):
+        cmdKeys = cmd.cmd.keywords
+
+        # run nearDotConvergence.
+        designId = designDB.latestDesignIdMatchingName('phiCrossing-2026-03-10')
+        self.actor.declareFpsDesign(cmd, designId=designId)
+        nearDotConvergence = fpsSequenceList.NearDotConvergence.fromCmdKeys(self.actor, cmdKeys, designId=designId)
+        self.engine.run(cmd, nearDotConvergence, doFinish=False)
+
+        # Run fps hide
+        moveToDot = fpsSequenceList.MoveToDot2.fromCmdKeys(self.actor, cmdKeys)
+        self.engine.run(cmd, moveToDot, doFinish=False)
+
+        cmd.finish()

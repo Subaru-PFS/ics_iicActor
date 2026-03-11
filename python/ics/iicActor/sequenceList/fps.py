@@ -287,3 +287,40 @@ class CobraMoveSteps(FpsSequence):
         illuminators = translate.illuminatorKeys(iicActor.actorConfig)
 
         return cls(phi, theta, stepSize, maskFile, genPfsConfig, exptime, designId, **seqKeys, **illuminators)
+
+
+class MoveToDot(FpsSequence):
+    """ fps MotorOntimeSearch command. """
+    seqtype = 'moveToDot'
+
+    def __init__(self, **fpsKeys):
+        super().__init__(**fpsKeys)
+
+        self.add('fps', f'moveToDot')
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct FpsLoop object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
+
+        return cls(**seqKeys, **illuminators)
+
+
+class MoveToDot2(FpsSequence):
+    """ fps moveToDot2 command. """
+    seqtype = 'moveToDot2'
+
+    def __init__(self, dotTarget, **fpsKeys):
+        super().__init__(**fpsKeys)
+
+        self.add('fps', f'moveToDot2 dotTarget={dotTarget}')
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct MoveToDot2 object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
+        dotTarget = cmdKeys['dotTarget'].values[0] if 'dotTarget' in cmdKeys else 'dotEdge'
+
+        return cls(dotTarget, **seqKeys, **illuminators)
