@@ -108,6 +108,7 @@ class DitheredFlats(TimedLampsSequence):
 class FiberProfiles(TimedLampsSequence):
     """ Dithered Flats sequence """
     seqtype = 'fiberProfiles'
+    exptype = 'sciflat'
 
     def __init__(self, cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, nTraceBefore, nTraceAfter,
                  **seqKeys):
@@ -153,7 +154,7 @@ class FiberProfiles(TimedLampsSequence):
         nirCam = [cam for cam in cams if cam.arm == 'n']
 
         for i in range(duplicate):
-            self.expose('flat', lampsKeys, cams, duplicate=1)
+            self.expose(self.exptype, lampsKeys, cams, duplicate=1)
             # interleave dark for nir.
             if nirCam and interleaveDark:
                 SpsSequence.expose(self, 'dark', interleaveDark, nirCam, duplicate=1)
@@ -216,12 +217,14 @@ class DriftFlats(ShutterDriftFlats, TimedLampsSequence):
 class ScienceArc(Arcs):
     """ Biases sequence """
     seqtype = 'scienceArc'
+    exptype = 'sciarc'
     doScienceCheck = True
 
 
 class ScienceTrace(Flats):
     """ Biases sequence """
     seqtype = 'scienceTrace'
+    exptype = 'sciflat'
     doScienceCheck = True
 
 

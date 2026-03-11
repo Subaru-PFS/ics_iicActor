@@ -48,11 +48,12 @@ class Darks(SpsSequence):
 class Arcs(TimedLampsSequence):
     """ Biases sequence """
     seqtype = 'arcs'
+    exptype = 'arc'
 
     def __init__(self, cams, lampsKeys, duplicate, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
-        self.expose('arc', lampsKeys, cams, duplicate=duplicate)
+        self.expose(self.exptype, lampsKeys, cams, duplicate=duplicate)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -68,12 +69,12 @@ class Arcs(TimedLampsSequence):
 class Flats(TimedLampsSequence):
     """ Biases sequence """
     seqtype = 'flats'
+    exptype = 'flat'
 
     def __init__(self, cams, lampsKeys, duplicate, windowKeys, **seqKeys):
-        print('nominal=',lampsKeys)
         SpsSequence.__init__(self, cams, isWindowed=bool(windowKeys), **seqKeys)
 
-        self.expose('flat', lampsKeys, cams, duplicate=duplicate, windowKeys=windowKeys)
+        self.expose(self.exptype, lampsKeys, cams, duplicate=duplicate, windowKeys=windowKeys)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
