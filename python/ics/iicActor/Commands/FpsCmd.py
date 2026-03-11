@@ -2,7 +2,6 @@ from importlib import reload
 
 import ics.iicActor.sequenceList.fps as fpsSequence
 import ics.iicActor.utils.lib as iicUtils
-import ics.iicActor.utils.pfsDesign.opdb as designDB
 import ics.iicActor.utils.translate as translate
 import ics.utils.cmd as cmdUtils
 import numpy as np
@@ -16,7 +15,6 @@ from pfs.datamodel.pfsConfig import TargetType
 
 reload(fpsSequence)
 reload(iicUtils)
-reload(designDB)
 
 
 class FpsCmd(object):
@@ -359,7 +357,7 @@ class FpsCmd(object):
         if 'designId' in cmdKeys:
             designId = cmdKeys['designId'].values[0]
         else:
-            designId = designDB.latestDesignIdMatchingName(designName)
+            designId = self.engine.opdb.latestDesignIdMatchingName(designName)
 
         # declare/insert current design as nearDotDesign.
         self.actor.declareFpsDesign(cmd, designId=designId)

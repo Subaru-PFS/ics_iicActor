@@ -1,13 +1,8 @@
-from importlib import reload
-
-import ics.iicActor.utils.pfsDesign.opdb as designDB
 import numpy as np
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from pfs.datamodel import PfsDesign
 from pfs.utils.pfsDesignVariants import makeVariantDesign
-
-reload(designDB)
 
 
 class TopCmd(object):
@@ -99,14 +94,14 @@ class TopCmd(object):
 
         if 'nVariants' in cmdKeys:
             # make sure no variants already exist.
-            if designDB.getAllVariants(designId0).size:
+            if self.engine.opdb.getAllVariants(designId0).size:
                 cmd.fail('text="there is already variants matching that designId0, use addVariants instead."')
                 return
             # variant starts at 1.
             variants = np.array(list(range(cmdKeys['nVariants'].values[0]))) + 1
 
         elif 'addVariants' in cmdKeys:
-            maxVariant = designDB.maxVariantMatchingDesignId0(designId0)
+            maxVariant = self.engine.opdb.maxVariantMatchingDesignId0(designId0)
             variants = np.array(list(range(cmdKeys['addVariants'].values[0]))) + maxVariant + 1
 
         else:
@@ -123,7 +118,7 @@ class TopCmd(object):
             # writing to disk
             pfsDesignVariant.write(dirName=self.pfsDesignRootDir)
             # Ingesting into opdb.
-            designDB.ingest(cmd, pfsDesignVariant, designed_at='now')
+            self.engine.opdb.ingest(cmd, pfsDesignVariant, designed_at='now')
 
         cmd.finish()
 
@@ -132,14 +127,15 @@ class TopCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         designId0 = cmdKeys['designId0'].values[0]
-        allVariants = designDB.getAllVariants(designId0)
+        allVariants = self.engine.opdb.getAllVariants(designId0)
 
         if not allVariants.size:
             cmd.fail(f'text="have not found any variants matching designId0 0x{designId0:016x}"')
             return
 
-        for designId, variant in allVariants:
-            cmd.inform(f'text="designId0 0x{designId0:016x} found variant {variant} designId 0x{designId0:016x}"')
+        for j, row in allVariants.iterrows():
+            cmd.inform(
+                f'text="designId0 0x{designId0:016x} found variant {row.variant} designId 0x{row.pfs_design_id:016x}"')
 
         cmd.finish()
 
@@ -148,15 +144,13 @@ class TopCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         designId0 = cmdKeys['designId0'].values[0]
-        allVariants = designDB.getAllVariants(designId0)
+        allVariants = self.engine.opdb.getAllVariants(designId0)
 
         if not allVariants.size:
             cmd.fail(f'text="have not found any variants matching designId0 0x{designId0:016x}"')
             return
 
-        maxVariant = np.max(allVariants[:, 1])
-
-        cmd.finish(f'text="designId0 0x{designId0:016x} maxVariant={maxVariant}"')
+        cmd.finish(f'text="designId0 0x{designId0:016x} maxVariant={allVariants.variant.max()}"')
 
     def ingestPfsDesign(self, cmd):
         """Load and ingest a PfsDesign into opdb given a pfsDesignId."""
@@ -167,6 +161,6 @@ class TopCmd(object):
         # Reading design file.
         pfsDesign = PfsDesign.read(designId, dirName=self.pfsDesignRootDir)
         # Ingesting into opdb.
-        designDB.ingest(cmd, pfsDesign, designed_at=designed_at)
+        self.engine.opdb.ingest(cmd, pfsDesign, designed_at=designed_at)
 
         cmd.finish()

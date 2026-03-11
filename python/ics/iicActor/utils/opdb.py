@@ -13,13 +13,16 @@ class OpdbHandler:
         self.engine = engine
         self.opdb = opdb.OpDB()
 
-    def fetchone(self, sql):
+    def fetch(self, sql):
+        """Return full DataFrame result of a query."""
         try:
-            df = self.opdb.query_dataframe(sql)
+            return self.opdb.query_dataframe(sql)
         except Exception as e:
             raise exception.OpDBFailure(iicUtils.stripQuotes(str(e)))
 
-        return df.squeeze()
+    def fetchone(self, sql):
+        """Return a single scalar value from a query (squeeze DataFrame)."""
+        return self.fetch(sql).squeeze()
 
     def fetchLastSequenceId(self):
         """Get last sequence_id FROM iic_sequence table."""
@@ -113,13 +116,11 @@ class OpdbHandler:
 
         def exposureTablePopulated():
             """Check is there is a matching visit in exposure table."""
-            return not self.opdb.query_dataframe(
-                f'SELECT pfs_visit_id FROM {exposure_table} WHERE pfs_visit_id={pfs_visit_id}').empty
+            return not self.fetch(f'SELECT pfs_visit_id FROM {exposure_table} WHERE pfs_visit_id={pfs_visit_id}').empty
 
         def visitSetPopulated():
             """Check if visit_set table is already populated."""
-            return not self.opdb.query_dataframe(
-                f'SELECT pfs_visit_id FROM visit_set WHERE pfs_visit_id={pfs_visit_id}').empty
+            return not self.fetch(f'SELECT pfs_visit_id FROM visit_set WHERE pfs_visit_id={pfs_visit_id}').empty
 
         # AG commands are ignored when it comes to visit_set, with the current database design there can be ONLY ONE
         # iic_sequence_id per pfs_visit_id, so I choose to give the priority to sps/fps sequence
@@ -163,7 +164,7 @@ class OpdbHandler:
 
     def ingest(self, cmd, pfsDesign, designed_at=None):
         """Inserting into opdb."""
-        isNew = self.fetchone(f'select pfs_design_id from pfs_design where pfs_design_id={pfsDesign.pfsDesignId}').empty
+        isNew = self.fetchone(f'select count(*) from pfs_design where pfs_design_id={pfsDesign.pfsDesignId}') == 0
 
         if isNew:
             try:
@@ -180,7 +181,7 @@ class OpdbHandler:
         condition = f"design_name='{designName}'" if exact else f"substring(design_name,1,{len(designName)})='{designName}'"
         sql = f"select pfs_design_id from pfs_design where {condition} order by to_be_observed_at desc limit 1"
 
-        df = self.opdb.query_dataframe(sql)
+        df = self.fetch(sql)
 
         if df.empty:
             raise RuntimeError(f'could not retrieve {designName} designId from opdb')
@@ -189,35 +190,33 @@ class OpdbHandler:
 
     def designIdFromVariant(self, designId0, variant):
         """Retrieve actual designId from designId0 and variant"""
-        designId = self.fetchone(
-            f'select pfs_design_id from pfs_design where design_id0={designId0} and variant={variant}')
+        df = self.fetch(f'select pfs_design_id from pfs_design where design_id0={designId0} and variant={variant}')
 
-        if designId.empty:
+        if df.empty:
             raise ValueError(f'could not retrieve variant {variant} where design_id0={designId0}')
 
-        return designId
+        return df.pfs_design_id.iloc[0]
 
     def maxVariantMatchingDesignId0(self, designId0):
         """Retrieve actual designId from designId0 and variant"""
         maxVariant = self.fetchone(f'select max(variant) from pfs_design where design_id0={designId0}')
 
-        if maxVariant.empty:
+        if pd.isna(maxVariant):
             raise ValueError(f'could not retrieve pfs_design where design_id0={designId0}')
 
-        return maxVariant
+        return int(maxVariant)
 
     def getAllVariants(self, designId0):
-        return self.opdb.query_dataframe(f'select pfs_design_id,variant from pfs_design where design_id0={designId0}')
+        return self.fetch(f'select pfs_design_id,variant from pfs_design where design_id0={designId0}')
 
     def latestThetaPhiScanId(self, groupName='thetaPhiThroughputScan'):
         """Retrieve last thetaPhiThroughputScan groupId"""
         sql = f"""select max(group_id) from sequence_group where group_name='{groupName}'"""
-        maxGroupdId = self.opdb.query_dataframe(sql).squeeze()
-        return maxGroupdId
+        return self.fetchone(sql)
 
     def getScannedThetaFromThetaPhiScanId(self, groupId):
         """Retrieve unique theta from thetaPhiThroughputScan"""
         sql = f'select * from iic_sequence where group_id={groupId}'
-        df = self.opdb.query_dataframe(sql)
+        df = self.fetch(sql)
         df['theta'] = [int(name.split('_')[1]) for name in df.name]
         return df.theta.unique()

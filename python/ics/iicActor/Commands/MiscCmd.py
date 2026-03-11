@@ -5,7 +5,6 @@ import ics.iicActor.sequenceList.misc as miscSequenceList
 import ics.iicActor.sequenceList.sps as spsSequenceList
 import ics.iicActor.sps.sequence as spsSequence
 import ics.iicActor.utils.lib as iicUtils
-import ics.iicActor.utils.pfsDesign.opdb as designDB
 import ics.iicActor.utils.translate as translate
 import ics.utils.cmd as cmdUtils
 import opscore.protocols.keys as keys
@@ -15,7 +14,7 @@ from ics.utils.threading import singleShot
 from opscore.utility.qstr import qstr
 
 reload(iicUtils)
-reload(designDB)
+
 reload(miscSequenceList)
 
 

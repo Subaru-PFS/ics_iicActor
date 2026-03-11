@@ -4,7 +4,6 @@ import os
 
 import actorcore.ICC
 import ics.iicActor.utils.pfsDesign.merge as mergeDesign
-import ics.iicActor.utils.pfsDesign.opdb as designDB
 import numpy as np
 import pandas as pd
 from ics.iicActor.utils import engine
@@ -113,7 +112,7 @@ class IicActor(actorcore.ICC.ICC):
         # Gen PfsDesign keyword.
         self.genPfsDesignKey(cmd)
         # Ingest design into opdb.
-        designDB.ingest(cmd, pfsDesign, designed_at=designedAt)
+        self.engine.opdb.ingest(cmd, pfsDesign, designed_at=designedAt)
 
     def mergeDesignFromCurrentSetup(self):
         """Merge a PfsDesign given the current non-PFI light source setup."""
@@ -215,7 +214,7 @@ class IicActor(actorcore.ICC.ICC):
 
         # get actual pfsDesignId from designId0 and variant.
         if variant:
-            designId = designDB.designIdFromVariant(designId0=designId, variant=variant)
+            designId = self.engine.opdb.designIdFromVariant(designId0=designId, variant=variant)
 
         if not self.pfiConnected:
             raise RuntimeError('pfi is not connected, design will not declared as current.')
