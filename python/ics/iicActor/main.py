@@ -86,7 +86,7 @@ class IicActor(actorcore.ICC.ICC):
         for actor in ['hub', 'sps', 'dcb', 'dcb2']:
             self.cmdr.bgCall(callFunc=None, actor=actor, cmdStr='status')
 
-    def _onDesignInputsChanged(self, cmd=None):
+    def _onDesignInputsChanged(self, cmd=None, designedAt=None):
         """Called from callbacks only."""
         cmd = self.bcast if cmd is None else cmd
 
@@ -97,7 +97,10 @@ class IicActor(actorcore.ICC.ICC):
             if designId is None:
                 self.visitManager.finishField()
                 self.genPfsDesignKey(cmd)
-            return
+
+            # declaring cobraHome by default.
+            designId = self.engine.opdb.latestDesignIdMatchingName('cobraHome', exact=True)
+
         # pfi is not connected: merge SuNSS/DCB/AFL designs.
         else:
             mergedDesign = self.mergeDesignFromCurrentSetup()
