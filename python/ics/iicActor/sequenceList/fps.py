@@ -314,7 +314,7 @@ class MoveToDot2(FpsSequence):
     def __init__(self, dotTarget, **fpsKeys):
         super().__init__(**fpsKeys)
 
-        self.add('fps', f'moveToDot2 dotTarget={dotTarget}')
+        self.add('fps', f'moveToDot2 dotTarget={dotTarget}',  timeLim=600)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
