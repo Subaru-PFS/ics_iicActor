@@ -40,7 +40,7 @@ class MiscCmd(object):
             ('thetaPhiScan', 'start', self.startNewThetaPhiScan),
             ('thetaPhiScan', f'takeNextTheta [<groupId>] [<thetaAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
              self.takeNextThetaPhiScan),
-            ('hotRoach', '', self.test),
+            ('hotRoach', '[<exptime>]', self.test),
             ('hotRoach2', '', self.test2)
         ]
 
