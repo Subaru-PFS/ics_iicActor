@@ -211,8 +211,7 @@ class GenPfsConfigFromMcs(FpsSequence):
     def __init__(self, exptime, designId, **fpsKeys):
         super().__init__(**fpsKeys)
 
-        self.add('mcs', 'expose object', exptime=exptime, parseFrameId=True, doFibreId=True)
-        self.add('fps', 'genPfsConfigFromMcs', parseVisit=True, designId=designId)
+        self.add('fps', 'genPfsConfigFromMcs', parseVisit=True, designId=designId, expTime=exptime)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -236,11 +235,8 @@ class CobraMoveAngles(FpsSequence):
     def __init__(self, phi, theta, angle, maskFile, genPfsConfig, exptime, designId, **fpsKeys):
         super().__init__(**fpsKeys)
 
-        self.add('fps', f'cobraMoveAngles', phi=phi, theta=theta, angle=angle, maskFile=maskFile)
-
-        if genPfsConfig:
-            self.add('mcs', 'expose object', exptime=exptime, parseFrameId=True, doFibreId=True)
-            self.add('fps', 'genPfsConfigFromMcs', parseVisit=True, designId=designId)
+        self.add('fps', f'cobraMoveAngles', phi=phi, theta=theta, angle=angle, maskFile=maskFile,
+                 genPfsConfig=genPfsConfig, designId=designId)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -253,6 +249,7 @@ class CobraMoveAngles(FpsSequence):
         maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
 
         genPfsConfig = 'genPfsConfig' in cmdKeys
+        designId = designId if genPfsConfig else None
         exptime = translate.resolveMcsExptime(cmdKeys, iicActor.actorConfig)
         illuminators = translate.illuminatorKeys(iicActor.actorConfig)
 
@@ -269,8 +266,7 @@ class CobraMoveSteps(FpsSequence):
         self.add('fps', f'cobraMoveSteps', phi=phi, theta=theta, stepsize=stepSize, maskFile=maskFile)
 
         if genPfsConfig:
-            self.add('mcs', 'expose object', exptime=exptime, parseFrameId=True, doFibreId=True)
-            self.add('fps', 'genPfsConfigFromMcs', parseVisit=True, designId=designId)
+            self.add('fps', 'genPfsConfigFromMcs', parseVisit=True, designId=designId, expTime=exptime)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
