@@ -184,7 +184,7 @@ class SpsExpose(VisitedCmd):
 
         # writing pfsConfig right away since it doesn't need any further update.
         if self.exptype in ['bias', 'dark']:
-            self.writePfsConfig(pfsConfig)
+            self.writePfsConfig(pfsConfig, doRaise=True)
 
         return pfsConfig
 
@@ -199,15 +199,20 @@ class SpsExpose(VisitedCmd):
         )
         self.writePfsConfig(self.pfsConfig)
 
-    def writePfsConfig(self, pfsConfig):
+    def writePfsConfig(self, pfsConfig, doRaise=False):
         """Write pfsConfig to disk and track with pfsConfig key."""
         if not self.doWritePfsConfig or pfsConfig is None:
             return
 
         # Save pfsConfig to disk
-        pfsConfigUtils.writePfsConfig(pfsConfig)
-        self.iicActor.genPfsConfigKey(self.sequence.getCmd(), pfsConfig)
-        self.doWritePfsConfig = False  # Prevent redundant writes
+        try:
+            pfsConfigUtils.writePfsConfig(pfsConfig)
+            self.iicActor.genPfsConfigKey(self.sequence.getCmd(), pfsConfig)
+            self.doWritePfsConfig = False  # Prevent redundant writes
+        except Exception as e:
+            if doRaise:
+                raise
+            self.sequence.getCmd().warn(f'text="Failed to write {pfsConfig.filename} : {e}"')
 
     def register(self):
         """Register current visit as active."""
