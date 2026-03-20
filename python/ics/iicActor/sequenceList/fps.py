@@ -129,13 +129,16 @@ class MoveToHome(FpsSequence):
     seqtype = 'moveToHome'
 
     def __init__(self, exptime, designId, noMCSexposure=False, phi=False, theta=False, all=False, parseVisit=True,
-                 **fpsKeys):
+                 updateCobrasCenters=False, **fpsKeys):
         super().__init__(**fpsKeys)
 
         # move cobras to home, not supposed to, but meh.
         self.add('fps', 'moveToHome', phi=phi, theta=theta, all=all,
                  parseVisit=parseVisit, exptime=exptime, designId=designId, noMCSexposure=noMCSexposure,
                  timeLim=120)
+
+        if updateCobrasCenters:
+            self.add('fps', 'updateCobrasCenters', timeLim=60)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -283,3 +286,42 @@ class CobraMoveSteps(FpsSequence):
         illuminators = translate.illuminatorKeys(iicActor.actorConfig)
 
         return cls(phi, theta, stepSize, maskFile, genPfsConfig, exptime, designId, **seqKeys, **illuminators)
+
+
+class MoveToDot(FpsSequence):
+    """ fps MotorOntimeSearch command. """
+    seqtype = 'moveToDot'
+
+    def __init__(self, **fpsKeys):
+        super().__init__(**fpsKeys)
+
+        self.add('fps', f'moveToDot')
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct FpsLoop object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
+
+        return cls(**seqKeys, **illuminators)
+
+
+class MoveToDotByMcs(FpsSequence):
+    """ fps moveToDotByMcs command. """
+    seqtype = 'moveToDotByMcs'
+
+    def __init__(self, dotTarget, iteration=20, overshootFraction=0.0, **fpsKeys):
+        super().__init__(**fpsKeys)
+
+        self.add('fps',
+                 f'moveToDotByMcs dotTarget={dotTarget} iteration={iteration} overshootFraction={overshootFraction}',
+                 timeLim=600)
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct MoveToDotByMcs object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
+        config = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'moveToDotByMcs')
+
+        return cls(**config, **seqKeys, **illuminators)
