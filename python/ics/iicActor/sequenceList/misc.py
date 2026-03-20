@@ -1,11 +1,7 @@
-import os
-
 import ics.iicActor.utils.translate as translate
 from ics.iicActor.sequenceList.fps import MoveToPfsDesign, FpsSequence
 from ics.iicActor.sps.sequence import SpsSequence
 from ics.iicActor.sps.timedLamps import TimedLampsSequence
-
-
 
 
 class FiberIdentification(SpsSequence):
@@ -39,145 +35,19 @@ class FiberIdentification(SpsSequence):
         return cls(cams, exptime, windowedFlatConfig, iicActor.actorConfig, fiberGroups, **seqKeys)
 
 
-class DotRoach(SpsSequence):
-    """ fps MoveToPfsDesign command. """
-    seqtype = 'dotRoach'
-    useLamps = 'hscLamps'
-
-    @staticmethod
-    def calculateSteps(mode='safe'):
-        # x = np.arange(nSteps)
-        # a = -shapeF / minStepIter
-        # Y = 1 / 2 * a * x ** 2 + shapeF * x + step0
-        # return np.ceil(Y).astype('int')
-        # steps1 = DotRoach.calculateSteps(step0=116, minStepIter=5, nSteps=16, shapeF=-30)
-        # steps2 = DotRoach.calculateSteps(step0=30, minStepIter=1, nSteps=5, shapeF=-10)
-
-        #  vanilla values from iic_sequence_id 19106.
-        steps11 = [116, 89, 68, 53, 44, 41, 44, 53, 68, 89, 116, 149, 188, 233, 284, 341]
-        steps12 = [25, 35, 45, 55, 65, 75]
-
-        # safer scenario.
-        # steps21 = [125, 95, 75, 60, 50, 45, 50, 60, 75, 95, 125, 160, 200, 245, 300, 360]
-        # steps22 = [25, 32, 40, 50, 60, 70, 80]
-
-        # safer scenario, adding extra steps
-        # steps21 = [141, 107, 84, 67, 56, 50, 56, 67, 84, 107, 141, 180, 248, 316, 372, 429, 485]
-        # steps22 = [25, 32, 40, 50, 60, 70, 80, 90]
-
-        # safer scenario, adding extra steps
-        steps21 = [141, 107, 84, 67, 56, 50, 56, 67, 84, 107, 141, 180, 240, 310, 390, 490, 610]
-        steps22 = [25, 32, 40, 50, 60, 70, 80, 90]
-
-        # quicker scenario.
-        steps31 = [177, 133, 100, 76, 63, 62, 77, 102, 140, 192, 265, 362, 494]
-        steps32 = [30, 42, 56, 74, 100]
-
-        if mode == 'first':
-            return steps11, steps12
-        elif mode == 'safe':
-            return steps21, steps22
-        elif mode == 'fast':
-            return steps31, steps32
-        else:
-            raise ValueError(f'unknown mode : {mode}')
-
-    def __init__(self, cams, exptime, windowKeys, maskFile, keepMoving, mode, rootDir, stepSize, count, motor,
-                 **seqKeys):
-        SpsSequence.__init__(self, cams, **seqKeys)
-
-        dataRoot = os.path.join(rootDir, 'current')
-        maskFilesRoot = os.path.join(dataRoot, 'maskFiles')
-
-        def maskFilePath(iterNum):
-            return os.path.join(maskFilesRoot, f'iter{iterNum}.csv')
-
-        steps1, steps2 = DotRoach.calculateSteps(mode=mode)
-
-        # use sps erase command to niet things up.
-        self.add('sps', 'erase', cams=cams)
-
-        # first exposure after going to nearDot
-        maskNumOffset = 1
-        self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-        self.add('drp', 'processDotRoach', iteration=maskNumOffset)
-
-        for iterNum, stepSize in enumerate(steps1):
-            maskFileNum = maskNumOffset + iterNum
-            self.add('fps', f'cobraMoveSteps {motor}', stepsize=-stepSize, maskFile=maskFilePath(maskFileNum))
-
-            # for the last iter, we declare that'll go reverse.
-            if iterNum == len(steps1) - 1:
-                self.add('drp', 'dotRoach phase2')
-
-            # expose and process.
-            self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-            self.add('drp', 'processDotRoach', iteration=maskFileNum + 1)
-
-        maskNumOffset += len(steps1)
-        for iterNum, stepSize in enumerate(steps2):
-            maskFileNum = iterNum + maskNumOffset
-            self.add('fps', f'cobraMoveSteps {motor}', stepsize=stepSize, maskFile=maskFilePath(maskFileNum))
-
-            # no need to go further
-            if iterNum == len(steps2) - 1:
-                break
-
-            # expose and process.
-            self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-            self.add('drp', 'processDotRoach', iteration=maskFileNum + 1)
-
-        # turning drp processing off
-        self.add('drp', 'stopDotRoach')
-
-    @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys):
-        """Defining rules to construct ScienceObject object."""
-        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
-        seqKeys = translate.seqKeys(cmdKeys)
-
-        windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps]
-        windowedConfig = translate.windowKeys(cmdKeys, windowedFlatConfig)
-        exptime = translate.resolveExptime(cmdKeys, windowedFlatConfig)
-
-        # construct maskFile path.
-        maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'moveAll'
-        maskFile = translate.constructMaskFilePath(maskFile, iicActor.actorConfig)
-
-        # load dotRoach config and override with user parameters.
-        config = iicActor.actorConfig['dotRoach'].copy()
-        stepSize = cmdKeys['stepSize'].values[0] if 'stepSize' in cmdKeys else config['stepSize']
-        count = cmdKeys['count'].values[0] if 'count' in cmdKeys else config['count']
-        motor = 'theta' if 'theta' in cmdKeys else config['motor']
-        motor = 'phi' if 'phi' in cmdKeys else motor
-        config.update(stepSize=stepSize, count=count, motor=motor)
-
-        keepMoving = 'keepMoving' in cmdKeys
-        mode = cmdKeys['mode'].values[0] if 'mode' in cmdKeys else 'fast'
-
-        return cls(cams, exptime, windowedConfig, maskFile, keepMoving, mode, **config, **seqKeys)
-
-
 class DotRoachInit(SpsSequence):
     """ fps MoveToPfsDesign command. """
     seqtype = 'dotRoachInit'
     useLamps = 'hscLamps'
 
-    def __init__(self, cams, exptime, windowKeys, maskFile, keepMoving, mode, rootDir, stepSize, count, motor,
-                 **seqKeys):
+    def __init__(self, cams, exptime, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
-        dataRoot = os.path.join(rootDir, 'current')
-
         # turning drp processing on
-        self.add('drp', 'startDotRoach', dataRoot=dataRoot, maskFile=maskFile, keepMoving=keepMoving, cams=cams)
+        self.add('drp', 'startDotRoach', cams=cams)
 
-        # use sps erase command to niet things up.
-        self.add('sps', 'erase', cams=cams)
-
-        # initial exposure
-        self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
-        self.add('drp', 'processDotRoach', iteration=0, timeLim=120)
+        # full frame first
+        self.expose('domeflat', exptime, cams, windowKeys=None)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -186,26 +56,41 @@ class DotRoachInit(SpsSequence):
         seqKeys = translate.seqKeys(cmdKeys)
 
         windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps]
-
         exptime = translate.resolveExptime(cmdKeys, windowedFlatConfig)
-        windowedConfig = translate.windowKeys(cmdKeys, windowedFlatConfig)
 
-        # construct maskFile path.
-        maskFile = cmdKeys['maskFile'].values[0] if 'maskFile' in cmdKeys else 'moveAll'
-        maskFile = os.path.join(iicActor.actorConfig['maskFiles']['rootDir'], f'{maskFile}.csv')
+        return cls(cams, exptime, **seqKeys)
 
-        # load dotRoach config and override with user parameters.
-        config = iicActor.actorConfig['dotRoach'].copy()
-        stepSize = cmdKeys['stepSize'].values[0] if 'stepSize' in cmdKeys else config['stepSize']
-        count = cmdKeys['count'].values[0] if 'count' in cmdKeys else config['count']
-        motor = 'theta' if 'theta' in cmdKeys else config['motor']
-        motor = 'phi' if 'phi' in cmdKeys else motor
-        config.update(stepSize=stepSize, count=count, motor=motor)
 
-        keepMoving = 'keepMoving' in cmdKeys
-        mode = cmdKeys['mode'].values[0] if 'mode' in cmdKeys else 'fast'
+class DotRoach(SpsSequence):
+    """Flux-based dot convergence: windowed flat → processDotRoach → moveToDotByFlux, repeated nIteration times."""
+    seqtype = 'dotRoachNew'
+    useLamps = 'hscLamps'
 
-        return cls(cams, exptime, windowedConfig, maskFile, keepMoving, mode, **config, **seqKeys)
+    def __init__(self, cams, exptime, windowKeys, nIteration, **seqKeys):
+        SpsSequence.__init__(self, cams, **seqKeys)
+
+        for iterNum in range(nIteration):
+            nRemaining = nIteration - iterNum
+            self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
+            self.add('drp', 'processDotRoach')
+            self.add('fps', f'moveToDotByFlux nRemaining={nRemaining}', timeLim=120)
+
+        # Final flux measurement after last move.
+        self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
+        self.add('drp', 'processDotRoach')
+        self.add('drp', 'stopDotRoach')
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct DotRoachByFlux object."""
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
+        seqKeys = translate.seqKeys(cmdKeys)
+
+        windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps].copy()
+        exptime = windowedFlatConfig.pop('exptime')
+        config = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'moveToDotByFlux')
+
+        return cls(cams, exptime, windowedFlatConfig, **config, **seqKeys)
 
 
 class DotRoachPfiLamps(DotRoach, TimedLampsSequence):
