@@ -6,7 +6,6 @@ import ics.iicActor.sequenceList.sps as spsSequenceList
 import ics.iicActor.sps.sequence as spsSequence
 import ics.iicActor.utils.lib as iicUtils
 import ics.iicActor.utils.translate as translate
-import ics.utils.cmd as cmdUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.iicActor.utils.sequenceStatus import Flag
@@ -76,14 +75,6 @@ class MiscCmd(object):
     def engine(self):
         return self.actor.engine
 
-    def _runFpsCreateDesign(self, createDesignCmdStr):
-        """Send createDesign command to fps actor and return the resulting designId."""
-        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=createDesignCmdStr.strip(), timeLim=10)
-        keys = cmdUtils.cmdVarToKeys(cmdVar)
-        designId = int(keys['fpsDesignId'].values[0], 16)
-
-        return designId
-
     def fiberIdentification(self, cmd):
         """"""
         fiberIdentification = miscSequenceList.FiberIdentification.fromCmdKeys(self.actor, cmd.cmd.keywords)
@@ -94,7 +85,7 @@ class MiscCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         maskFileArgs = translate.getMaskFileArgsFromCmd(cmdKeys, self.actor.actorConfig)
-        designId = self._runFpsCreateDesign(f'createBlackDotDesign {maskFileArgs}')
+        designId = self.actor.runFpsCreateDesign(f'createBlackDotDesign {maskFileArgs}')
 
         self.actor.declareFpsDesign(cmd, designId=designId)
 
@@ -107,8 +98,8 @@ class MiscCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         # defining all the sequence first.
-        homeDesignId = designDB.latestDesignIdMatchingName('cobraHome', exact=True)
-        phiCrossingDesignId = designDB.latestDesignIdMatchingName('phiCrossing-2022-06-19')
+        homeDesignId = self.actor.runFpsCreateDesign(f'createHomeDesign all')
+        phiCrossingDesignId = self.engine.opdb.latestDesignIdMatchingName('phiCrossing-2022-06-19')
 
         # exptime in cmdKeys means SPS exptime but the sequence interpret it as MCS exptime, so we have to patch it.
         mcsExptime = self.actor.actorConfig['mcs']['exptime']
@@ -213,7 +204,7 @@ class MiscCmd(object):
         windowKeys = translate.windowKeys(cmdKeys, scienceTraceConfig)
         cams = spsSequence.SpsSequence.keysToCam(self.actor, cmdKeys, configDict=scienceTraceConfig['idDict'])
 
-        homeDesignId = self._runFpsCreateDesign(f'createHomeDesign all')
+        homeDesignId = self.actor.runFpsCreateDesign(f'createHomeDesign all')
         self.actor.declareFpsDesign(cmd, designId=homeDesignId)
 
         moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True, **illuminators)
@@ -230,10 +221,10 @@ class MiscCmd(object):
 
             # going to phi home
             if phiAngle == 0:
-                designId = self._runFpsCreateDesign(f'createHomeDesign phi designName={designName}')
+                designId = self.actor.runFpsCreateDesign(f'createHomeDesign phi designName={designName}')
                 moveCobra = fpsSequenceList.MoveToHome(designId=designId, exptime=mcsExptime, phi=True, **illuminators)
             else:
-                designId = self._runFpsCreateDesign(
+                designId = self.actor.runFpsCreateDesign(
                     f'createThetaPhiScanDesign thetaAngle={thetaAngle:d} phiAngle={phiAngle:d} designName={designName}')
                 moveCobra = fpsSequenceList.MoveToPfsDesign(designId=designId, **moveToPfsDesignConfig, **illuminators)
 
