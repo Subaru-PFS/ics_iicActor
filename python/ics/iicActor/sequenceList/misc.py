@@ -86,8 +86,8 @@ class DotRoach(SpsSequence):
         cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
 
-        windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps].copy()
-        exptime = windowedFlatConfig.pop('exptime')
+        windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps]
+        exptime = translate.resolveExptime(cmdKeys, windowedFlatConfig)
         config = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'moveToDotByFlux')
 
         return cls(cams, exptime, windowedFlatConfig, **config, **seqKeys)
