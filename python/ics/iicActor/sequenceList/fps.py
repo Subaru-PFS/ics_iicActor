@@ -138,7 +138,7 @@ class MoveToHome(FpsSequence):
                  timeLim=120)
 
         if updateCobrasCenters:
-            self.add('fps', 'updateCobrasCenters', timeLim=60)
+            self.add('fps', 'updateCobrasCenters', brokenOnly=True, timeLim=60) # force broken only.
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
