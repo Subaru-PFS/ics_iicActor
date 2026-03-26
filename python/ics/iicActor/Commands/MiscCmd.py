@@ -91,18 +91,6 @@ class MiscCmd(object):
         fiberIdentification = miscSequenceList.FiberIdentification.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, fiberIdentification)
 
-    def genBlackDotsConfig(self, cmd):
-        """"""
-        cmdKeys = cmd.cmd.keywords
-
-        maskFileArgs = translate.getMaskFileArgsFromCmd(cmdKeys, self.actor.actorConfig)
-        designId = self._runFpsCreateDesign(f'createBlackDotDesign {maskFileArgs}')
-
-        self.actor.declareFpsDesign(cmd, designId=designId)
-
-        genPfsConfigFromMcs = fpsSequenceList.GenBlackDotsConfig.fromCmdKeys(self.actor, cmdKeys, designId=designId)
-        self.engine.run(cmd, genPfsConfigFromMcs)
-
     def startNewThetaPhiScan(self, cmd):
         """"""
         cmdKeys = cmd.cmd.keywords
@@ -310,4 +298,8 @@ class MiscCmd(object):
                 cmd.fail('text="dotRoach not completed, stopping here."')
             return
 
-        self.genBlackDotsConfig(cmd)
+        designId = self.actor.runFpsCreateDesign(f'createBlackDotDesign all')
+        self.actor.declareFpsDesign(cmd, designId=designId)
+
+        genBlackDotsConfig = fpsSequenceList.GenBlackDotsConfig(exptime=mcsExptime, designId=designId, **illuminators)
+        self.engine.run(cmd, genBlackDotsConfig)
