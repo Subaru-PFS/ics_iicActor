@@ -75,9 +75,10 @@ class DotRoach(SpsSequence):
             self.add('drp', 'processDotRoach')
             self.add('fps', f'moveToDotByFlux nRemaining={nRemaining}', timeLim=120)
 
-        # Final flux measurement after last move.
+        # Final flux measurement after last move — record only, no cobra movement.
         self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
         self.add('drp', 'processDotRoach')
+        self.add('fps', 'moveToDotByFlux nRemaining=0', timeLim=120)
         self.add('drp', 'stopDotRoach')
 
     @classmethod
