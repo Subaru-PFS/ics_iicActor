@@ -174,6 +174,9 @@ class DotCrossing(FpsSequence):
     def __init__(self, exptime, count, stepSize, **fpsKeys):
         super().__init__(**fpsKeys)
 
+        if self.seqtype=='phiCrossing':
+            stepSize = abs(stepSize)
+
         if not hasattr(self, 'motor'):
             raise AttributeError('DotCrossing subclasses must define motor')
 
