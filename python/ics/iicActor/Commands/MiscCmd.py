@@ -6,6 +6,7 @@ import ics.iicActor.sequenceList.sps as spsSequenceList
 import ics.iicActor.sps.sequence as spsSequence
 import ics.iicActor.utils.lib as iicUtils
 import ics.iicActor.utils.translate as translate
+import ics.utils.cmd as cmdUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.iicActor.utils.sequenceStatus import Flag
@@ -37,7 +38,8 @@ class MiscCmd(object):
              self.dotRoach),
             ('thetaPhiScan', 'start', self.startNewThetaPhiScan),
             ('thetaPhiScan', f'takeNextTheta [<groupId>] [<thetaAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
-             self.takeNextThetaPhiScan)
+             self.takeNextThetaPhiScan),
+            ('declareHomeDesign', '', self.declareHomeDesign)
         ]
 
         # Define typed command arguments for the above commands.
@@ -75,6 +77,14 @@ class MiscCmd(object):
     def engine(self):
         return self.actor.engine
 
+    def _runFpsCreateDesign(self, createDesignCmdStr):
+        """Send createDesign command to fps actor and return the resulting designId."""
+        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=createDesignCmdStr.strip(), timeLim=10)
+        keys = cmdUtils.cmdVarToKeys(cmdVar)
+        designId = int(keys['fpsDesignId'].values[0], 16)
+
+        return designId
+
     def fiberIdentification(self, cmd):
         """"""
         fiberIdentification = miscSequenceList.FiberIdentification.fromCmdKeys(self.actor, cmd.cmd.keywords)
@@ -85,7 +95,7 @@ class MiscCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         maskFileArgs = translate.getMaskFileArgsFromCmd(cmdKeys, self.actor.actorConfig)
-        designId = self.actor.runFpsCreateDesign(f'createBlackDotDesign {maskFileArgs}')
+        designId = self._runFpsCreateDesign(f'createBlackDotDesign {maskFileArgs}')
 
         self.actor.declareFpsDesign(cmd, designId=designId)
 
@@ -98,14 +108,13 @@ class MiscCmd(object):
         cmdKeys = cmd.cmd.keywords
 
         # defining all the sequence first.
-        homeDesignId = self.actor.runFpsCreateDesign(f'createHomeDesign all')
         phiCrossingDesignId = self.engine.opdb.latestDesignIdMatchingName('phiCrossing-2022-06-19')
 
         # exptime in cmdKeys means SPS exptime but the sequence interpret it as MCS exptime, so we have to patch it.
         mcsExptime = self.actor.actorConfig['mcs']['exptime']
         illuminators = self.actor.actorConfig['illuminators']
         nearDotConvergenceConfig = {**self.actor.actorConfig['nearDotConvergence'], 'noHome': True}
-        moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True, **illuminators)
+
         nearDotConvergence = fpsSequenceList.NearDotConvergence(phiCrossingDesignId,
                                                                 **nearDotConvergenceConfig, **illuminators)
         # use pfiLamps by default.
@@ -116,7 +125,8 @@ class MiscCmd(object):
         dotRoach = roaching.fromCmdKeys(self.actor, cmd.cmd.keywords)
 
         # first declare design and going home.
-        self.actor.declareFpsDesign(cmd, designId=homeDesignId)
+        homeDesignId = self.declareHomeDesign(cmd, doFinish=False)
+        moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True, **illuminators)
         self.engine.run(cmd, moveToHomeAll, doFinish=False)
 
         if moveToHomeAll.status.flag != Flag.FINISHED:
@@ -204,9 +214,7 @@ class MiscCmd(object):
         windowKeys = translate.windowKeys(cmdKeys, scienceTraceConfig)
         cams = spsSequence.SpsSequence.keysToCam(self.actor, cmdKeys, configDict=scienceTraceConfig['idDict'])
 
-        homeDesignId = self.actor.runFpsCreateDesign(f'createHomeDesign all')
-        self.actor.declareFpsDesign(cmd, designId=homeDesignId)
-
+        homeDesignId = self.declareHomeDesign(cmd, doFinish=False)
         moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True, **illuminators)
         self.engine.run(cmd, moveToHomeAll, doFinish=False)
 
@@ -221,10 +229,10 @@ class MiscCmd(object):
 
             # going to phi home
             if phiAngle == 0:
-                designId = self.actor.runFpsCreateDesign(f'createHomeDesign phi designName={designName}')
+                designId = self._runFpsCreateDesign(f'createHomeDesign phi designName={designName}')
                 moveCobra = fpsSequenceList.MoveToHome(designId=designId, exptime=mcsExptime, phi=True, **illuminators)
             else:
-                designId = self.actor.runFpsCreateDesign(
+                designId = self._runFpsCreateDesign(
                     f'createThetaPhiScanDesign thetaAngle={thetaAngle:d} phiAngle={phiAngle:d} designName={designName}')
                 moveCobra = fpsSequenceList.MoveToPfsDesign(designId=designId, **moveToPfsDesignConfig, **illuminators)
 
@@ -244,3 +252,13 @@ class MiscCmd(object):
         cmd.inform(
             f'text="ThetaPhiScan groupId={groupId} remaining thetaAngles: {",".join(map(str, remainingThetas))}"')
         cmd.finish(f'nRemainingThetas={len(remainingThetas)}')
+
+    def declareHomeDesign(self, cmd, doFinish=True):
+        """Create a fresh home design and declare it as the current FPS design."""
+        designId = self._runFpsCreateDesign(f'createHomeDesign all')
+        self.actor.declareFpsDesign(cmd, designId, genVisit0=False)
+
+        if doFinish:
+            cmd.finish()
+
+        return designId

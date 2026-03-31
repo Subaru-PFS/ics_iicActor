@@ -4,7 +4,6 @@ import os
 
 import actorcore.ICC
 import ics.iicActor.utils.pfsDesign.merge as mergeDesign
-import ics.utils.cmd as cmdUtils
 import numpy as np
 import pandas as pd
 from ics.iicActor.utils import engine
@@ -87,14 +86,6 @@ class IicActor(actorcore.ICC.ICC):
         for actor in ['hub', 'sps', 'dcb', 'dcb2']:
             self.cmdr.bgCall(callFunc=None, actor=actor, cmdStr='status')
 
-    def runFpsCreateDesign(self, createDesignCmdStr):
-        """Send createDesign command to fps actor and return the resulting designId."""
-        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=createDesignCmdStr.strip(), timeLim=10)
-        keys = cmdUtils.cmdVarToKeys(cmdVar)
-        designId = int(keys['fpsDesignId'].values[0], 16)
-
-        return designId
-
     def _onDesignInputsChanged(self, cmd=None, designedAt=None):
         """Called from callbacks only."""
         cmd = self.bcast if cmd is None else cmd
@@ -108,7 +99,8 @@ class IicActor(actorcore.ICC.ICC):
                 self.genPfsDesignKey(cmd)
 
             # declaring cobraHome by default.
-            designId = self.runFpsCreateDesign(f'createHomeDesign all')
+            self.callCommand('declareHomeDesign')
+            return
         # pfi is not connected: merge SuNSS/DCB/AFL designs.
         else:
             mergedDesign = self.mergeDesignFromCurrentSetup()
