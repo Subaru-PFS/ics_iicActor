@@ -245,7 +245,7 @@ class MiscCmd(object):
         nearDotConvergenceConfig = {**self.actor.actorConfig['nearDotConvergence'], 'noHome': True}
 
         homeDesignId = self.actor.runFpsCreateDesign(f'createHomeDesign all')
-        phiCrossingDesignId = self.engine.opdb.latestDesignIdMatchingName('phiCrossing-2026-03-10')
+        phiCrossingDesignId = self.actor.runFpsCreateDesign(f'createDotConvergenceDesign')
 
         moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True,
                                                    updateCobrasCenters=True, **illuminators)
