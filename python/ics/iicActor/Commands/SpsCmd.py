@@ -24,7 +24,7 @@ class SpsCmd(object):
         self.actor = actor
         identArgs = '[<cam>] [<cams>] [<specNum>] [<specNums>] [<arm>] [<arms>]'
         commonArgs = f'{identArgs} [<duplicate>] {translate.seqArgs}'
-        timedIisArgs = '[<iisArgon>] [<iisHgar>] [<iisNeon>] [<iisKrypton>]'
+        timedIisArgs = '[<iisArgon>] [<iisHgar>] [<iisNeon>] [<iisKrypton>] [<iisHydrogen>] [<iisHelium>]'
         timedArcArgs = f'[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>] {timedIisArgs} [@doShutterTiming]'
         timedFlatArgs = '[<halogen>] [<allFiberLamp>] [<iisHalogen>] [@doShutterTiming]'
         windowingArgs = '[<window>] [<blueWindow>] [<redWindow>]'
@@ -119,6 +119,10 @@ class SpsCmd(object):
                                                  help='IIS lamp on time'),
                                         keys.Key('iisKrypton', types.Float(),
                                                  help='IIS Kr lamp on time'),
+                                        keys.Key('iisHydrogen', types.Float(),
+                                                 help='IIS H lamp on time'),
+                                        keys.Key('iisHelium', types.Float(),
+                                                 help='IIS He lamp on time'),
                                         keys.Key('nTraceBefore', types.Int(),
                                                  help='nTrace in Home before dithered fiberProfiles'),
                                         keys.Key('nTraceAfter', types.Int(),

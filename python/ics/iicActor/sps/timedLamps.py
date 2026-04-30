@@ -112,7 +112,7 @@ class TimedLampsSequence(SpsSequence):
         for nExposure in range(duplicate):
             # adding iis and lamps prepare commands.
             if doIIS:
-                self.add(actor='sps', cmdStr=f'iis {IisCmdStr}', cams=cams)
+                self.add(actor='iis', cmdStr=IisCmdStr)
             if doLamps:
                 self.add(actor='lamps', cmdStr=lampsCmdStr)
 
