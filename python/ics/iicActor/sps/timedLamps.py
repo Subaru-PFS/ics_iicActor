@@ -72,8 +72,8 @@ class TimedLampsSequence(SpsSequence):
 
             return len(lamps) != 0, exptime, f'prepare {" ".join(lamps)}'
 
-        def prepareTotalLampTime(timedLamps):
-            [lamp] = [lamp for lamp in ['hgcd', 'hgar'] if lamp in timedLamps]
+        def prepareTotalLampTime(timedLamps, candidates=('hgcd', 'hgar')):
+            [lamp] = [lamp for lamp in candidates if lamp in timedLamps]
             arms = set([cam.arm for cam in cams])
             estimatedTime = TimedLampsSequence.computeLampTotalSecs(timedLamps[lamp], arms=arms, duplicate=duplicate)
             return estimatedTime, f'prepare {lamp}={estimatedTime}'
@@ -99,6 +99,7 @@ class TimedLampsSequence(SpsSequence):
 
         # other scheme when lamp is turn on before end. INSTRM-2184.
         doImmediateGo = 'hgcd' in lampsCmdStr or 'hgar' in lampsCmdStr
+        doIisImmediateGo = 'hgar' in IisCmdStr
 
         if doImmediateGo:
             estimatedTime, lampsCmdStr = prepareTotalLampTime(lampKeys)
@@ -109,10 +110,19 @@ class TimedLampsSequence(SpsSequence):
             doShutterTiming = False
             doLamps = False
 
+        if doIisImmediateGo:
+            estimatedIisTime, IisCmdStr = prepareTotalLampTime(iisKeys, candidates=('hgar',))
+            self.add(actor='iis', cmdStr=IisCmdStr)
+            self.add(actor='iis', cmdStr='waitForReadySignal', timeLim=240)
+            self.add(actor='iis', cmdStr='go noWait')
+            # iis hgar is now running for the whole sequence; per-exposure iis pulse no longer needed.
+            doShutterTiming = False
+            doIIS = False
+
         for nExposure in range(duplicate):
             # adding iis and lamps prepare commands.
             if doIIS:
-                self.add(actor='sps', cmdStr=f'iis {IisCmdStr}', cams=cams)
+                self.add(actor='iis', cmdStr=IisCmdStr)
             if doLamps:
                 self.add(actor='lamps', cmdStr=lampsCmdStr)
 
