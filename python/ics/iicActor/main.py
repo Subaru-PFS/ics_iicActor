@@ -99,7 +99,7 @@ class IicActor(actorcore.ICC.ICC):
                 self.genPfsDesignKey(cmd)
 
             # declaring cobraHome by default.
-            self.callCommand('declareHomeDesign')
+            self.callCommand('declareHomeDesign skipGenVisit0')
             return
         # pfi is not connected: merge SuNSS/DCB/AFL designs.
         else:
