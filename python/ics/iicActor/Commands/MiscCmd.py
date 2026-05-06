@@ -261,7 +261,7 @@ class MiscCmd(object):
         windowKeys = translate.windowKeys(cmdKeys, scienceTraceConfig)
         cams = spsSequence.SpsSequence.keysToCam(self.actor, cmdKeys, configDict=scienceTraceConfig['idDict'])
 
-        homeDesignId = self.actor.runFpsCreateDesign(f'createHomeDesign all')
+        homeDesignId = self._runFpsCreateDesign(f'createHomeDesign all')
         self.actor.declareFpsDesign(cmd, designId=homeDesignId)
         moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True, **illuminators)
         self.engine.run(cmd, moveToHomeAll, doFinish=False)
@@ -298,8 +298,8 @@ class MiscCmd(object):
         illuminators = self.actor.actorConfig['illuminators']
         nearDotConvergenceConfig = {**self.actor.actorConfig['nearDotConvergence'], 'noHome': True}
 
-        homeDesignId = self.actor.runFpsCreateDesign(f'createHomeDesign all')
-        phiCrossingDesignId = self.actor.runFpsCreateDesign(f'createDotConvergenceDesign')
+        homeDesignId = self._runFpsCreateDesign(f'createHomeDesign all')
+        phiCrossingDesignId = self._runFpsCreateDesign(f'createDotConvergenceDesign')
 
         moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True,
                                                    updateCobrasCenters=True, **illuminators)
@@ -352,7 +352,7 @@ class MiscCmd(object):
                 cmd.fail('text="dotRoach not completed, stopping here."')
             return
 
-        designId = self.actor.runFpsCreateDesign(f'createBlackDotDesign all')
+        designId = self._runFpsCreateDesign(f'createBlackDotDesign all')
         self.actor.declareFpsDesign(cmd, designId=designId)
 
         genBlackDotsConfig = fpsSequenceList.GenBlackDotsConfig(exptime=mcsExptime, designId=designId, **illuminators)
