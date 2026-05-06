@@ -39,7 +39,7 @@ class MiscCmd(object):
             ('thetaPhiScan', 'start', self.startNewThetaPhiScan),
             ('thetaPhiScan', f'takeNextTheta [<groupId>] [<thetaAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
              self.takeNextThetaPhiScan),
-            ('declareHomeDesign', '', self.declareHomeDesign)
+            ('declareHomeDesign', '[@skipGenVisit0]', self.declareHomeDesign)
         ]
 
         # Define typed command arguments for the above commands.
@@ -253,10 +253,13 @@ class MiscCmd(object):
             f'text="ThetaPhiScan groupId={groupId} remaining thetaAngles: {",".join(map(str, remainingThetas))}"')
         cmd.finish(f'nRemainingThetas={len(remainingThetas)}')
 
-    def declareHomeDesign(self, cmd, doFinish=True):
+    def declareHomeDesign(self, cmd, doFinish=True, genVisit0=True):
         """Create a fresh home design and declare it as the current FPS design."""
+        cmdKeys = cmd.cmd.keywords
+
+        genVisit0 = genVisit0 and 'skipGenVisit0' not in cmdKeys
         designId = self._runFpsCreateDesign(f'createHomeDesign all')
-        self.actor.declareFpsDesign(cmd, designId, genVisit0=False)
+        self.actor.declareFpsDesign(cmd, designId, genVisit0=genVisit0)
 
         if doFinish:
             cmd.finish()
