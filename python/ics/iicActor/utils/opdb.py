@@ -5,6 +5,7 @@ import ics.iicActor.utils.lib as iicUtils
 import pandas as pd
 import pfs.utils.ingestPfsDesign as ingestPfsDesign
 from ics.iicActor.utils import exception
+from ics.iicActor.utils.sequenceStatus import Flag
 from pfs.utils.database import opdb
 
 
@@ -214,9 +215,34 @@ class OpdbHandler:
         sql = f"""select max(group_id) from sequence_group where group_name='{groupName}'"""
         return self.fetchone(sql)
 
-    def getScannedThetaFromThetaPhiScanId(self, groupId):
-        """Retrieve unique theta from thetaPhiThroughputScan"""
-        sql = f'select * from iic_sequence where group_id={groupId}'
+    def getScannedThetaFromThetaPhiScanId(self, groupId, phiAngles):
+        """Return theta angles fully scanned under this groupId.
+
+        takeNextThetaPhiScan(thetaAngle=N) writes one scienceTrace row per
+        sub-config under name=f'theta_{N:03d}' with distinct comments
+        ('cobraHome' for the home pose, then 'thetaPhiScan_{N:03d}_{phi:03d}'
+        for each configured phi). A theta is considered scanned only when
+        every expected comment is present AND the underlying sequence
+        finished successfully -- so a partial/crashed run, or a stale-phi
+        run from a previous configuration, both stay in the remaining list.
+        Misgrouped rows (wrong sequence_type or non-theta name) are
+        ignored.
+        """
+        sql = (f'select iic_sequence.name, iic_sequence.comments '
+               f'from iic_sequence '
+               f'inner join iic_sequence_status '
+               f'on iic_sequence_status.iic_sequence_id=iic_sequence.iic_sequence_id '
+               f'where iic_sequence.group_id={groupId} '
+               f"and iic_sequence.sequence_type='scienceTrace' "
+               f'and iic_sequence_status.status_flag={Flag.FINISHED}')
         df = self.fetch(sql)
+        # also enforce the name pattern produced by takeNextThetaPhiScan.
+        df = df[df.name.str.startswith('theta_')]
         df['theta'] = [int(name.split('_')[1]) for name in df.name]
-        return df.theta.unique()
+
+        scanned = []
+        for theta, group in df.groupby('theta'):
+            expected = {'cobraHome'} | {f'thetaPhiScan_{theta:03d}_{phi:03d}' for phi in phiAngles}
+            if expected.issubset(set(group.comments)):
+                scanned.append(int(theta))
+        return scanned
