@@ -179,7 +179,7 @@ class MiscCmd(object):
         """"""
 
         def getRemainingThetas(groupId):
-            scannedThetas = self.engine.opdb.getScannedThetaFromThetaPhiScanId(groupId)
+            scannedThetas = self.engine.opdb.getScannedThetaFromThetaPhiScanId(groupId, phiAngles=phiAngles)
             remainingThetas = list(set(thetaAngles) - set(scannedThetas))
             remainingThetas.sort()
             return remainingThetas
@@ -199,11 +199,23 @@ class MiscCmd(object):
         if groupId is None:
             groupId = self.engine.opdb.latestThetaPhiScanId()
 
-        remainingThetas = getRemainingThetas(groupId)
-        cmd.inform(
-            f'text="ThetaPhiScan groupId={groupId} remaining thetaAngles: {",".join(map(str, remainingThetas))}"')
+        try:
+            remainingThetas = getRemainingThetas(groupId)
+            cmd.inform(
+                f'text="ThetaPhiScan groupId={groupId} remaining thetaAngles: {",".join(map(str, remainingThetas))}"')
+        except Exception as e:
+            cmd.warn(f'text="{str(e)}"')
+            remainingThetas = None
 
         if thetaAngle is None:
+            if remainingThetas is None:
+                cmd.fail(f'text="cannot determine remaining theta angles for groupId={groupId}; '
+                         f'pass thetaAngle=<deg> explicitly"')
+                return
+            elif len(remainingThetas) == 0:
+                cmd.finish(f'text="ThetaPhiScan groupId={groupId} already covers all configured theta angles '
+                           f'({",".join(map(str, thetaAngles))}); no further scan needed"')
+                return
             thetaAngle = remainingThetas[0]
 
         cmd.inform(f'text="ThetaPhiScan groupId={groupId} thetaAngle={thetaAngle:d} deg START"')
