@@ -175,6 +175,7 @@ class MiscCmd(object):
 
         cmd.finish(f'groupId={groupId},{qstr(groupName)}')
 
+    @singleShot
     def takeNextThetaPhiScan(self, cmd):
         """"""
 
@@ -183,6 +184,14 @@ class MiscCmd(object):
             remainingThetas = list(set(thetaAngles) - set(scannedThetas))
             remainingThetas.sort()
             return remainingThetas
+
+        def bailIfNotFinished(seq, label):
+            """Return True iff the sub-sequence finished cleanly; otherwise cmd.fail and abort the scan."""
+            if seq.status.flag == Flag.FINISHED:
+                return True
+            if cmd.alive:
+                cmd.fail(f'text="{label} not completed (status={seq.status.flag}), stopping here."')
+            return False
 
         cmdKeys = cmd.cmd.keywords
         groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
@@ -229,12 +238,16 @@ class MiscCmd(object):
         homeDesignId = self.declareHomeDesign(cmd, doFinish=False)
         moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True, **illuminators)
         self.engine.run(cmd, moveToHomeAll, doFinish=False)
+        if not bailIfNotFinished(moveToHomeAll, 'moveToHome'):
+            return
 
         scienceTrace = spsSequenceList.calib.ScienceTrace(cams, lampsKeys, duplicate, windowKeys,
                                                           groupId=groupId,
                                                           name=name,
                                                           comments='cobraHome')
         self.engine.run(cmd, scienceTrace, doFinish=False)
+        if not bailIfNotFinished(scienceTrace, 'cobraHome scienceTrace'):
+            return
 
         for phiAngle in phiAngles:
             designName = f'thetaPhiScan_{thetaAngle:03d}_{phiAngle:03d}'
@@ -250,12 +263,16 @@ class MiscCmd(object):
 
             self.actor.declareFpsDesign(cmd, designId=designId)
             self.engine.run(cmd, moveCobra, doFinish=False)
+            if not bailIfNotFinished(moveCobra, f'cobra move to {designName}'):
+                return
 
             scienceTrace = spsSequenceList.calib.ScienceTrace(cams, lampsKeys, duplicate, windowKeys,
                                                               name=name,
                                                               comments=designName,
                                                               groupId=groupId)
             self.engine.run(cmd, scienceTrace, doFinish=False)
+            if not bailIfNotFinished(scienceTrace, f'{designName} scienceTrace'):
+                return
             cmd.inform(
                 f'text="ThetaPhiScan groupId={groupId} thetaAngle={thetaAngle:d} deg phiAngle={phiAngle:d} deg DONE"')
 
