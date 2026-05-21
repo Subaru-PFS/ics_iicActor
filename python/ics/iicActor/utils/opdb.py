@@ -236,8 +236,11 @@ class OpdbHandler:
                f"and iic_sequence.sequence_type='scienceTrace' "
                f'and iic_sequence_status.status_flag={Flag.FINISHED}')
         df = self.fetch(sql)
-        # also enforce the name pattern produced by takeNextThetaPhiScan.
-        df = df[df.name.str.startswith('theta_')]
+        # enforce the exact name pattern produced by takeNextThetaPhiScan,
+        # i.e. 'theta_NNN' with a 3-digit zero-padded angle. This rejects
+        # legacy/foreign names like 'theta_scan_radius1.0_angle15' that would
+        # otherwise blow up the int() parse below.
+        df = df[df.name.str.fullmatch(r'theta_\d{3}')]
         df['theta'] = [int(name.split('_')[1]) for name in df.name]
 
         scanned = []
