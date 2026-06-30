@@ -14,7 +14,7 @@ class FpsSequence(VisitedSequence):
 
     def turnOnIlluminators(self, cableBLampOn=False):
         """Turn on the cobra illuminators."""
-        self.add('sps', 'bia on')
+        self.add('sps', 'bia callbackOn')
         self.add('peb', 'led on')
 
         if cableBLampOn:
@@ -22,7 +22,7 @@ class FpsSequence(VisitedSequence):
 
     def turnOffIlluminators(self, cableBLampOn=False):
         """Turn off the cobra illuminators."""
-        self.tail.add('sps', 'bia off')
+        self.tail.add('sps', 'bia callbackOff')
         self.tail.add('peb', 'led off')
 
         if cableBLampOn:
