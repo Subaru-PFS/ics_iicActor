@@ -5,24 +5,24 @@ from ics.iicActor.utils.visited import VisitedSequence
 class FpsSequence(VisitedSequence):
     caller = 'fps'
 
-    def __init__(self, *args, doTurnOnIlluminator=False, cableBLampOn=False, **kwargs):
+    def __init__(self, *args, doTurnOnIlluminator=False, cableBLampOn=False, useBiaCallback=True, **kwargs):
         super().__init__(*args, **kwargs)
 
         if doTurnOnIlluminator:
-            self.turnOnIlluminators(cableBLampOn)
-            self.turnOffIlluminators(cableBLampOn)
+            self.turnOnIlluminators(cableBLampOn, useBiaCallback)
+            self.turnOffIlluminators(cableBLampOn, useBiaCallback)
 
-    def turnOnIlluminators(self, cableBLampOn=False):
+    def turnOnIlluminators(self, cableBLampOn=False, useBiaCallback=True):
         """Turn on the cobra illuminators."""
-        self.add('sps', 'bia callbackOn')
+        self.add('sps', 'bia callbackOn' if useBiaCallback else 'bia on')
         self.add('peb', 'led on')
 
         if cableBLampOn:
             self.add('dcb', 'power on cableB')
 
-    def turnOffIlluminators(self, cableBLampOn=False):
+    def turnOffIlluminators(self, cableBLampOn=False, useBiaCallback=True):
         """Turn off the cobra illuminators."""
-        self.tail.add('sps', 'bia callbackOff')
+        self.tail.add('sps', 'bia callbackOff' if useBiaCallback else 'bia off')
         self.tail.add('peb', 'led off')
 
         if cableBLampOn:

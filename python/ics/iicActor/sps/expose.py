@@ -107,9 +107,10 @@ class SpsExpose(VisitedCmd):
         """Turn on/off illuminators and take MCS exposure."""
         doFibreIdArgs = 'doFibreId' if doFibreId else ''
 
-        cmdList = [('sps', 'bia callbackOn', 10), ('peb', 'led on', 10),
+        useBiaCallback = self.iicActor.actorConfig['illuminators']['useBiaCallback']
+        cmdList = [('sps', 'bia callbackOn' if useBiaCallback else 'bia on', 10), ('peb', 'led on', 10),
                    ('mcs', f'expose object exptime={exptime} {doFibreIdArgs} frameId={visit.nextFrameId()}', 30),
-                   ('sps', 'bia callbackOff', 10), ('peb', 'led off', 10)]
+                   ('sps', 'bia callbackOff' if useBiaCallback else 'bia off', 10), ('peb', 'led off', 10)]
 
         # Just go through the script, note that it's no exception are raised, nor it's stopping.
         for actor, cmdStr, timeLim in cmdList:
