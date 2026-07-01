@@ -70,6 +70,7 @@ class IicActor(actorcore.ICC.ICC):
             for spectrographId in range(1, 5):
                 enuActor = f'enu_sm{spectrographId}'
                 self.addModels([enuActor])
+                self.addModels([f'hx_n{spectrographId}'])
                 self.buffer.attachCallback('sps', f'sm{spectrographId}LightSource', self._onDesignInputsChanged)
                 self.models[enuActor].keyVarDict['redResolution'].addCallback(self.engine.resourceManager.freeEnu)
 
