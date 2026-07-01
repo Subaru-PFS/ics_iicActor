@@ -39,6 +39,8 @@ class MiscCmd(object):
             ('thetaPhiScan', 'start', self.startNewThetaPhiScan),
             ('thetaPhiScan', f'takeNextTheta [<groupId>] [<thetaAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
              self.takeNextThetaPhiScan),
+            ('thetaPhiScan', f'takeNextPhi [<groupId>] [<phiAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
+             self.takeNextPhiThetaScan),
             ('declareHomeDesign', '[@skipGenVisit0]', self.declareHomeDesign)
         ]
 
@@ -71,6 +73,8 @@ class MiscCmd(object):
                                         keys.Key('mode', types.String() * (1,), help='mode for dotRoach'),
                                         keys.Key("thetaAngle", types.Int(), units='deg',
                                                  help="Designed theta angle (deg)"),
+                                        keys.Key("phiAngle", types.Int(), units='deg',
+                                                 help="Designed phi angle (deg)"),
                                         )
 
     @property
@@ -177,16 +181,16 @@ class MiscCmd(object):
 
     @singleShot
     def takeNextThetaPhiScan(self, cmd):
-        """"""
+        self._thetaPhiScan(cmd, constantAxis='theta')
 
-        def getRemainingThetas(groupId):
-            scannedThetas = self.engine.opdb.getScannedThetaFromThetaPhiScanId(groupId, phiAngles=phiAngles)
-            remainingThetas = list(set(thetaAngles) - set(scannedThetas))
-            remainingThetas.sort()
-            return remainingThetas
+    @singleShot
+    def takeNextPhiThetaScan(self, cmd):
+        self._thetaPhiScan(cmd, constantAxis='phi')
+
+    def _thetaPhiScan(self, cmd, constantAxis):
+        innerAxis = 'phi' if constantAxis == 'theta' else 'theta'
 
         def bailIfNotFinished(seq, label):
-            """Return True iff the sub-sequence finished cleanly; otherwise cmd.fail and abort the scan."""
             if seq.status.flag == Flag.FINISHED:
                 return True
             if cmd.alive:
@@ -194,8 +198,9 @@ class MiscCmd(object):
             return False
 
         cmdKeys = cmd.cmd.keywords
+        constantAngleKey = f'{constantAxis}Angle'
+        constantAngle = cmdKeys[constantAngleKey].values[0] if constantAngleKey in cmdKeys else None
         groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
-        thetaAngle = cmdKeys['thetaAngle'].values[0] if 'thetaAngle' in cmdKeys else None
 
         mcsExptime = self.actor.actorConfig['mcs']['exptime']
         illuminators = self.actor.actorConfig['illuminators']
@@ -204,32 +209,50 @@ class MiscCmd(object):
         moveToPfsDesignConfig = thetaPhiScanConfig['moveToPfsDesign']
         phiAngles = thetaPhiScanConfig['phiAngles']
         thetaAngles = thetaPhiScanConfig['thetaAngles']
+        scanPhiHome = thetaPhiScanConfig['scanPhiHome']
+        scanThetaHome = thetaPhiScanConfig['scanThetaHome']
+
+        constantAngles = thetaAngles if constantAxis == 'theta' else phiAngles
+        scanAngles  = phiAngles if constantAxis == 'theta' else thetaAngles
+        scanInnerHome = scanPhiHome if constantAxis == 'theta' else scanThetaHome
+
+        if scanInnerHome:
+            scanAngles = [scanAngles[0], 0] + scanAngles[1:]
+
+        def getRemainingAngles(groupId):
+            if constantAxis == 'theta':
+                scanned = self.engine.opdb.getScannedThetaFromThetaPhiScanId(groupId, phiAngles=scanAngles)
+            else:
+                scanned = self.engine.opdb.getScannedPhiFromThetaPhiScanId(groupId, thetaAngles=scanAngles)
+            remaining = list(set(constantAngles) - set(scanned))
+            remaining.sort()
+            return remaining
 
         if groupId is None:
             groupId = self.engine.opdb.latestThetaPhiScanId()
 
         try:
-            remainingThetas = getRemainingThetas(groupId)
-            cmd.inform(
-                f'text="ThetaPhiScan groupId={groupId} remaining thetaAngles: {",".join(map(str, remainingThetas))}"')
+            remainingAngles = getRemainingAngles(groupId)
+            cmd.inform(f'text="thetaPhiScan groupId={groupId} remaining {constantAxis}Angles: '
+                       f'{",".join(map(str, remainingAngles))}"')
         except Exception as e:
             cmd.warn(f'text="{str(e)}"')
-            remainingThetas = None
+            remainingAngles = None
 
-        if thetaAngle is None:
-            if remainingThetas is None:
-                cmd.fail(f'text="cannot determine remaining theta angles for groupId={groupId}; '
-                         f'pass thetaAngle=<deg> explicitly"')
+        if constantAngle is None:
+            if remainingAngles is None:
+                cmd.fail(f'text="cannot determine remaining {constantAxis} angles for groupId={groupId}; '
+                         f'pass {constantAxis}Angle=<deg> explicitly"')
                 return
-            elif len(remainingThetas) == 0:
-                cmd.finish(f'text="ThetaPhiScan groupId={groupId} already covers all configured theta angles '
-                           f'({",".join(map(str, thetaAngles))}); no further scan needed"')
+            elif len(remainingAngles) == 0:
+                cmd.finish(f'text="thetaPhiScan groupId={groupId} already covers all configured {constantAxis} angles '
+                           f'({",".join(map(str, constantAngles))}); no further scan needed"')
                 return
-            thetaAngle = remainingThetas[0]
+            constantAngle = remainingAngles[0]
 
-        cmd.inform(f'text="ThetaPhiScan groupId={groupId} thetaAngle={thetaAngle:d} deg START"')
+        cmd.inform(f'text="thetaPhiScan groupId={groupId} {constantAxis}Angle={constantAngle:d} deg START"')
 
-        name = f'theta_{thetaAngle:03d}'
+        name = f'{constantAxis}_{constantAngle:03d}'
         lampsKeys = dict(halogen=int(translate.resolveExptime(cmdKeys, scienceTraceConfig)))
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         windowKeys = translate.windowKeys(cmdKeys, scienceTraceConfig)
@@ -249,13 +272,14 @@ class MiscCmd(object):
         if not bailIfNotFinished(scienceTrace, 'cobraHome scienceTrace'):
             return
 
-        for phiAngle in phiAngles:
-            designName = f'thetaPhiScan_{thetaAngle:03d}_{phiAngle:03d}'
+        for innerAngle in scanAngles:
+            thetaAngle, phiAngle = (constantAngle, innerAngle) if constantAxis == 'theta' else (innerAngle, constantAngle)
+            designName = f'thetaPhiScan_{constantAngle:03d}_{innerAngle:03d}'
 
-            # going to phi home
-            if phiAngle == 0:
-                designId = self._runFpsCreateDesign(f'createHomeDesign phi designName={designName}')
-                moveCobra = fpsSequenceList.MoveToHome(designId=designId, exptime=mcsExptime, phi=True, **illuminators)
+            if innerAngle == 0:
+                designId = self._runFpsCreateDesign(f'createHomeDesign {innerAxis} designName={designName}')
+                moveCobra = fpsSequenceList.MoveToHome(designId=designId, exptime=mcsExptime,
+                                                       **{innerAxis: True}, **illuminators)
             else:
                 designId = self._runFpsCreateDesign(
                     f'createThetaPhiScanDesign thetaAngle={thetaAngle:d} phiAngle={phiAngle:d} designName={designName}')
@@ -273,14 +297,14 @@ class MiscCmd(object):
             self.engine.run(cmd, scienceTrace, doFinish=False)
             if not bailIfNotFinished(scienceTrace, f'{designName} scienceTrace'):
                 return
-            cmd.inform(
-                f'text="ThetaPhiScan groupId={groupId} thetaAngle={thetaAngle:d} deg phiAngle={phiAngle:d} deg DONE"')
+            cmd.inform(f'text="thetaPhiScan groupId={groupId} {constantAxis}Angle={constantAngle:d} deg '
+                       f'{innerAxis}Angle={innerAngle:d} deg DONE"')
 
-        cmd.inform(f'text="ThetaPhiScan groupId={groupId} thetaAngle={thetaAngle:d} deg FINISHED"')
-        remainingThetas = getRemainingThetas(groupId)
-        cmd.inform(
-            f'text="ThetaPhiScan groupId={groupId} remaining thetaAngles: {",".join(map(str, remainingThetas))}"')
-        cmd.finish(f'nRemainingThetas={len(remainingThetas)}')
+        cmd.inform(f'text="thetaPhiScan groupId={groupId} {constantAxis}Angle={constantAngle:d} deg FINISHED"')
+        remainingAngles = getRemainingAngles(groupId)
+        cmd.inform(f'text="thetaPhiScan groupId={groupId} remaining {constantAxis}Angles: '
+                   f'{",".join(map(str, remainingAngles))}"')
+        cmd.finish(f'nRemaining{constantAxis.capitalize()}s={len(remainingAngles)}')
 
     def declareHomeDesign(self, cmd, doFinish=True, genVisit0=True):
         """Create a fresh home design and declare it as the current FPS design."""

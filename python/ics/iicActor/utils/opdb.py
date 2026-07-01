@@ -215,19 +215,8 @@ class OpdbHandler:
         sql = f"""select max(group_id) from sequence_group where group_name='{groupName}'"""
         return self.fetchone(sql)
 
-    def getScannedThetaFromThetaPhiScanId(self, groupId, phiAngles):
-        """Return theta angles fully scanned under this groupId.
-
-        takeNextThetaPhiScan(thetaAngle=N) writes one scienceTrace row per
-        sub-config under name=f'theta_{N:03d}' with distinct comments
-        ('cobraHome' for the home pose, then 'thetaPhiScan_{N:03d}_{phi:03d}'
-        for each configured phi). A theta is considered scanned only when
-        every expected comment is present AND the underlying sequence
-        finished successfully -- so a partial/crashed run, or a stale-phi
-        run from a previous configuration, both stay in the remaining list.
-        Misgrouped rows (wrong sequence_type or non-theta name) are
-        ignored.
-        """
+    def _fetchScienceTracesByGroup(self, groupId):
+        """Return finished scienceTrace rows for a groupId."""
         sql = (f'select iic_sequence.name, iic_sequence.comments '
                f'from iic_sequence '
                f'inner join iic_sequence_status '
@@ -235,17 +224,23 @@ class OpdbHandler:
                f'where iic_sequence.group_id={groupId} '
                f"and iic_sequence.sequence_type='scienceTrace' "
                f'and iic_sequence_status.status_flag={Flag.FINISHED}')
-        df = self.fetch(sql)
-        # enforce the exact name pattern produced by takeNextThetaPhiScan,
-        # i.e. 'theta_NNN' with a 3-digit zero-padded angle. This rejects
-        # legacy/foreign names like 'theta_scan_radius1.0_angle15' that would
-        # otherwise blow up the int() parse below.
-        df = df[df.name.str.fullmatch(r'theta_\d{3}')]
-        df['theta'] = [int(name.split('_')[1]) for name in df.name]
+        return self.fetch(sql)
+
+    def _getScannedAngles(self, groupId, constantAxis, scanAngles):
+        """Return outer angles fully scanned (all scanAngles present and finished) under this groupId."""
+        df = self._fetchScienceTracesByGroup(groupId)
+        df = df[df.name.str.fullmatch(rf'{constantAxis}_\d{{3}}')]
+        df[constantAxis] = [int(name.split('_')[1]) for name in df.name]
 
         scanned = []
-        for theta, group in df.groupby('theta'):
-            expected = {'cobraHome'} | {f'thetaPhiScan_{theta:03d}_{phi:03d}' for phi in phiAngles}
+        for constantAngle, group in df.groupby(constantAxis):
+            expected = {'cobraHome'} | {f'thetaPhiScan_{constantAngle:03d}_{inner:03d}' for inner in scanAngles}
             if expected.issubset(set(group.comments)):
-                scanned.append(int(theta))
+                scanned.append(int(constantAngle))
         return scanned
+
+    def getScannedThetaFromThetaPhiScanId(self, groupId, phiAngles):
+        return self._getScannedAngles(groupId, 'theta', phiAngles)
+
+    def getScannedPhiFromThetaPhiScanId(self, groupId, thetaAngles):
+        return self._getScannedAngles(groupId, 'phi', thetaAngles)
