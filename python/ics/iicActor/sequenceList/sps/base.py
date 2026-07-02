@@ -62,6 +62,7 @@ class Arcs(TimedLampsSequence):
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
+        lampsKeys['h4ReadTime'] = iicActor.engine.keyRepo.getNirReadTime(cams)
 
         return cls(cams, lampsKeys, duplicate, **seqKeys)
 
@@ -142,6 +143,7 @@ class DitheredArcs(TimedLampsSequence):
         pixelStep = cmdKeys['pixelStep'].values[0]
 
         hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
+        lampsKeys['h4ReadTime'] = iicActor.engine.keyRepo.getNirReadTime(cams)
 
         return cls(cams, lampsKeys, duplicate, pixelStep, hexapodOff, **seqKeys)
 
@@ -184,6 +186,7 @@ class DefocusedArcs(TimedLampsSequence):
         positions = np.linspace(start, stop, num=int(num)).round(6)
 
         hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
+        lampsKeys['h4ReadTime'] = iicActor.engine.keyRepo.getNirReadTime(cams)
 
         return cls(cams, lampsKeys, iisKeys, duplicate, positions, hexapodOff, **seqKeys)
 
@@ -210,6 +213,7 @@ class FpaThroughFocus(TimedLampsSequence):
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
+        lampsKeys['h4ReadTime'] = iicActor.engine.keyRepo.getNirReadTime(cams)
         start, stop, num = cmdKeys['micronsRange'].values
         positions = np.linspace(start, stop, num=int(num)).round(6)
 

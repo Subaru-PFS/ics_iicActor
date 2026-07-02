@@ -75,13 +75,13 @@ class TimedLampsSequence(SpsSequence):
         def prepareTotalLampTime(timedLamps, candidates=('hgcd', 'hgar')):
             [lamp] = [lamp for lamp in candidates if lamp in timedLamps]
             arms = set([cam.arm for cam in cams])
-            h4ReadSecs = self.engine.keyRepo.getNirReadTime(cams) if 'n' in arms else None
             estimatedTime = TimedLampsSequence.computeLampTotalSecs(timedLamps[lamp], arms=arms, duplicate=duplicate,
-                                                                     h4ReadSecs=h4ReadSecs)
+                                                                     h4ReadSecs=h4ReadTime)
             return estimatedTime, f'prepare {lamp}={estimatedTime}'
 
         windowKeys = dict() if windowKeys is None else windowKeys
         lampKeys = lampKeys.copy()
+        h4ReadTime = lampKeys.pop('h4ReadTime', None)
 
         # retrieving iis keys.
         iisKeys = lampKeys.pop('iis', dict())

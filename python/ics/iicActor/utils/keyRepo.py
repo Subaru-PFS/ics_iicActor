@@ -31,6 +31,9 @@ class KeyRepo:
         Raises RuntimeError if NIR cameras have mismatched readTimes (mixed IRP modes).
         """
         nirCams = [cam for cam in self.getSelectedCams(cams) if cam.startswith('n')]
+        if not nirCams:
+            return None
+
         readTimes = {self.getHxReadTime(cam) for cam in nirCams}
 
         try:
