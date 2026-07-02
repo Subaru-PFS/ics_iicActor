@@ -9,7 +9,7 @@ class TimedLampsSequence(SpsSequence):
     # Gross estimate and over-estimating
 
     @staticmethod
-    def computeLampTotalSecs(lampTime, arms, duplicate, marginSecs=5, roundToSecs=5):
+    def computeLampTotalSecs(lampTime, arms, duplicate, h4ReadSecs, marginSecs=5, roundToSecs=5):
         """Return the total lamp time in seconds for a sequence of duplicated exposures.
 
         Assumptions:
@@ -37,18 +37,18 @@ class TimedLampsSequence(SpsSequence):
 
         ccdWipeSecs = 10.0
         ccdReadSecs = 45.0
-        h4ReadSecs = 10.8
 
         hasNir = 'n' in arms
         hasOnlyNir = set(arms) == {'n'}
 
-        h4ReadCount = computeH4ReadCount(lampTime, h4ReadSecs=h4ReadSecs)
+        h4ReadCount = computeH4ReadCount(lampTime, h4ReadSecs=h4ReadSecs) if hasNir else 0
         resetSecs = 2 * h4ReadSecs if hasNir else 0
 
         ccdTotalSecs = 0 if hasOnlyNir else lampTime + ccdWipeSecs + ccdReadSecs
         nirTotalSecs = h4ReadCount * h4ReadSecs if hasNir else 0
 
-        shutterOpenAfterSecs = resetSecs + max(ccdWipeSecs, h4ReadSecs)
+        openDelays = ([ccdWipeSecs] if not hasOnlyNir else []) + ([h4ReadSecs] if hasNir else [])
+        shutterOpenAfterSecs = resetSecs + max(openDelays)
         shutterCloseAfterSecs = shutterOpenAfterSecs + lampTime + marginSecs
         exposureTotalSecs = resetSecs + max(ccdTotalSecs, nirTotalSecs) + marginSecs
 
@@ -75,11 +75,13 @@ class TimedLampsSequence(SpsSequence):
         def prepareTotalLampTime(timedLamps, candidates=('hgcd', 'hgar')):
             [lamp] = [lamp for lamp in candidates if lamp in timedLamps]
             arms = set([cam.arm for cam in cams])
-            estimatedTime = TimedLampsSequence.computeLampTotalSecs(timedLamps[lamp], arms=arms, duplicate=duplicate)
+            estimatedTime = TimedLampsSequence.computeLampTotalSecs(timedLamps[lamp], arms=arms, duplicate=duplicate,
+                                                                     h4ReadSecs=h4ReadTime)
             return estimatedTime, f'prepare {lamp}={estimatedTime}'
 
         windowKeys = dict() if windowKeys is None else windowKeys
         lampKeys = lampKeys.copy()
+        h4ReadTime = lampKeys.pop('h4ReadTime', None)
 
         # retrieving iis keys.
         iisKeys = lampKeys.pop('iis', dict())

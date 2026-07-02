@@ -21,6 +21,28 @@ class KeyRepo:
         """Return the actor from the engine."""
         return self.engine.actor
 
+    def getHxReadTime(self, cam):
+        """Retrieve the current readTime for a given H4 camera (e.g. 'n1')."""
+        return float(self.actor.models[f'hx_{cam}'].keyVarDict['readTime'].getValue())
+
+    def getNirReadTime(self, cams):
+        """Return the unique readTime across all NIR cameras in cams.
+
+        Raises RuntimeError if NIR cameras have mismatched readTimes (mixed IRP modes).
+        """
+        nirCams = [cam for cam in self.getSelectedCams(cams) if cam.startswith('n')]
+        if not nirCams:
+            return None
+
+        readTimes = {self.getHxReadTime(cam) for cam in nirCams}
+
+        try:
+            [readTime] = readTimes
+        except ValueError:
+            raise RuntimeError(f'Mixed IRP modes detected: NIR cameras have different readTimes {readTimes}')
+
+        return readTime
+
     def getEnuKeyValue(self, specName, keyName):
         """
         Retrieve the value of a specific ENU key for a given spectrograph.
