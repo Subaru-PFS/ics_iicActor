@@ -135,6 +135,15 @@ class ResourceManager(object):
 
                 allDeps.append('mcs')
 
+        # mcs drives the bia itself during its exposures, but the bia still needs to be locked.
+        if 'mcs' in allDeps:
+            for mcsCommand in list(set([subCmd for subCmd in sequence.subCmds if subCmd.actor == 'mcs'])):
+                if mcsCommand.cmdHead != 'biaControl':
+                    continue
+
+                specModules = self.spsConfig.selectModules(libUtils.identSpecNums(mcsCommand.cmdStr))
+                allDeps.extend([str(specModule.bia) for specModule in specModules])
+
         # sps is somehow peculiar because it's not driving hardware directly just actors (enu, xcu, ccd...).
         if 'sps' in allDeps:
             allDeps.remove('sps')

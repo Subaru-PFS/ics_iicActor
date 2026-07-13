@@ -5,24 +5,36 @@ from ics.iicActor.utils.visited import VisitedSequence
 class FpsSequence(VisitedSequence):
     caller = 'fps'
 
-    def __init__(self, *args, doTurnOnIlluminator=False, cableBLampOn=False, useBiaCallback=True, **kwargs):
+    def __init__(self, *args, doTurnOnIlluminator=False, cableBLampOn=False, useMcsBiaControl=True, **kwargs):
         super().__init__(*args, **kwargs)
 
         if doTurnOnIlluminator:
-            self.turnOnIlluminators(cableBLampOn, useBiaCallback)
-            self.turnOffIlluminators(cableBLampOn, useBiaCallback)
+            self.turnOnIlluminators(cableBLampOn, useMcsBiaControl)
+            self.turnOffIlluminators(cableBLampOn, useMcsBiaControl)
 
-    def turnOnIlluminators(self, cableBLampOn=False, useBiaCallback=True):
-        """Turn on the cobra illuminators."""
-        self.add('sps', 'bia callbackOn' if useBiaCallback else 'bia on')
+    def turnOnIlluminators(self, cableBLampOn=False, useMcsBiaControl=True):
+        """Turn on the cobra illuminators.
+
+        With useMcsBiaControl, the bia is not turned on here, mcs is just allowed to drive it itself,
+        eg turning it on just before integrating and off as soon as the exposure is over.
+        """
+        if useMcsBiaControl:
+            self.add('mcs', 'biaControl on')
+        else:
+            self.add('sps', 'bia on')
+
         self.add('peb', 'led on')
 
         if cableBLampOn:
             self.add('dcb', 'power on cableB')
 
-    def turnOffIlluminators(self, cableBLampOn=False, useBiaCallback=True):
+    def turnOffIlluminators(self, cableBLampOn=False, useMcsBiaControl=True):
         """Turn off the cobra illuminators."""
-        self.tail.add('sps', 'bia callbackOff' if useBiaCallback else 'bia off')
+        if useMcsBiaControl:
+            self.tail.add('mcs', 'biaControl off')
+        else:
+            self.tail.add('sps', 'bia off')
+
         self.tail.add('peb', 'led off')
 
         if cableBLampOn:
