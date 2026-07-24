@@ -89,9 +89,10 @@ class DotRoach(SpsSequence):
 
         windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps]
         exptime = translate.resolveExptime(cmdKeys, windowedFlatConfig)
+        windowKeys = translate.windowKeys(cmdKeys, windowedFlatConfig)
         config = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'moveToDotByFlux')
 
-        return cls(cams, exptime, windowedFlatConfig, **config, **seqKeys)
+        return cls(cams, exptime, windowKeys, **config, **seqKeys)
 
 
 class DotRoachPfiLamps(DotRoach, TimedLampsSequence):

@@ -335,16 +335,8 @@ class MiscCmd(object):
             cmd.fail('text="NearDotConvergence not completed, stopping here."')
             return
 
-        # Step 4: closed-loop convergence to dot center (20 iterations).
-        # Non-crossing cobras are detected at midpoint and driven home inside fps moveToDotByMcs.
-        moveToDotByMcs = fpsSequenceList.MoveToDotByMcs.fromCmdKeys(self.actor, cmdKeys)
-        self.engine.run(cmd, moveToDotByMcs, doFinish=False)
-
-        if moveToDotByMcs.status.flag != Flag.FINISHED:
-            cmd.fail('text="moveToDotByMcs not completed, stopping here."')
-            return
-
-        # Step 5: open-loop flux-based convergence toward dot center.
+        # Step 4: open-loop flux-based scan across the dot (moveToPfsDesign already did the
+        # phi-ramp hide; the former closed-loop moveToDotByMcs step is retired).
         self.engine.run(cmd, dotRoach, doFinish=False)
 
         if dotRoach.status.flag != Flag.FINISHED:
