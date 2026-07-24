@@ -71,11 +71,15 @@ class DotRoach(SpsSequence):
 
         for iterNum in range(nIteration):
             nRemaining = nIteration - iterNum
+            # Windowed flats do NOT erase the detector (only full-frame does), so an
+            # un-erased residual would leak into the flux ratio.  Erase each iteration.
+            self.add('sps', 'erase', cams=cams)
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
             self.add('drp', 'processDotRoach')
             self.add('fps', f'moveToDotByFlux nRemaining={nRemaining}', timeLim=120)
 
         # Final flux measurement after last move — record only, no cobra movement.
+        self.add('sps', 'erase', cams=cams)
         self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
         self.add('drp', 'processDotRoach')
         self.add('fps', 'moveToDotByFlux nRemaining=0', timeLim=120)
