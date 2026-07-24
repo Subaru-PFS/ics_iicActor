@@ -344,7 +344,7 @@ class MiscCmd(object):
                 cmd.fail('text="dotRoach not completed, stopping here."')
             return
 
-        designId = self._runFpsCreateDesign(f'createBlackDotDesign all')
+        designId = self._runFpsCreateDesign(f'createBlackDotDesign')
         self.actor.declareFpsDesign(cmd, designId=designId)
 
         genBlackDotsConfig = fpsSequenceList.GenBlackDotsConfig(exptime=mcsExptime, designId=designId, **illuminators)
