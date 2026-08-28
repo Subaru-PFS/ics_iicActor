@@ -335,8 +335,8 @@ class MiscCmd(object):
             cmd.fail('text="NearDotConvergence not completed, stopping here."')
             return
 
-        # Step 4: open-loop flux-based scan across the dot (moveToPfsDesign already did the
-        # phi-ramp hide; the former closed-loop moveToDotByMcs step is retired).
+        # Step 4: open-loop flux-based scan across the dot, starting from the ramp landing
+        # the convergence left the fleet at.
         self.engine.run(cmd, dotRoach, doFinish=False)
 
         if dotRoach.status.flag != Flag.FINISHED:
