@@ -274,7 +274,8 @@ class MiscCmd(object):
 
         for innerAngle in scanAngles:
             thetaAngle, phiAngle = (constantAngle, innerAngle) if constantAxis == 'theta' else (innerAngle, constantAngle)
-            designName = f'thetaPhiScan_{constantAngle:03d}_{innerAngle:03d}'
+            designName = iicUtils.thetaPhiScanDesignName(thetaAngle, phiAngle,
+                                                         atHome=innerAxis if innerAngle == 0 else None)
 
             if innerAngle == 0:
                 designId = self._runFpsCreateDesign(f'createHomeDesign {innerAxis} designName={designName}')

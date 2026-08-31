@@ -232,9 +232,16 @@ class OpdbHandler:
         df = df[df.name.str.fullmatch(rf'{constantAxis}_\d{{3}}')]
         df[constantAxis] = [int(name.split('_')[1]) for name in df.name]
 
+        innerAxis = 'phi' if constantAxis == 'theta' else 'theta'
+
+        def designName(constantAngle, innerAngle):
+            theta, phi = (constantAngle, innerAngle) if constantAxis == 'theta' else (innerAngle, constantAngle)
+            return iicUtils.thetaPhiScanDesignName(theta, phi,
+                                                   atHome=innerAxis if innerAngle == 0 else None)
+
         scanned = []
         for constantAngle, group in df.groupby(constantAxis):
-            expected = {'cobraHome'} | {f'thetaPhiScan_{constantAngle:03d}_{inner:03d}' for inner in scanAngles}
+            expected = {'cobraHome'} | {designName(constantAngle, inner) for inner in scanAngles}
             if expected.issubset(set(group.comments)):
                 scanned.append(int(constantAngle))
         return scanned
