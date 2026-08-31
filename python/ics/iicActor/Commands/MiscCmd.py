@@ -41,7 +41,8 @@ class MiscCmd(object):
              self.takeNextPhiThetaScan),
             ('declareHomeDesign', '[@skipGenVisit0]', self.declareHomeDesign),
             ('hotRoach', '[<exptime>]', self.test),
-            ('dotRoach', f'[<exptime>] [hscLamps] {identArgs} {translate.seqArgs}', self.dotRoach)
+            ('dotRoach', f'[<exptime>] [hscLamps] {identArgs} {translate.seqArgs}', self.dotRoach),
+            ('dotScan', f'[<exptime>] [hscLamps] {identArgs} {translate.seqArgs}', self.dotScan)
         ]
 
         # Define typed command arguments for the above commands.
@@ -70,7 +71,6 @@ class MiscCmd(object):
                                         keys.Key('designId', types.Long(), help='selected nearDot designId'),
                                         keys.Key('fiberGroups', types.Int() * (1,),
                                                  help='which fiberGroups to identify 2->31'),
-                                        keys.Key('mode', types.String() * (1,), help='mode for dotRoach'),
                                         keys.Key('hscLamps', help='use HSC lamps instead of PFI lamps'),
                                         keys.Key("thetaAngle", types.Int(), units='deg',
                                                  help="Designed theta angle (deg)"),
@@ -292,11 +292,39 @@ class MiscCmd(object):
 
     @singleShot
     def dotRoach(self, cmd):
+        """Hide every cobra behind its dot, correcting the ones the flux says are lit."""
+        self._dotSequence(cmd, miscSequenceList.DotRoach, miscSequenceList.DotRoachPfiLamps,
+                          'dotRoach')
+
+    @singleShot
+    def dotScan(self, cmd):
+        """Walk the fleet across the dots to measure the obscuration curve.
+
+        The calibration that produces cobra_dot_target.csv.  It deliberately drives every
+        cobra past its optimum, so it leaves the fleet at no useful depth: not a substitute
+        for dotRoach.
+        """
+        self._dotSequence(cmd, miscSequenceList.DotScan, miscSequenceList.DotScanPfiLamps,
+                          'dotScan')
+
+    def _dotSequence(self, cmd, HscRoach, PfiRoach, configKey):
+        """Home, initialise, converge near the dots, then run the flat sequence.
+
+        Parameters
+        ----------
+        cmd : the command being served
+        HscRoach, PfiRoach : the flat sequence to run, per illuminator
+        configKey : `str`
+            actorConfig section holding this sequence's convergence overrides, so the
+            scan and the roach can land at different depths.
+        """
         cmdKeys = cmd.cmd.keywords
 
         mcsExptime = self.actor.actorConfig['mcs']['exptime']
         illuminators = self.actor.actorConfig['illuminators']
-        nearDotConvergenceConfig = {**self.actor.actorConfig['nearDotConvergence'], 'noHome': True}
+        overrides = self.actor.actorConfig.get(configKey, {}).get('nearDotConvergence', {})
+        nearDotConvergenceConfig = {**self.actor.actorConfig['nearDotConvergence'],
+                                    **overrides, 'noHome': True}
 
         homeDesignId = self._runFpsCreateDesign(f'createHomeDesign all')
         phiCrossingDesignId = self._runFpsCreateDesign(f'createDotConvergenceDesign')
@@ -308,7 +336,7 @@ class MiscCmd(object):
         RoachInit = miscSequenceList.DotRoachInit if 'hscLamps' in cmdKeys else miscSequenceList.DotRoachInitPfiLamps
         dotRoachInit = RoachInit.fromCmdKeys(self.actor, cmd.cmd.keywords)
 
-        Roach = miscSequenceList.DotRoach if 'hscLamps' in cmdKeys else miscSequenceList.DotRoachPfiLamps
+        Roach = HscRoach if 'hscLamps' in cmdKeys else PfiRoach
         dotRoach = Roach.fromCmdKeys(self.actor, cmdKeys)
 
         # Step 1: drive all cobras home.

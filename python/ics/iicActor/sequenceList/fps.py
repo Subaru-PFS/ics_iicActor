@@ -101,14 +101,15 @@ class MoveToPfsDesign(FpsSequence):
     seqtype = 'moveToPfsDesign'
 
     def __init__(self, designId, nIteration, tolerance, exptime, noHome, twoStepsOff, shortExpOff, noTweak,
-                 skipFiducialInterferenceCheck, maskFile=False, noBlindMove=False, **fpsKeys):
+                 skipFiducialInterferenceCheck, maskFile=False, noBlindMove=False,
+                 dotLanding=None, **fpsKeys):
         super().__init__(**fpsKeys)
 
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
                  tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=not noHome, twoStepsOff=twoStepsOff,
                  shortExpOff=shortExpOff, noTweak=noTweak, skipFiducialInterferenceCheck=skipFiducialInterferenceCheck,
-                 noBlindMove=noBlindMove, timeLim=600)
+                 noBlindMove=noBlindMove, dotLanding=dotLanding, timeLim=600)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):

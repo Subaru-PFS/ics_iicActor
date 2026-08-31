@@ -66,8 +66,21 @@ class DotRoach(SpsSequence):
     seqtype = 'dotRoachNew'
     useLamps = 'hscLamps'
 
+    configSection = 'dotRoach'
+    """actorConfig section holding this sequence's flat count."""
+
+    sweep = False
+    """Step every dot cobra each flat, rather than only the ones still lit.
+
+    A calibration needs the whole fleet sampled at every depth, so the curve is measured
+    where the optimum turns out to be and not only up to it.  A sequence whose job is to
+    hide leaves a cobra alone once its flux says it is behind the dot.
+    """
+
     def __init__(self, cams, exptime, windowKeys, nIteration, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
+
+        sweep = ' sweep' if self.sweep else ''
 
         for iterNum in range(nIteration):
             nRemaining = nIteration - iterNum
@@ -76,13 +89,13 @@ class DotRoach(SpsSequence):
             self.add('sps', 'erase', cams=cams)
             self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
             self.add('drp', 'processDotRoach')
-            self.add('fps', f'moveToDotByFlux nRemaining={nRemaining}', timeLim=120)
+            self.add('fps', f'moveToDotByFlux{sweep} nRemaining={nRemaining}', timeLim=120)
 
         # Final flux measurement after last move — record only, no cobra movement.
         self.add('sps', 'erase', cams=cams)
         self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
         self.add('drp', 'processDotRoach')
-        self.add('fps', 'moveToDotByFlux nRemaining=0', timeLim=120)
+        self.add('fps', f'moveToDotByFlux{sweep} nRemaining=0', timeLim=120)
         self.add('drp', 'stopDotRoach')
 
     @classmethod
@@ -94,12 +107,34 @@ class DotRoach(SpsSequence):
         windowedFlatConfig = iicActor.actorConfig['windowedFlat'][cls.useLamps]
         exptime = translate.resolveExptime(cmdKeys, windowedFlatConfig)
         windowKeys = translate.windowKeys(cmdKeys, windowedFlatConfig)
-        config = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'moveToDotByFlux')
+        # Only nIteration is taken from the section; the rest of it configures the
+        # convergence that runs before the flats, which is not this sequence's business.
+        config = iicActor.actorConfig.get(cls.configSection,
+                                          iicActor.actorConfig['moveToDotByFlux'])
+        nIteration = config['nIteration']
 
-        return cls(cams, exptime, windowKeys, **config, **seqKeys)
+        return cls(cams, exptime, windowKeys, nIteration=nIteration, **seqKeys)
+
+
+class DotScan(DotRoach):
+    """The calibration form of the scan: the fleet is walked across the dot in uniform
+    steps so the obscuration curve is sampled, rather than stopped once hidden."""
+    seqtype = 'dotScan'
+    configSection = 'dotScan'
+    sweep = True
 
 
 class DotRoachPfiLamps(DotRoach, TimedLampsSequence):
+    useLamps = 'pfiLamps'
+
+    # initial exposure
+    def expose(self, exptype, exptime, cams, **windowKeys):
+        exptime = dict(halogen=int(exptime), shutterTiming=False, iis=dict())
+
+        TimedLampsSequence.expose(self, 'flat', exptime, cams, **windowKeys)
+
+
+class DotScanPfiLamps(DotScan, TimedLampsSequence):
     useLamps = 'pfiLamps'
 
     # initial exposure
