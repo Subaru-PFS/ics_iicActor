@@ -42,7 +42,8 @@ class MiscCmd(object):
             ('declareHomeDesign', '[@skipGenVisit0]', self.declareHomeDesign),
             ('hotRoach', '[<exptime>]', self.test),
             ('dotRoach', f'[<exptime>] [hscLamps] {identArgs} {translate.seqArgs}', self.dotRoach),
-            ('dotScan', f'[<exptime>] [hscLamps] {identArgs} {translate.seqArgs}', self.dotScan)
+            ('dotScan', f'[<exptime>] [hscLamps] {identArgs} {translate.seqArgs}', self.dotScan),
+            ('dotConvergence', f'[<iteration>] {translate.seqArgs}', self.dotConvergence)
         ]
 
         # Define typed command arguments for the above commands.
@@ -76,6 +77,8 @@ class MiscCmd(object):
                                                  help="Designed theta angle (deg)"),
                                         keys.Key("phiAngle", types.Int(), units='deg',
                                                  help="Designed phi angle (deg)"),
+                                        keys.Key('iteration', types.Int(),
+                                                 help='convergence iterations, overriding the config'),
                                         )
 
     @property
@@ -307,6 +310,91 @@ class MiscCmd(object):
         self._dotSequence(cmd, miscSequenceList.DotScan, miscSequenceList.DotScanPfiLamps,
                           'dotScan')
 
+    @singleShot
+    def dotConvergence(self, cmd):
+        """Home the fleet and converge it near the dots, and stop there.
+
+        The front of dotScan and dotRoach with no SPS in it, so the convergence can be
+        exercised on its own: it moves cobras and writes a run directory, which is what
+        a change to the convergence has to be judged on, without spending flats.
+        """
+        cmdKeys = cmd.cmd.keywords
+        iteration = cmdKeys['iteration'].values[0] if 'iteration' in cmdKeys else None
+
+        if not self._dotHome(cmd):
+            return
+        if self._dotConverge(cmd, 'dotScan', iteration=iteration) is None:
+            return
+
+        cmd.finish('text="converged near the dots"')
+
+    def _dotHome(self, cmd):
+        """Drive every cobra home and re-centre the broken ones.
+
+        Returns
+        -------
+        `bool`
+            False once the command has been failed, so the caller can simply return.
+        """
+        mcsExptime = self.actor.actorConfig['mcs']['exptime']
+        illuminators = self.actor.actorConfig['illuminators']
+
+        homeDesignId = self._runFpsCreateDesign('createHomeDesign all')
+        moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId,
+                                                   all=True, updateCobrasCenters=True,
+                                                   **illuminators)
+        self.actor.declareFpsDesign(cmd, designId=homeDesignId)
+        self.engine.run(cmd, moveToHomeAll, doFinish=False)
+
+        if moveToHomeAll.status.flag != Flag.FINISHED:
+            cmd.fail('text="moveToHome not completed, stopping here."')
+            return False
+
+        return True
+
+    def _dotConverge(self, cmd, configKey, iteration=None):
+        """Run the near-dot ramp, leaving the fleet at this sequence's landing depth.
+
+        Called after the fleet is home and, in the full sequences, after the reference
+        flat: the ramp hides most cobras, so nothing that needs to see them lit can run
+        afterwards.
+
+        Parameters
+        ----------
+        cmd : the command being served; failed on error before returning.
+        configKey : `str`
+            actorConfig section holding this sequence's convergence overrides, so the
+            scan and the roach can land at different depths.
+        iteration : `int`, optional
+            Overrides the configured count.  The ramp divides its run-up by the number
+            of iterations, so changing it changes the step size, not just how long the
+            fleet is given.
+
+        Returns
+        -------
+        `int` or None
+            The dot design converged against, or None once the command has been failed.
+        """
+        illuminators = self.actor.actorConfig['illuminators']
+        overrides = self.actor.actorConfig.get(configKey, {}).get('nearDotConvergence', {})
+        nearDotConvergenceConfig = {**self.actor.actorConfig['nearDotConvergence'],
+                                    **overrides, 'noHome': True}
+        if iteration is not None:
+            nearDotConvergenceConfig['nIteration'] = iteration
+
+        dotDesignId = self._runFpsCreateDesign('createDotConvergenceDesign')
+        nearDotConvergence = fpsSequenceList.NearDotConvergence(dotDesignId,
+                                                                **nearDotConvergenceConfig,
+                                                                **illuminators)
+        self.actor.declareFpsDesign(cmd, designId=dotDesignId)
+        self.engine.run(cmd, nearDotConvergence, doFinish=False)
+
+        if nearDotConvergence.status.flag != Flag.FINISHED:
+            cmd.fail('text="NearDotConvergence not completed, stopping here."')
+            return None
+
+        return dotDesignId
+
     def _dotSequence(self, cmd, HscRoach, PfiRoach, configKey):
         """Home, initialise, converge near the dots, then run the flat sequence.
 
@@ -322,17 +410,7 @@ class MiscCmd(object):
 
         mcsExptime = self.actor.actorConfig['mcs']['exptime']
         illuminators = self.actor.actorConfig['illuminators']
-        overrides = self.actor.actorConfig.get(configKey, {}).get('nearDotConvergence', {})
-        nearDotConvergenceConfig = {**self.actor.actorConfig['nearDotConvergence'],
-                                    **overrides, 'noHome': True}
 
-        homeDesignId = self._runFpsCreateDesign(f'createHomeDesign all')
-        phiCrossingDesignId = self._runFpsCreateDesign(f'createDotConvergenceDesign')
-
-        moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True,
-                                                   updateCobrasCenters=True, **illuminators)
-        nearDotConvergence = fpsSequenceList.NearDotConvergence(phiCrossingDesignId,
-                                                                **nearDotConvergenceConfig, **illuminators)
         RoachInit = miscSequenceList.DotRoachInit if 'hscLamps' in cmdKeys else miscSequenceList.DotRoachInitPfiLamps
         dotRoachInit = RoachInit.fromCmdKeys(self.actor, cmd.cmd.keywords)
 
@@ -340,14 +418,11 @@ class MiscCmd(object):
         dotRoach = Roach.fromCmdKeys(self.actor, cmdKeys)
 
         # Step 1: drive all cobras home.
-        self.actor.declareFpsDesign(cmd, designId=homeDesignId)
-        self.engine.run(cmd, moveToHomeAll, doFinish=False)
-
-        if moveToHomeAll.status.flag != Flag.FINISHED:
-            cmd.fail('text="moveToHome not completed, stopping here."')
+        if not self._dotHome(cmd):
             return
 
-        # Step 2: Running dotRoach initialization.
+        # Step 2: the reference flat, which has to see the cobras still lit -- so it
+        # belongs here, between homing and the ramp that hides them.
         self.engine.run(cmd, dotRoachInit, doFinish=False)
 
         if dotRoachInit.status.flag != Flag.FINISHED:
@@ -356,11 +431,7 @@ class MiscCmd(object):
             return
 
         # Step 3: converge to near-dot position.
-        self.actor.declareFpsDesign(cmd, designId=phiCrossingDesignId)
-        self.engine.run(cmd, nearDotConvergence, doFinish=False)
-
-        if nearDotConvergence.status.flag != Flag.FINISHED:
-            cmd.fail('text="NearDotConvergence not completed, stopping here."')
+        if self._dotConverge(cmd, configKey) is None:
             return
 
         # Step 4: open-loop flux-based scan across the dot, starting from the ramp landing
