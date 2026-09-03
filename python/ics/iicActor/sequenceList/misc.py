@@ -69,6 +69,16 @@ class DotRoach(SpsSequence):
     configSection = 'dotRoach'
     """actorConfig section holding this sequence's flat count."""
 
+    fullFrameAtEnd = True
+    """Close with an unwindowed flat, measured the same way as the windowed ones.
+
+    Every flux in the sequence is a ratio against the full-frame reference taken at the
+    start, so a windowed flat and that reference are not read the same way.  Repeating
+    the last measurement unwindowed puts the two on the record together, which is the
+    only way to see whether the ratio carries a windowing term.  The scan does not need
+    it: it is after the shape of the curve, not the level.
+    """
+
     sweep = False
     """Step every dot cobra each flat, rather than only the ones still lit.
 
@@ -96,6 +106,12 @@ class DotRoach(SpsSequence):
         self.expose('domeflat', exptime, cams, windowKeys=windowKeys)
         self.add('drp', 'processDotRoach')
         self.add('fps', f'moveToDotByFlux{sweep} nRemaining=0', timeLim=120)
+
+        if self.fullFrameAtEnd:
+            # Full frame reads out erased, so no erase of its own.
+            self.expose('domeflat', exptime, cams, windowKeys=None)
+            self.add('drp', 'processDotRoach')
+
         self.add('drp', 'stopDotRoach')
 
     @classmethod
@@ -122,6 +138,7 @@ class DotScan(DotRoach):
     seqtype = 'dotScan'
     configSection = 'dotScan'
     sweep = True
+    fullFrameAtEnd = False
 
 
 class DotRoachPfiLamps(DotRoach, TimedLampsSequence):

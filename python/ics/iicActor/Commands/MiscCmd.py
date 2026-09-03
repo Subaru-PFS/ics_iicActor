@@ -408,9 +408,6 @@ class MiscCmd(object):
         """
         cmdKeys = cmd.cmd.keywords
 
-        mcsExptime = self.actor.actorConfig['mcs']['exptime']
-        illuminators = self.actor.actorConfig['illuminators']
-
         RoachInit = miscSequenceList.DotRoachInit if 'hscLamps' in cmdKeys else miscSequenceList.DotRoachInitPfiLamps
         dotRoachInit = RoachInit.fromCmdKeys(self.actor, cmd.cmd.keywords)
 
@@ -443,8 +440,4 @@ class MiscCmd(object):
                 cmd.fail('text="dotRoach not completed, stopping here."')
             return
 
-        designId = self._runFpsCreateDesign(f'createBlackDotDesign')
-        self.actor.declareFpsDesign(cmd, designId=designId)
-
-        genBlackDotsConfig = fpsSequenceList.GenBlackDotsConfig(exptime=mcsExptime, designId=designId, **illuminators)
-        self.engine.run(cmd, genBlackDotsConfig)
+        cmd.finish(f'text="{configKey} finished"')
