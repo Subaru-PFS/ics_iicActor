@@ -108,9 +108,13 @@ class DotRoach(SpsSequence):
         self.add('fps', f'moveToDotByFlux{sweep} nRemaining=0', timeLim=120)
 
         if self.fullFrameAtEnd:
-            # Full frame reads out erased, so no erase of its own.
+            # Full frame reads out erased, so no erase of its own.  Deliberately not
+            # handed to processDotRoach: that blocks until the visit appears in opdb and
+            # gives up after DotRoach.processTimeout, and a full frame is some fifteen
+            # times the pixels of a windowed one to extract.  Failing there would fail
+            # the sequence after every useful frame had already been taken, so the flux
+            # is extracted offline instead.
             self.expose('domeflat', exptime, cams, windowKeys=None)
-            self.add('drp', 'processDotRoach')
 
         self.add('drp', 'stopDotRoach')
 
