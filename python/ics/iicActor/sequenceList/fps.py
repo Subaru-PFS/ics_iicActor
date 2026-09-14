@@ -183,16 +183,13 @@ class BlindTest(MoveToPfsDesign):
     """
     seqtype = 'blindTest'
 
-    def __init__(self, designId, exptime, nScanSteps=0, **kwargs):
+    def __init__(self, designId, exptime, **kwargs):
         super().__init__(designId, exptime=exptime, **kwargs)
 
-        # Frames of fps's own, after the convergence has written its pfsConfig, so they
-        # cannot become the iteration it is finalised from.  nRemaining counts down to
-        # the last, which measures and steps nothing: at nScanSteps=0 that is the single
-        # frame measuring a push that has already happened.
-        for nRemaining in range(nScanSteps, -1, -1):
-            self.add('fps', 'moveToDotByFluxFake', nRemaining=nRemaining,
-                     timeLim=60 + exptime)
+        # A frame of fps's own, after the convergence has written its pfsConfig so it
+        # cannot become the iteration that is finalised from.  nRemaining=0 measures and
+        # steps nothing, the push having already happened.
+        self.add('fps', 'moveToDotByFluxFake', nRemaining=0, timeLim=60 + exptime)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -206,13 +203,23 @@ class BlindTest(MoveToPfsDesign):
         return cls(designId, maskFile=maskFile, **blindTestConfig, **seqKeys, **illuminators)
 
 
-class DotScanFake(BlindTest):
+class DotScanFake(MoveToPfsDesign):
     """Walk the dot cobras across their dots a fraction at a time, measuring each depth.
 
     The ramp lands and the fleet stays there, every step after it being one the frames
     record; a scan behind a real dot has to infer those depths from the light blocked.
     """
     seqtype = 'dotScanFake'
+
+    def __init__(self, designId, exptime, nScanSteps, **kwargs):
+        super().__init__(designId, exptime=exptime, **kwargs)
+
+        # One frame per depth, nRemaining counting down so the last measures and steps
+        # nothing.  Nothing steers the scan: the frames record where the open loop got
+        # to, which is the whole of what a scan behind a dot cannot see.
+        for nRemaining in range(nScanSteps, -1, -1):
+            self.add('fps', 'moveToDotByFluxFake', nRemaining=nRemaining,
+                     timeLim=60 + exptime)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
