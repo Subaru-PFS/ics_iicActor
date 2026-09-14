@@ -41,6 +41,10 @@ class MiscCmd(object):
              self.takeNextThetaPhiScan),
             ('thetaPhiScan', f'takeNextPhi [<groupId>] [<phiAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
              self.takeNextPhiThetaScan),
+            ('blindTest', f'[<dotTarget>] [<dotLanding>] [<maskFile>] [<exptime>] {translate.seqArgs}',
+             self.blindTest),
+            ('dotScanFake', f'[<dotLanding>] [<nScanSteps>] [<maskFile>] [<exptime>] {translate.seqArgs}',
+             self.dotScanFake),
             ('declareHomeDesign', '[@skipGenVisit0]', self.declareHomeDesign)
         ]
 
@@ -75,6 +79,14 @@ class MiscCmd(object):
                                                  help="Designed theta angle (deg)"),
                                         keys.Key("phiAngle", types.Int(), units='deg',
                                                  help="Designed phi angle (deg)"),
+                                        keys.Key("dotTarget", types.Float(),
+                                                 help="depth the blind move aims for, "
+                                                      "as a fraction across the dot"),
+                                        keys.Key("dotLanding", types.Float(),
+                                                 help="depth the closed-loop ramp stops at, "
+                                                      "as a fraction across the dot"),
+                                        keys.Key("nScanSteps", types.Int(),
+                                                 help="steps across the dot after the ramp"),
                                         )
 
     @property
@@ -105,6 +117,28 @@ class MiscCmd(object):
 
         genPfsConfigFromMcs = fpsSequenceList.GenBlackDotsConfig.fromCmdKeys(self.actor, cmdKeys, designId=designId)
         self.engine.run(cmd, genPfsConfigFromMcs)
+
+    def _runDotSequence(self, cmd, sequenceClass):
+        """Aim every cobra at its dot and run `sequenceClass` against that design."""
+        cmdKeys = cmd.cmd.keywords
+
+        # The cobras have to be aimed at their dots for any of them to ride the ramp.
+        maskFileArgs = translate.getMaskFileArgsFromCmd(cmdKeys, self.actor.actorConfig)
+        designId = self._runFpsCreateDesign(f'createBlackDotDesign {maskFileArgs}')
+        self.actor.declareFpsDesign(cmd, designId=designId)
+
+        sequence = sequenceClass.fromCmdKeys(self.actor, cmdKeys, designId=designId)
+        self.engine.run(cmd, sequence)
+
+    @singleShot
+    def blindTest(self, cmd):
+        """Ramp onto the dots and push to a fixed depth, with the landing measured."""
+        self._runDotSequence(cmd, fpsSequenceList.BlindTest)
+
+    @singleShot
+    def dotScanFake(self, cmd):
+        """Walk the dot cobras across their dots, measuring each depth."""
+        self._runDotSequence(cmd, fpsSequenceList.DotScanFake)
 
     @singleShot
     def dotRoach(self, cmd):

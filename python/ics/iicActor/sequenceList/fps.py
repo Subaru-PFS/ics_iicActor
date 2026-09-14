@@ -101,14 +101,21 @@ class MoveToPfsDesign(FpsSequence):
     seqtype = 'moveToPfsDesign'
 
     def __init__(self, designId, nIteration, tolerance, exptime, noHome, twoStepsOff, shortExpOff, noTweak,
-                 skipFiducialInterferenceCheck, maskFile=False, **fpsKeys):
+                 skipFiducialInterferenceCheck, maskFile=False, dotTarget=None, dotLanding=None,
+                 noBlindMove=False, **fpsKeys):
         super().__init__(**fpsKeys)
+
+        # The depths are fps defaults unless a sequence names them: a dot cobra rides the
+        # ramp to dotLanding and is pushed from there to dotTarget.
+        dotKeys = {name: value for name, value in (('dotTarget', dotTarget),
+                                                   ('dotLanding', dotLanding))
+                   if value is not None}
 
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
                  tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=not noHome, twoStepsOff=twoStepsOff,
                  shortExpOff=shortExpOff, noTweak=noTweak, skipFiducialInterferenceCheck=skipFiducialInterferenceCheck,
-                 timeLim=600)
+                 noBlindMove=noBlindMove, **dotKeys, timeLim=600)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -165,6 +172,58 @@ class NearDotConvergence(MoveToPfsDesign):
         illuminators = translate.illuminatorKeys(iicActor.actorConfig)
         nearDotConvergenceConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'nearDotConvergence')
         return cls(designId, maskFile=maskFile, **nearDotConvergenceConfig, **seqKeys, **illuminators)
+
+
+class BlindTest(MoveToPfsDesign):
+    """Ramp onto the black dots and push to a fixed depth, then look at where it landed.
+
+    The push is the one move a dot run never measures, success putting the fibre out of
+    sight; driven against dots declared somewhere the fibre is not occluded, it is the
+    move this sequence exists to record.
+    """
+    seqtype = 'blindTest'
+
+    def __init__(self, designId, exptime, nScanSteps=0, **kwargs):
+        super().__init__(designId, exptime=exptime, **kwargs)
+
+        # Frames of fps's own, after the convergence has written its pfsConfig, so they
+        # cannot become the iteration it is finalised from.  nRemaining counts down to
+        # the last, which measures and steps nothing: at nScanSteps=0 that is the single
+        # frame measuring a push that has already happened.
+        for nRemaining in range(nScanSteps, -1, -1):
+            self.add('fps', 'moveToDotByFluxFake', nRemaining=nRemaining,
+                     timeLim=60 + exptime)
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys, designId):
+        """Defining rules to construct BlindTest object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+
+        maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
+        blindTestConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'blindTest')
+
+        return cls(designId, maskFile=maskFile, **blindTestConfig, **seqKeys, **illuminators)
+
+
+class DotScanFake(BlindTest):
+    """Walk the dot cobras across their dots a fraction at a time, measuring each depth.
+
+    The ramp lands and the fleet stays there, every step after it being one the frames
+    record; a scan behind a real dot has to infer those depths from the light blocked.
+    """
+    seqtype = 'dotScanFake'
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys, designId):
+        """Defining rules to construct DotScanFake object."""
+        seqKeys = translate.seqKeys(cmdKeys)
+
+        maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
+        config = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'dotScanFake')
+
+        return cls(designId, maskFile=maskFile, **config, **seqKeys, **illuminators)
 
 
 class DotCrossing(FpsSequence):
