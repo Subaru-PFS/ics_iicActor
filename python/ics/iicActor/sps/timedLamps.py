@@ -1,3 +1,4 @@
+import ics.iicActor.utils.translate as translate
 import ics.utils.sps.lamps.utils.lampState as lampState
 from ics.iicActor.sps.expose import SpsExpose
 from ics.iicActor.sps.sequence import SpsSequence
@@ -60,18 +61,6 @@ class TimedLampsSequence(SpsSequence):
     def expose(self, exptype, lampKeys, cams, duplicate=1, windowKeys=None, slideSlit=None):
         """Override expose function to handle dcb/pfilamps lampKeys arguments."""
 
-        def doTimedLamps(timedLamps):
-            exptime = 0.0
-            lamps = []
-
-            for lamp in lampState.allLamps:
-                # ignore lampTime set to 0.0
-                if lamp in timedLamps.keys() and timedLamps[lamp]:
-                    exptime = max(exptime, timedLamps[lamp])
-                    lamps.append(f"{lamp}={timedLamps[lamp]}")
-
-            return len(lamps) != 0, exptime, f'prepare {" ".join(lamps)}'
-
         def prepareTotalLampTime(timedLamps, candidates=('hgcd', 'hgar')):
             [lamp] = [lamp for lamp in candidates if lamp in timedLamps]
             arms = set([cam.arm for cam in cams])
@@ -87,8 +76,8 @@ class TimedLampsSequence(SpsSequence):
         iisKeys = lampKeys.pop('iis', dict())
         shutterTiming = lampKeys.get('shutterTiming', 0)
 
-        doIIS, maxIisLampOnTime, IisCmdStr = doTimedLamps(iisKeys)
-        doLamps, maxLampOnTime, lampsCmdStr = doTimedLamps(lampKeys)
+        doIIS, maxIisLampOnTime, IisCmdStr = translate.timedLampsCmdStr(iisKeys)
+        doLamps, maxLampOnTime, lampsCmdStr = translate.timedLampsCmdStr(lampKeys)
 
         # setting shutter exptime accordingly.
         doShutterTiming = shutterTiming > 0
