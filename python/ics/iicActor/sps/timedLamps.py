@@ -102,6 +102,8 @@ class TimedLampsSequence(SpsSequence):
         # other scheme when lamp is turn on before end. INSTRM-2184.
         doImmediateGo = 'hgcd' in lampsCmdStr or 'hgar' in lampsCmdStr
         doIisImmediateGo = 'hgar' in IisCmdStr
+        # illuminators lit here rather than by each exposure, sps needs to be told to stop them.
+        bckIlluminators = []
 
         if doImmediateGo:
             estimatedTime, lampsCmdStr = prepareTotalLampTime(lampKeys)
@@ -111,6 +113,7 @@ class TimedLampsSequence(SpsSequence):
             # enforce doShutterTiming and doLamps to False.
             doShutterTiming = False
             doLamps = False
+            bckIlluminators.append(self.lightSource.lampsActor)
 
         if doIisImmediateGo:
             estimatedIisTime, IisCmdStr = prepareTotalLampTime(iisKeys, candidates=('hgar',))
@@ -120,6 +123,7 @@ class TimedLampsSequence(SpsSequence):
             # iis hgar is now running for the whole sequence; per-exposure iis pulse no longer needed.
             doShutterTiming = False
             doIIS = False
+            bckIlluminators.append('iis')
 
         for nExposure in range(duplicate):
             # adding iis and lamps prepare commands.
@@ -135,9 +139,8 @@ class TimedLampsSequence(SpsSequence):
                                           doTest=self.doTest,
                                           doScienceCheck=self.doScienceCheck, skipBiaCheck=self.skipBiaCheck,
                                           slideSlit=slideSlit,
+                                          bckIlluminators=bckIlluminators if bckIlluminators else None,
+                                          isLast=nExposure == duplicate - 1,
                                           **windowKeys)
             list.append(self, spsExpose)
 
-        # stop lamp in the end because we're done
-        # if doImmediateGo:
-        #    self.add(actor='lamps', cmdStr='stop')
