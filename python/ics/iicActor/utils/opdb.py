@@ -159,9 +159,14 @@ class OpdbHandler:
         return new_group_id
 
     def insertPfsConfigSps(self, pfs_visit_id, visit0, camMask, instStatusFlag):
-        """Insert into pfs_config_sps table."""
+        """Insert into pfs_config_sps table, observed_at left NULL."""
         self.insert('pfs_config_sps', pfs_visit_id=int(pfs_visit_id), visit0=int(visit0),
                     cam_mask=camMask, inst_status_flag=int(instStatusFlag))
+
+    def updatePfsConfigSpsObservedAt(self, pfs_visit_id, observedAt):
+        """Set observed_at of the pfs_config_sps row of pfs_visit_id, from an ISO-formatted string."""
+        sql = 'UPDATE pfs_config_sps SET observed_at = :observed_at WHERE pfs_visit_id = :pfs_visit_id'
+        self.opdb.commit(sql, params=dict(observed_at=observedAt, pfs_visit_id=int(pfs_visit_id)))
 
     def ingest(self, cmd, pfsDesign, designed_at=None):
         """Inserting into opdb."""

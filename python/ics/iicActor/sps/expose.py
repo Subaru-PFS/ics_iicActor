@@ -2,6 +2,7 @@ import logging
 import os
 import pathlib
 import socket
+from datetime import datetime
 
 import ics.utils.cmd as cmdUtils
 import ics.utils.sps.fits as fits
@@ -15,6 +16,7 @@ from ics.iicActor.utils.visited import VisitedCmd
 from ics.utils.fits import mhs as fitsMhs
 from opscore.utility.qstr import qstr
 from pfs.datamodel import PfsConfig, InstrumentStatusFlag
+from pfs.datamodel.utils import convertToIso8601Utc
 
 
 class SpsExpose(VisitedCmd):
@@ -223,6 +225,14 @@ class SpsExpose(VisitedCmd):
 
         return pfsConfig
 
+    def setExposureTimings(self, startedAt, endedAt):
+        """Set pfsConfig obstime to the middle of the integration window, given in ISO-formatted UTC."""
+        if self.pfsConfig is None:
+            return
+
+        start, end = datetime.fromisoformat(startedAt), datetime.fromisoformat(endedAt)
+        self.pfsConfig.obstime = convertToIso8601Utc((start + (end - start) / 2).isoformat())
+
     def updateFiberIllumination(self, status):
         """Update fiber illumination status based on configuration settings."""
         pfsConfigKnobs = self.iicActor.actorConfig['pfsConfig']
@@ -278,6 +288,13 @@ class SpsExpose(VisitedCmd):
         """Write pfsConfig to disk and track with pfsConfig key, not generated for a pfsConfig in fallback directory."""
         if not self.doWritePfsConfig or pfsConfig is None:
             return
+
+        # obstime is final once the pfsConfig is written.
+        try:
+            self.sequence.engine.opdb.updatePfsConfigSpsObservedAt(pfsConfig.visit, pfsConfig.obstime)
+        except Exception as e:
+            text = f'Failed to set observed_at of visit {pfsConfig.visit} : {e}'
+            self.sequence.getCmd().warn(f'text={qstr(text)}')
 
         # Save pfsConfig to disk
         try:
