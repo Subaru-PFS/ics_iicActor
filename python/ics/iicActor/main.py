@@ -93,11 +93,11 @@ class IicActor(actorcore.ICC.ICC):
 
         # no merging for pfi, at least for now.
         if self.pfiConnected:
-            designId = self.getFpsDesignId()
-            # fpsDesignId was not declared since pfi is connected, make sure to reset the current PfsField
-            if designId is None:
-                self.visitManager.finishField()
+            activeField = self.visitManager.activeField
+            # a field holding the declared fps design is what the cobras are configured for, keep it.
+            if activeField is not None and activeField.pfsDesignId == self.getFpsDesignId():
                 self.genPfsDesignKey(cmd)
+                return
 
             # declaring cobraHome by default.
             self.callCommand('declareHomeDesign skipGenVisit0')
