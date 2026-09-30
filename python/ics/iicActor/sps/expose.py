@@ -180,7 +180,9 @@ class SpsExpose(VisitedCmd):
 
         # Insert into opdb immediately
         self.sequence.engine.opdb.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=pfsConfig.visit0,
-                                                     camMask=pfsConfig.camMask, instStatusFlag=pfsConfig.instStatusFlag)
+                                                     camMask=pfsConfig.camMask,
+                                                     instStatusFlag=pfsConfig.instStatusFlag,
+                                                     observedAt=pfsConfig.obstime)
 
         # writing pfsConfig right away since it doesn't need any further update.
         if self.exptype in ['bias', 'dark']:
