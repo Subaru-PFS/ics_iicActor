@@ -14,7 +14,7 @@ class KeyBuffer(object):
 
     @property
     def lightSources(self):
-        return [LightSource(self.current[f'sps.sm{specNum}LightSource']) for specNum in range(1, 5)]
+        return [LightSource(self.current.get(f'sps.sm{specNum}LightSource')) for specNum in range(1, 5)]
 
     def attachCallback(self, actor, key, cb):
         """Attach a callback cb for a given actor,key pair, cb will be called only if the value changed."""
@@ -26,7 +26,8 @@ class KeyBuffer(object):
             try:
                 vals = keyVar.getValue()
             except ValueError:
-                vals = None
+                # the actor is down or restarting: its keyword is unknown, not changed.
+                return
 
             # initialize if key is not present.
             if identifier not in self.current.keys():
