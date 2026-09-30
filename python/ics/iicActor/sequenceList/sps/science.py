@@ -8,12 +8,14 @@ class ScienceObject(SpsSequence):
     seqtype = 'scienceObject'
     doScienceCheck = True
 
-    def __init__(self, cams, exptime, duplicate, windowKeys, mcsExposureBefore, **seqKeys):
+    def __init__(self, cams, exptime, duplicate, windowKeys, mcsExposureBefore, iisKeys=None, **seqKeys):
         isWindowed = bool(windowKeys)
-        SpsSequence.__init__(self, cams, isWindowed=isWindowed, **seqKeys)
+        doIIS = bool(iisKeys)
+        SpsSequence.__init__(self, cams, isWindowed=isWindowed, doIIS=doIIS, **seqKeys)
 
         self.expose('object', exptime, cams,
-                    duplicate=duplicate, windowKeys=windowKeys, mcsExposureBefore=mcsExposureBefore)
+                    duplicate=duplicate, windowKeys=windowKeys, mcsExposureBefore=mcsExposureBefore,
+                    iisKeys=iisKeys)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -23,6 +25,12 @@ class ScienceObject(SpsSequence):
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         windowKeys = translate.windowKeys(cmdKeys)
         isWindowed = bool(windowKeys)
+        iisKeys = translate.iisKeys(cmdKeys)
+
+        # the lamp is fired inside the shutter window, so it has to fit in the shortest one.
+        __, iisOnTime, __ = translate.timedLampsCmdStr(iisKeys)
+        if iisOnTime > min(exptime):
+            raise ValueError(f'iis on-time ({iisOnTime:g}s) longer than exptime ({min(exptime):g}s)')
 
         config = iicActor.actorConfig['scienceExposure']
         mcsExposureBefore = config.get('mcsExposureBefore').copy()
@@ -31,7 +39,7 @@ class ScienceObject(SpsSequence):
         if (isWindowed and mcsExposureBefore['skipWindowed']) or 'skipMcsExposure' in cmdKeys:
             mcsExposureBefore['enabled'] = False
 
-        return cls(cams, exptime, duplicate, windowKeys, mcsExposureBefore, **seqKeys)
+        return cls(cams, exptime, duplicate, windowKeys, mcsExposureBefore, iisKeys=iisKeys, **seqKeys)
 
 
 class ScienceObjectLoop(ScienceObject):

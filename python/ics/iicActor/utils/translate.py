@@ -47,6 +47,37 @@ def spsExposureKeys(cmdKeys, doRaise=True, defaultDuplicate=1):
     return exptime, duplicate
 
 
+def toIisArg(name):
+    """The command keyword carrying the IIS time of `name`."""
+    return f'iis{name.capitalize()}'
+
+
+def iisKeys(cmdKeys):
+    """Requested IIS lamp on-times, in seconds, keyed by lamp name.
+
+    Empty when no IIS lamp was asked for.
+    """
+    return {name: int(round(cmdKeys[toIisArg(name)].values[0])) for name in lampState.allLamps
+            if toIisArg(name) in cmdKeys}
+
+
+def timedLampsCmdStr(timedLamps):
+    """Turn lamp on-times, in seconds, into a lamps prepare command.
+
+    Lamps set to 0 are ignored.  Returns whether any lamp remains, the longest on-time in
+    seconds, and the command string.
+    """
+    exptime = 0.0
+    lamps = []
+
+    for lamp in lampState.allLamps:
+        if timedLamps.get(lamp):
+            exptime = max(exptime, timedLamps[lamp])
+            lamps.append(f'{lamp}={timedLamps[lamp]}')
+
+    return len(lamps) != 0, exptime, f'prepare {" ".join(lamps)}'
+
+
 def lampsKeys(cmdKeys):
     """
     Build lamp timing dictionary from cmdKeys.
@@ -66,9 +97,6 @@ def lampsKeys(cmdKeys):
 
     Raises ValueError if no lamp timing is specified.
     """
-
-    def toIisArg(name):
-        return f'iis{name.capitalize()}'
 
     doShutterTiming = 'doShutterTiming' in cmdKeys
     overHead = 5 if doShutterTiming else 0

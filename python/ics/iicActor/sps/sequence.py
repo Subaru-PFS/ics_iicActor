@@ -12,7 +12,7 @@ class SpsSequence(sequence.Sequence):
     doScienceCheck = False
     """"""
 
-    def __init__(self, cams, *args, isWindowed=False, returnWhenShutterClose=False,
+    def __init__(self, cams, *args, isWindowed=False, doIIS=False, returnWhenShutterClose=False,
                  skipBiaCheck=False, forcePfsConfig=False, **kwargs):
         self.cams = cams
 
@@ -22,6 +22,8 @@ class SpsSequence(sequence.Sequence):
         self.skipBiaCheck = skipBiaCheck
         self.forcePfsConfig = forcePfsConfig
         self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
+        # frames deliberately lit by IIS must not be mistaken for clean science.
+        self.seqtype = f'{self.seqtype}_iis' if doIIS else self.seqtype
 
     @property
     def allLightSources(self):
@@ -66,18 +68,29 @@ class SpsSequence(sequence.Sequence):
 
         super().initialize(engine, cmd)
 
-    def expose(self, exptype, exptime, cams, duplicate=1, windowKeys=None, slideSlit=None, mcsExposureBefore=None):
-        """Append duplicate * sps expose to sequence."""
+    def expose(self, exptype, exptime, cams, duplicate=1, windowKeys=None, slideSlit=None, mcsExposureBefore=None,
+               iisKeys=None):
+        """Append duplicate * sps expose to sequence.
+
+        iisKeys maps an IIS lamp to its on-time in seconds; the lamp is prepared before
+        each exposure and fired once the shutters are open.
+        """
         # being nice about input arguments.
         exptime = [exptime] if not isinstance(exptime, list) else exptime
         windowKeys = dict() if windowKeys is None else windowKeys
+        iisKeys = dict() if iisKeys is None else iisKeys
+
+        doIIS, __, iisCmdStr = translate.timedLampsCmdStr(iisKeys)
 
         # instantiating for each exptime/duplicate.
         for expTime in exptime:
             for nExposure in range(duplicate):
+                if doIIS:
+                    self.add(actor='iis', cmdStr=iisCmdStr)
+
                 # creating SpsExpose command object.
                 spsExpose = SpsExpose.specify(self, exptype, expTime, cams,
-                                              doTest=self.doTest,
+                                              doTest=self.doTest, doIIS=doIIS,
                                               doScienceCheck=self.doScienceCheck, skipBiaCheck=self.skipBiaCheck,
                                               slideSlit=slideSlit, mcsExposureBefore=mcsExposureBefore, **windowKeys
                                               )
