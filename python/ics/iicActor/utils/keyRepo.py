@@ -1,5 +1,7 @@
 import logging
 
+from ics.utils.sps.exposureTiming import ExposureTiming
+
 
 class KeyRepo:
     """
@@ -21,27 +23,26 @@ class KeyRepo:
         """Return the actor from the engine."""
         return self.engine.actor
 
-    def getHxReadTime(self, cam):
-        """Retrieve the current readTime for a given H4 camera (e.g. 'n1')."""
-        return float(self.actor.models[f'hx_{cam}'].keyVarDict['readTime'].getValue())
+    def getNirTiming(self, cams):
+        """Return the H4 read time and IRP ratio shared by the NIR cameras in cams.
 
-    def getNirReadTime(self, cams):
-        """Return the unique readTime across all NIR cameras in cams.
-
-        Raises RuntimeError if NIR cameras have mismatched readTimes (mixed IRP modes).
+        Returned as the h4ReadTime and h4IrpRatio lamps keys, both None without NIR cameras.
+        Raises RuntimeError if NIR cameras read with different timings (mixed IRP modes).
         """
         nirCams = [cam for cam in self.getSelectedCams(cams) if cam.startswith('n')]
         if not nirCams:
-            return None
+            return dict(h4ReadTime=None, h4IrpRatio=None)
 
-        readTimes = {self.getHxReadTime(cam) for cam in nirCams}
+        exposureTiming = ExposureTiming.fromInstdata()
+        hxModels = [self.actor.models[f'hx_{cam}'] for cam in nirCams]
+        timings = {(exposureTiming.readReadTime(hxModel), exposureTiming.readIrpRatio(hxModel)) for hxModel in hxModels}
 
         try:
-            [readTime] = readTimes
+            [(readTime, irpRatio)] = timings
         except ValueError:
-            raise RuntimeError(f'Mixed IRP modes detected: NIR cameras have different readTimes {readTimes}')
+            raise RuntimeError(f'Mixed IRP modes detected: NIR cameras have different (readTime, irpRatio) {timings}')
 
-        return readTime
+        return dict(h4ReadTime=readTime, h4IrpRatio=irpRatio)
 
     def getEnuKeyValue(self, specName, keyName):
         """
