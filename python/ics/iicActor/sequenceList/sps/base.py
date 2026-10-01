@@ -127,11 +127,11 @@ class DitheredArcs(TimedLampsSequence):
                 self.add('sps', 'slit dither', x=xPix, y=yPix, pixels=True, abs=True, cams=cams)
                 self.expose('arc', lampsKeys, cams, duplicate=duplicate)
 
-        # move back home and stop hexapod.
-        self.add('sps', 'slit home', cams=cams)
+        # move back home and stop hexapod, even if the sequence fails.
+        self.tail.add('sps', 'slit home', cams=cams)
         # Turn hexapod off only if it was off in the first place.
         if hexapodOff:
-            self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
+            self.tail.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -161,6 +161,8 @@ class DefocusedArcs(TimedLampsSequence):
         for position in positions:
             multFactor, _ = defocused_exposure_times_single_position(exp_time_0=1, att_value_0=None,
                                                                      defocused_value=position)
+            # a plain int, so the scaled keys stay python ints once parsed into commands.
+            multFactor = int(multFactor)
 
             scaled = dict([(lamp, exptime * multFactor) for lamp, exptime in lampsKeys.items()])
             scaled['iis'] = dict([(lamp, exptime * multFactor) for lamp, exptime in iisKeys.items()])
@@ -168,11 +170,11 @@ class DefocusedArcs(TimedLampsSequence):
             self.add('sps', 'slit', focus=position, abs=True, cams=cams)
             self.expose('arc', scaled, cams, duplicate=duplicate)
 
-        # move back home and stop hexapod.
-        self.add('sps', 'slit home', cams=cams)
+        # move back home and stop hexapod, even if the sequence fails.
+        self.tail.add('sps', 'slit home', cams=cams)
         # Turn hexapod off only if it was off in the first place.
         if hexapodOff:
-            self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
+            self.tail.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
