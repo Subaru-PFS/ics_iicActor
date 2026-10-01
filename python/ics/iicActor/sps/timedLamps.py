@@ -4,6 +4,7 @@ import ics.iicActor.utils.translate as translate
 import ics.utils.sps.lamps.utils.lampState as lampState
 from ics.iicActor.sps.expose import SpsExpose
 from ics.iicActor.sps.sequence import SpsSequence
+from ics.iicActor.sps.subcmd import ReleaseIlluminator
 
 
 class TimedLampsSequence(SpsSequence):
@@ -134,4 +135,8 @@ class TimedLampsSequence(SpsSequence):
                                           isLast=nExposure == duplicate - 1,
                                           **windowKeys)
             list.append(self, spsExpose)
+
+        # sps releases those at the close of the last exposure; whatever else ends the run, the tail does.
+        for actor in bckIlluminators:
+            self.tail.append(ReleaseIlluminator(self, actor, lastExposure=spsExpose))
 
