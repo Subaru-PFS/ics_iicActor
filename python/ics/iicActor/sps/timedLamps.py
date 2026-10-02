@@ -5,61 +5,23 @@ import ics.utils.sps.lamps.utils.lampState as lampState
 from ics.iicActor.sps.expose import SpsExpose
 from ics.iicActor.sps.sequence import SpsSequence
 from ics.iicActor.sps.subcmd import ReleaseIlluminator
+from ics.utils.sps.exposureTiming import ExposureTiming
 
 
 class TimedLampsSequence(SpsSequence):
     shutterRequired = False
 
-    # Gross estimate and over-estimating
-
     @staticmethod
-    def computeLampTotalSecs(lampTime, arms, duplicate, h4ReadSecs, marginSecs=5, roundToSecs=5):
-        """Return the total lamp time in seconds for a sequence of duplicated exposures.
+    def computeLampTotalSecs(lampTime, arms, duplicate, h4ReadSecs, h4IrpRatio, roundToSecs=5):
+        """Return how long a lamp lit for a sequence of duplicated exposures must burn, in seconds.
 
-        Assumptions:
-        - If 'n' is in `arms`, the NIR (H4RG) detector uses ramp reads of length `h4ReadSecs`.
-        - If any non-NIR arm is present, a CCD exposure includes wipe + read overhead.
-        - Shutter opens after the reset + max(wipe, h4 read) and stays open for `lampTime`.
-
-        Timing model:
-        - A per-exposure safety margin (`marginSecs`) is added:
-            * to each full exposure cycle
-            * to the final shutter-close time
-        - For `duplicate > 1`, all but the last exposure use the full detector cycle duration.
-        - The last exposure ends at shutter close (not at the end of a full detector cycle).
-
-        Rounding:
-        - The final total is rounded *up* to the next multiple of `roundToSecs`.
+        That is until the last shutter close, from the exposure timing model shared with sps,
+        rounded up to the next multiple of `roundToSecs`.
         """
-
-        def computeH4ReadCount(lampTime, h4ReadSecs):
-            """Compute number of H4RG reads (including minimum + extra reads)."""
-            rampConfig = dict(nReadMin=3, nExtraRead=1)  # Extra-read added to safely synchronize H4.
-            overheadSecs = 0  # Overhead included in read-count calculation, if any.
-            nReadMin = rampConfig['nReadMin'] + rampConfig['nExtraRead']
-            return int(round((lampTime + overheadSecs) // h4ReadSecs + nReadMin))
-
-        ccdWipeSecs = 10.0
-        ccdReadSecs = 45.0
-
-        hasNir = 'n' in arms
-        hasOnlyNir = set(arms) == {'n'}
-
-        h4ReadCount = computeH4ReadCount(lampTime, h4ReadSecs=h4ReadSecs) if hasNir else 0
-        resetSecs = 2 * h4ReadSecs if hasNir else 0
-
-        ccdTotalSecs = 0 if hasOnlyNir else lampTime + ccdWipeSecs + ccdReadSecs
-        nirTotalSecs = h4ReadCount * h4ReadSecs if hasNir else 0
-
-        openDelays = ([ccdWipeSecs] if not hasOnlyNir else []) + ([h4ReadSecs] if hasNir else [])
-        shutterOpenAfterSecs = resetSecs + max(openDelays)
-        shutterCloseAfterSecs = shutterOpenAfterSecs + lampTime + marginSecs
-        exposureTotalSecs = resetSecs + max(ccdTotalSecs, nirTotalSecs) + marginSecs
-
-        totalSecs = (duplicate - 1) * exposureTotalSecs + shutterCloseAfterSecs
-        roundedSecs = int(roundToSecs * math.ceil(totalSecs / roundToSecs))
-
-        return roundedSecs
+        exposureTiming = ExposureTiming.fromInstdata()
+        totalSecs = exposureTiming.lampOnTime(lampTime, arms, readTime=h4ReadSecs, irpRatio=h4IrpRatio,
+                                              duplicate=duplicate)
+        return int(roundToSecs * math.ceil(totalSecs / roundToSecs))
 
     def expose(self, exptype, lampKeys, cams, duplicate=1, windowKeys=None, slideSlit=None):
         """Override expose function to handle dcb/pfilamps lampKeys arguments."""
@@ -68,12 +30,13 @@ class TimedLampsSequence(SpsSequence):
             [lamp] = [lamp for lamp in candidates if lamp in timedLamps]
             arms = set([cam.arm for cam in cams])
             estimatedTime = TimedLampsSequence.computeLampTotalSecs(timedLamps[lamp], arms=arms, duplicate=duplicate,
-                                                                     h4ReadSecs=h4ReadTime)
+                                                                     h4ReadSecs=h4ReadTime, h4IrpRatio=h4IrpRatio)
             return estimatedTime, f'prepare {lamp}={estimatedTime}'
 
         windowKeys = dict() if windowKeys is None else windowKeys
         lampKeys = lampKeys.copy()
         h4ReadTime = lampKeys.pop('h4ReadTime', None)
+        h4IrpRatio = lampKeys.pop('h4IrpRatio', None)
 
         # retrieving iis keys.
         iisKeys = lampKeys.pop('iis', dict())

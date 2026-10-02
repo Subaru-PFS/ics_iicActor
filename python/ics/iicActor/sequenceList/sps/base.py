@@ -62,7 +62,7 @@ class Arcs(TimedLampsSequence):
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
-        lampsKeys['h4ReadTime'] = iicActor.engine.keyRepo.getNirReadTime(cams)
+        lampsKeys.update(iicActor.engine.keyRepo.getNirTiming(cams))
 
         return cls(cams, lampsKeys, duplicate, **seqKeys)
 
@@ -143,7 +143,7 @@ class DitheredArcs(TimedLampsSequence):
         pixelStep = cmdKeys['pixelStep'].values[0]
 
         hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
-        lampsKeys['h4ReadTime'] = iicActor.engine.keyRepo.getNirReadTime(cams)
+        lampsKeys.update(iicActor.engine.keyRepo.getNirTiming(cams))
 
         return cls(cams, lampsKeys, duplicate, pixelStep, hexapodOff, **seqKeys)
 
@@ -157,6 +157,8 @@ class DefocusedArcs(TimedLampsSequence):
         # start hexapod and move home.
         self.add('sps', 'slit start', cams=cams)
         self.add('sps', 'slit home', cams=cams)
+        # the H4 timing rides along with the lamps keys, but is not a lamp time to scale.
+        nirTiming = dict([(key, lampsKeys[key]) for key in ('h4ReadTime', 'h4IrpRatio') if key in lampsKeys])
 
         for position in positions:
             multFactor, _ = defocused_exposure_times_single_position(exp_time_0=1, att_value_0=None,
@@ -164,8 +166,9 @@ class DefocusedArcs(TimedLampsSequence):
             # a plain int, so the scaled keys stay python ints once parsed into commands.
             multFactor = int(multFactor)
 
-            scaled = dict([(lamp, exptime * multFactor) for lamp, exptime in lampsKeys.items()])
+            scaled = dict([(lamp, exptime * multFactor) for lamp, exptime in lampsKeys.items() if lamp not in nirTiming])
             scaled['iis'] = dict([(lamp, exptime * multFactor) for lamp, exptime in iisKeys.items()])
+            scaled.update(nirTiming)
 
             self.add('sps', 'slit', focus=position, abs=True, cams=cams)
             self.expose('arc', scaled, cams, duplicate=duplicate)
@@ -188,7 +191,7 @@ class DefocusedArcs(TimedLampsSequence):
         positions = np.linspace(start, stop, num=int(num)).round(6)
 
         hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
-        lampsKeys['h4ReadTime'] = iicActor.engine.keyRepo.getNirReadTime(cams)
+        lampsKeys.update(iicActor.engine.keyRepo.getNirTiming(cams))
 
         return cls(cams, lampsKeys, iisKeys, duplicate, positions, hexapodOff, **seqKeys)
 
@@ -215,7 +218,7 @@ class FpaThroughFocus(TimedLampsSequence):
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
-        lampsKeys['h4ReadTime'] = iicActor.engine.keyRepo.getNirReadTime(cams)
+        lampsKeys.update(iicActor.engine.keyRepo.getNirTiming(cams))
         start, stop, num = cmdKeys['micronsRange'].values
         positions = np.linspace(start, stop, num=int(num)).round(6)
 
