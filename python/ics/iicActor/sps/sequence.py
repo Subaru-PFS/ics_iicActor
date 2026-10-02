@@ -1,7 +1,7 @@
 import ics.iicActor.utils.sequence as sequence
 import ics.iicActor.utils.translate as translate
 import ics.utils.cmd as cmdUtils
-from ics.iicActor.sps.expose import SpsExpose
+from ics.iicActor.sps.expose import SpsCheckReady, SpsExpose
 from ics.iicActor.sps.subcmd import DcbCmd, LampsCmd
 from ics.iicActor.utils.subcmd import SubCmd
 
@@ -15,6 +15,7 @@ class SpsSequence(sequence.Sequence):
     def __init__(self, cams, *args, isWindowed=False, doIIS=False, returnWhenShutterClose=False,
                  skipBiaCheck=False, forcePfsConfig=False, **kwargs):
         self.cams = cams
+        self.preparedIlluminators = set()
 
         sequence.Sequence.__init__(self, *args, **kwargs)
 
@@ -24,6 +25,18 @@ class SpsSequence(sequence.Sequence):
         self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
         # frames deliberately lit by IIS must not be mistaken for clean science.
         self.seqtype = f'{self.seqtype}_iis' if doIIS else self.seqtype
+
+    def add(self, actor, cmdStr, **kwargs):
+        """Append a subcommand; an illuminator prepared here is stopped in the tail.
+
+        The stop is sent whatever ends the run and whatever was sent before it, so an
+        illuminator is never left configured or lit by a run that stopped early.
+        """
+        super().add(actor, cmdStr, **kwargs)
+
+        if cmdStr.split()[0] == 'prepare' and actor not in self.preparedIlluminators:
+            self.preparedIlluminators.add(actor)
+            self.tail.add(actor, 'stop')
 
     @property
     def allLightSources(self):
@@ -85,16 +98,22 @@ class SpsSequence(sequence.Sequence):
         # instantiating for each exptime/duplicate.
         for expTime in exptime:
             for nExposure in range(duplicate):
+                # the cameras are checked by checkReady, the exposure itself checks nothing.
+                spsExpose = SpsExpose.specify(self, exptype, expTime, cams,
+                                              doTest=self.doTest, doIIS=doIIS,
+                                              slideSlit=slideSlit, mcsExposureBefore=mcsExposureBefore, **windowKeys
+                                              )
+                self.checkReady(spsExpose, cams)
+
                 if doIIS:
                     self.add(actor='iis', cmdStr=iisCmdStr)
 
-                # creating SpsExpose command object.
-                spsExpose = SpsExpose.specify(self, exptype, expTime, cams,
-                                              doTest=self.doTest, doIIS=doIIS,
-                                              doScienceCheck=self.doScienceCheck, skipBiaCheck=self.skipBiaCheck,
-                                              slideSlit=slideSlit, mcsExposureBefore=mcsExposureBefore, **windowKeys
-                                              )
                 list.append(self, spsExpose)
+
+    def checkReady(self, spsExpose, cams):
+        """Append the check of spsExpose's cameras, which takes its visit once they pass."""
+        list.append(self, SpsCheckReady(self, spsExpose, cams,
+                                        doScienceCheck=self.doScienceCheck, skipBiaCheck=self.skipBiaCheck))
 
     @staticmethod
     def keysToCam(iicActor, cmdKeys, configDict=None):

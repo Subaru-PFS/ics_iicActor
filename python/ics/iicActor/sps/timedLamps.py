@@ -4,7 +4,6 @@ import ics.iicActor.utils.translate as translate
 import ics.utils.sps.lamps.utils.lampState as lampState
 from ics.iicActor.sps.expose import SpsExpose
 from ics.iicActor.sps.sequence import SpsSequence
-from ics.iicActor.sps.subcmd import ReleaseIlluminator
 from ics.utils.sps.exposureTiming import ExposureTiming
 
 
@@ -59,12 +58,14 @@ class TimedLampsSequence(SpsSequence):
         doIisImmediateGo = 'hgar' in IisCmdStr
         # illuminators lit here rather than by each exposure, sps needs to be told to stop them.
         bckIlluminators = []
+        # lamps lit once for the whole run, warmed after the first exposure is checked.
+        warmup = []
 
         if doImmediateGo:
             estimatedTime, lampsCmdStr = prepareTotalLampTime(lampKeys)
-            self.add(actor='lamps', cmdStr=lampsCmdStr)
-            self.add(actor='lamps', cmdStr='waitForReadySignal', timeLim=240)
-            self.add(actor='lamps', cmdStr='go noWait')
+            warmup += [('lamps', lampsCmdStr, dict()),
+                       ('lamps', 'waitForReadySignal', dict(timeLim=240)),
+                       ('lamps', 'go noWait', dict())]
             # enforce doShutterTiming and doLamps to False.
             doShutterTiming = False
             doLamps = False
@@ -72,34 +73,37 @@ class TimedLampsSequence(SpsSequence):
 
         if doIisImmediateGo:
             estimatedIisTime, IisCmdStr = prepareTotalLampTime(iisKeys, candidates=('hgar',))
-            self.add(actor='iis', cmdStr=IisCmdStr)
-            self.add(actor='iis', cmdStr='waitForReadySignal', timeLim=240)
-            self.add(actor='iis', cmdStr='go noWait')
+            warmup += [('iis', IisCmdStr, dict()),
+                       ('iis', 'waitForReadySignal', dict(timeLim=240)),
+                       ('iis', 'go noWait', dict())]
             # iis hgar is now running for the whole sequence; per-exposure iis pulse no longer needed.
             doShutterTiming = False
             doIIS = False
             bckIlluminators.append('iis')
 
         for nExposure in range(duplicate):
+            # the cameras are checked by checkReady, the exposure itself checks nothing.
+            spsExpose = SpsExpose.specify(self, exptype, exptime, cams,
+                                          doLamps=doLamps, doIIS=doIIS,
+                                          doShutterTiming=doShutterTiming,
+                                          doTest=self.doTest,
+                                          slideSlit=slideSlit,
+                                          bckIlluminators=bckIlluminators if bckIlluminators else None,
+                                          isLast=nExposure == duplicate - 1,
+                                          **windowKeys)
+            # each exposure is checked before any lamp is touched for it.
+            self.checkReady(spsExpose, cams)
+
+            if nExposure == 0:
+                for actor, cmdStr, kwargs in warmup:
+                    self.add(actor=actor, cmdStr=cmdStr, **kwargs)
+
             # adding iis and lamps prepare commands.
             if doIIS:
                 self.add(actor='iis', cmdStr=IisCmdStr)
             if doLamps:
                 self.add(actor='lamps', cmdStr=lampsCmdStr)
 
-            # creating SpsExpose command object.
-            spsExpose = SpsExpose.specify(self, exptype, exptime, cams,
-                                          doLamps=doLamps, doIIS=doIIS,
-                                          doShutterTiming=doShutterTiming,
-                                          doTest=self.doTest,
-                                          doScienceCheck=self.doScienceCheck, skipBiaCheck=self.skipBiaCheck,
-                                          slideSlit=slideSlit,
-                                          bckIlluminators=bckIlluminators if bckIlluminators else None,
-                                          isLast=nExposure == duplicate - 1,
-                                          **windowKeys)
             list.append(self, spsExpose)
 
-        # sps releases those at the close of the last exposure; whatever else ends the run, the tail does.
-        for actor in bckIlluminators:
-            self.tail.append(ReleaseIlluminator(self, actor, lastExposure=spsExpose))
 
