@@ -6,7 +6,7 @@ import pfs.utils.pfsConfigUtils as pfsConfigUtils
 import pfscore.gen2 as gen2
 from ics.iicActor.utils import exception
 from ics.iicActor.utils.pfsConfig.illumination import updateFiberStatus
-from ics.iicActor.utils.subcmd import CmdRet
+from ics.iicActor.utils.subcmd import CmdRet, SubCmd
 from ics.iicActor.utils.versions import collectVersions
 from ics.iicActor.utils.visited import VisitedCmd
 from ics.utils.fits import mhs as fitsMhs
@@ -80,13 +80,29 @@ class SpsExpose(VisitedCmd):
 
         return cmdRet
 
-    def getVisitedCall(self, cmd):
-        """Set visit, process command, and finalize by inserting into visit_set."""
-        with self.visitManager.getVisit(caller='sps') as visit:
-            self.prepareVisit(visit)
+    def acquireVisit(self):
+        """Take this exposure's visit and build its pfsConfig, ahead of the exposure itself.
 
+        The visit stays locked until the exposure has run or been cancelled.
+        """
+        visit = self.visitManager.getVisit(caller='sps')
+        visit.lock()
+
+        try:
+            self.prepareVisit(visit)
+        except Exception:
+            visit.unlock()
+            raise
+
+    def getVisitedCall(self, cmd):
+        """Expose on the visit taken beforehand, then insert into visit_set and release it."""
+        # sent without its checkReady, the exposure still needs a visit, it is just not checked.
+        if self.visit is None:
+            self.acquireVisit()
+
+        try:
             if self.mcsExposureBefore and self.mcsExposureBefore['enabled'] and self.sequence.isPfiExposure:
-                self.callMcsExposure(cmd, visit, **self.mcsExposureBefore)
+                self.callMcsExposure(cmd, self.visit, **self.mcsExposureBefore)
 
             cmdRet = super().call(cmd)
 
@@ -100,8 +116,18 @@ class SpsExpose(VisitedCmd):
 
             # Release the visit as it is no longer active
             self.release()
+        finally:
+            self.visit.unlock()
 
         return cmdRet
+
+    def cancel(self, cmd):
+        """Cancel the exposure, giving back a visit already taken for it."""
+        if self.visit is not None:
+            self.release()
+            self.visit.unlock()
+
+        super().cancel(cmd)
 
     def callMcsExposure(self, cmd, visit, exptime, doFibreId, **kwargs):
         """Turn on/off illuminators and take MCS exposure."""
@@ -247,3 +273,32 @@ class SpsExpose(VisitedCmd):
                                          timeLim=10)
         if cmdVar.didFail:
             cmd.warn(cmdUtils.formatLastReply(cmdVar))
+
+
+class SpsCheckReady(SubCmd):
+    """Check that an exposure's cameras are ready, then take that exposure's visit.
+
+    Sent ahead of the exposure and of the lamps it uses, so whatever stops the exposure is
+    found before a lamp is warmed for it. A failed check takes no visit; a visit taken is
+    the exposure's own, given back if the exposure is cancelled.
+    """
+
+    def __init__(self, sequence, spsExpose, cams, doScienceCheck=False, skipBiaCheck=False):
+        super().__init__(sequence, 'sps', 'checkReady', cams=cams,
+                         doScienceCheck=doScienceCheck, skipBiaCheck=skipBiaCheck)
+        self.spsExpose = spsExpose
+
+    def call(self, cmd):
+        """Check the cameras, and take the exposure's visit only once they are ready."""
+        cmdRet = super().call(cmd)
+
+        if cmdRet.didFail:
+            return cmdRet
+
+        try:
+            self.spsExpose.acquireVisit()
+        except Exception as e:
+            lastReply = str(e)
+            return CmdRet(1, [lastReply], lastReply)
+
+        return cmdRet

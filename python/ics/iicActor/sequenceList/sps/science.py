@@ -47,6 +47,10 @@ class ScienceObjectLoop(ScienceObject):
 
     def __init__(self, cams, exptime, duplicate, windowKeys, mcsExposureBefore, **seqKeys):
         ScienceObject.__init__(self, cams, exptime, 1, windowKeys, mcsExposureBefore, **seqKeys)
+        # each round repeats the first exposure, checked like the first one was.
+        firstExptime = exptime[0] if isinstance(exptime, list) else exptime
+        self.loopExposure = dict(exptime=firstExptime, cams=cams, windowKeys=windowKeys,
+                                 mcsExposureBefore=mcsExposureBefore)
 
     def commandLogic(self, *args, **kwargs):
         """Declare sequence as complete, that is the nominal end for a sequence."""
@@ -54,8 +58,11 @@ class ScienceObjectLoop(ScienceObject):
 
         # Loop until someone finish this sequence.
         if self.status.flag == Flag.FINISHED:
-            # append a copy of the first command.
-            self.append(self[0].actor, self[0].cmdStr, timeLim=self[0].timeLim)
+            # append the next exposure, with its checkReady, and number what was appended.
+            first = len(self.cmdList)
+            self.expose('object', **self.loopExposure)
+            for id, subCmd in enumerate(self.cmdList[first:], start=first):
+                subCmd.init(id, cmd=self.getCmd())
             # setting status back to ready.
             self.status.amend()
             # execute command again.

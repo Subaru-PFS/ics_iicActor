@@ -24,22 +24,3 @@ class DcbCmd(LampsCmd):
             raise RuntimeError('this command has been designed for dcb only')
 
         super().__init__(sequence, *args, **kwargs)
-
-
-class ReleaseIlluminator(SubCmd):
-    """Stop an illuminator lit for a whole run of exposures, unless the exposure meant to release it did.
-
-    sps stops it when the last exposure of the run closes its shutters, so it is left alone once
-    that exposure went through; any other end of the run sends stop.
-    """
-
-    def __init__(self, sequence, actor, lastExposure):
-        super().__init__(sequence, actor, 'stop')
-        self.lastExposure = lastExposure
-
-    def callAndUpdate(self, cmd):
-        """Stop the illuminator, unless the last exposure of its run went through."""
-        if self.lastExposure.cmdRet.succeed:
-            return
-
-        super().callAndUpdate(cmd)
