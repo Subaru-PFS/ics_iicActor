@@ -82,11 +82,11 @@ class TimedLampsSequence(SpsSequence):
             bckIlluminators.append('iis')
 
         for nExposure in range(duplicate):
-            # the cameras are checked by checkReady, so the exposure itself does not check again.
+            # the cameras are checked by checkReady, the exposure itself checks nothing.
             spsExpose = SpsExpose.specify(self, exptype, exptime, cams,
                                           doLamps=doLamps, doIIS=doIIS,
                                           doShutterTiming=doShutterTiming,
-                                          doTest=self.doTest, skipBiaCheck=True,
+                                          doTest=self.doTest,
                                           slideSlit=slideSlit,
                                           bckIlluminators=bckIlluminators if bckIlluminators else None,
                                           isLast=nExposure == duplicate - 1,

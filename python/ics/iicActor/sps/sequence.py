@@ -98,9 +98,9 @@ class SpsSequence(sequence.Sequence):
         # instantiating for each exptime/duplicate.
         for expTime in exptime:
             for nExposure in range(duplicate):
-                # the cameras are checked by checkReady, so the exposure itself does not check again.
+                # the cameras are checked by checkReady, the exposure itself checks nothing.
                 spsExpose = SpsExpose.specify(self, exptype, expTime, cams,
-                                              doTest=self.doTest, doIIS=doIIS, skipBiaCheck=True,
+                                              doTest=self.doTest, doIIS=doIIS,
                                               slideSlit=slideSlit, mcsExposureBefore=mcsExposureBefore, **windowKeys
                                               )
                 self.checkReady(spsExpose, cams)
