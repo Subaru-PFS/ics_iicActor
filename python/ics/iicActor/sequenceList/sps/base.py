@@ -1,6 +1,7 @@
 import ics.iicActor.utils.translate as translate
 import numpy as np
 from ics.iicActor.sps.sequence import SpsSequence
+from ics.iicActor.sps.slitControl import SlitControl
 from ics.iicActor.sps.timedLamps import TimedLampsSequence
 from ics.utils.sps.defocus import defocused_exposure_times_single_position
 
@@ -113,10 +114,10 @@ class DitheredArcs(TimedLampsSequence):
     """ Dithered Arcs sequence """
     seqtype = 'ditheredArcs'
 
-    def __init__(self, cams, lampsKeys, duplicate, pixelStep, hexapodOff, **seqKeys):
+    def __init__(self, cams, lampsKeys, duplicate, pixelStep, slitControl, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
         # start hexapod and move home.
-        self.add('sps', 'slit start', cams=cams)
+        slitControl.start(self, cams)
         self.add('sps', 'slit home', cams=cams)
 
         end = int(1 / pixelStep)
@@ -129,9 +130,8 @@ class DitheredArcs(TimedLampsSequence):
 
         # move back home and stop hexapod, even if the sequence fails.
         self.tail.add('sps', 'slit home', cams=cams)
-        # Turn hexapod off only if it was off in the first place.
-        if hexapodOff:
-            self.tail.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
+        # Turn back off the hexapods this sequence powered on.
+        slitControl.stop(self.tail)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -142,20 +142,20 @@ class DitheredArcs(TimedLampsSequence):
         lampsKeys = translate.lampsKeys(cmdKeys)
         pixelStep = cmdKeys['pixelStep'].values[0]
 
-        hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
+        slitControl = SlitControl.fromConfig(iicActor, cams, cmdKeys, cls.seqtype)
         lampsKeys.update(iicActor.engine.keyRepo.getNirTiming(cams))
 
-        return cls(cams, lampsKeys, duplicate, pixelStep, hexapodOff, **seqKeys)
+        return cls(cams, lampsKeys, duplicate, pixelStep, slitControl, **seqKeys)
 
 
 class DefocusedArcs(TimedLampsSequence):
     """ Defocus sequence """
     seqtype = 'defocusedArcs'
 
-    def __init__(self, cams, lampsKeys, iisKeys, duplicate, positions, hexapodOff, **seqKeys):
+    def __init__(self, cams, lampsKeys, iisKeys, duplicate, positions, slitControl, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
         # start hexapod and move home.
-        self.add('sps', 'slit start', cams=cams)
+        slitControl.start(self, cams)
         self.add('sps', 'slit home', cams=cams)
         # the H4 timing rides along with the lamps keys, but is not a lamp time to scale.
         nirTiming = dict([(key, lampsKeys[key]) for key in ('h4ReadTime', 'h4IrpRatio') if key in lampsKeys])
@@ -175,9 +175,8 @@ class DefocusedArcs(TimedLampsSequence):
 
         # move back home and stop hexapod, even if the sequence fails.
         self.tail.add('sps', 'slit home', cams=cams)
-        # Turn hexapod off only if it was off in the first place.
-        if hexapodOff:
-            self.tail.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
+        # Turn back off the hexapods this sequence powered on.
+        slitControl.stop(self.tail)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -190,10 +189,10 @@ class DefocusedArcs(TimedLampsSequence):
         start, stop, num = cmdKeys['position'].values
         positions = np.linspace(start, stop, num=int(num)).round(6)
 
-        hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
+        slitControl = SlitControl.fromConfig(iicActor, cams, cmdKeys, cls.seqtype)
         lampsKeys.update(iicActor.engine.keyRepo.getNirTiming(cams))
 
-        return cls(cams, lampsKeys, iisKeys, duplicate, positions, hexapodOff, **seqKeys)
+        return cls(cams, lampsKeys, iisKeys, duplicate, positions, slitControl, **seqKeys)
 
 
 class FpaThroughFocus(TimedLampsSequence):

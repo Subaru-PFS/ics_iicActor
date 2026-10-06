@@ -1,6 +1,7 @@
 import ics.iicActor.utils.translate as translate
 from ics.iicActor.sequenceList.sps.base import Biases, Darks, Arcs, Flats
 from ics.iicActor.sps.sequence import SpsSequence
+from ics.iicActor.sps.slitControl import SlitControl
 from ics.iicActor.sps.timedLamps import TimedLampsSequence
 
 
@@ -54,16 +55,16 @@ class DitheredFlats(TimedLampsSequence):
     """ Dithered Flats sequence """
     seqtype = 'ditheredFlats'
 
-    def __init__(self, cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, **seqKeys):
+    def __init__(self, cams, lampsKeys, positions, duplicate, slitControl, interleaveDark, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         # taking a trace before starting hexapod, (for the one that were off in the first place).
-        cameraWithHexapodPowerCycled = [cam for cam in cams if cam.specName in hexapodOff]
-        if cameraWithHexapodPowerCycled:
-            self.takeOneDuplicate(lampsKeys, cameraWithHexapodPowerCycled, duplicate, interleaveDark)
+        camsPoweredOff = slitControl.selectCams(cams, slitControl.poweredOff)
+        if camsPoweredOff:
+            self.takeOneDuplicate(lampsKeys, camsPoweredOff, duplicate, interleaveDark)
 
         # taking a trace in home to start.
-        self.add('sps', 'slit start', cams=cams)
+        slitControl.start(self, cams)
         self.add('sps', 'slit home', cams=cams)
         self.takeOneDuplicate(lampsKeys, cams, duplicate, interleaveDark)
 
@@ -75,10 +76,11 @@ class DitheredFlats(TimedLampsSequence):
         self.add('sps', 'slit home', cams=cams)
         self.takeOneDuplicate(lampsKeys, cams, duplicate, interleaveDark)
 
-        # taking a trace after the hexapod is turned back off (for the one that were off in the first place).
-        if cameraWithHexapodPowerCycled:
-            self.add('sps', 'slit stop', cams=cameraWithHexapodPowerCycled)
-            self.takeOneDuplicate(lampsKeys, cameraWithHexapodPowerCycled, duplicate, interleaveDark)
+        # taking a trace after the hexapod is turned back off (for the one that this sequence powered on).
+        slitControl.stop(self)
+        camsStopped = slitControl.selectCams(cams, slitControl.toStop)
+        if camsStopped:
+            self.takeOneDuplicate(lampsKeys, camsStopped, duplicate, interleaveDark)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -89,10 +91,10 @@ class DitheredFlats(TimedLampsSequence):
         lampsKeys = translate.lampsKeys(cmdKeys)
         positions = translate.ditheredFlatsKeys(cmdKeys)
 
-        hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
+        slitControl = SlitControl.fromConfig(iicActor, cams, cmdKeys, cls.seqtype)
         interleaveDark = cmdKeys['interleaveDark'].values[0] if 'interleaveDark' in cmdKeys else False
 
-        return cls(cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, **seqKeys)
+        return cls(cams, lampsKeys, positions, duplicate, slitControl, interleaveDark, **seqKeys)
 
     def takeOneDuplicate(self, lampsKeys, cams, duplicate, interleaveDark):
         """take one duplicate, interleave for nir arm if necessary."""
@@ -110,12 +112,12 @@ class FiberProfiles(TimedLampsSequence):
     seqtype = 'fiberProfiles'
     exptype = 'sciflat'
 
-    def __init__(self, cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, nTraceBefore, nTraceAfter,
+    def __init__(self, cams, lampsKeys, positions, duplicate, slitControl, interleaveDark, nTraceBefore, nTraceAfter,
                  **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         # taking a trace in home to start.
-        self.add('sps', 'slit start', cams=cams)
+        slitControl.start(self, cams)
         self.add('sps', 'slit home', cams=cams)
         # taking nTraceBefore images in home first.
         self.takeOneDuplicate(lampsKeys, cams, int(duplicate * nTraceBefore), interleaveDark)
@@ -128,9 +130,8 @@ class FiberProfiles(TimedLampsSequence):
         self.add('sps', 'slit home', cams=cams)
         self.takeOneDuplicate(lampsKeys, cams, int(duplicate * nTraceAfter), interleaveDark)
 
-        # Turn hexapod off only if it was off in the first place.
-        if hexapodOff:
-            self.add('sps', 'slit stop', specNums=','.join([specName[-1] for specName in hexapodOff]))
+        # Turn back off the hexapods this sequence powered on.
+        slitControl.stop(self)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, hexapodOff=False):
@@ -146,7 +147,9 @@ class FiberProfiles(TimedLampsSequence):
         nTraceBefore = cmdKeys['nTraceBefore'].values[0] if 'nTraceBefore' in cmdKeys else actorConfig['nTraceBefore']
         nTraceAfter = cmdKeys['nTraceAfter'].values[0] if 'nTraceAfter' in cmdKeys else actorConfig['nTraceAfter']
 
-        return cls(cams, lampsKeys, positions, duplicate, hexapodOff, interleaveDark, nTraceBefore, nTraceAfter,
+        slitControl = SlitControl.fromConfig(iicActor, cams, cmdKeys, cls.seqtype, toStop=hexapodOff or [])
+
+        return cls(cams, lampsKeys, positions, duplicate, slitControl, interleaveDark, nTraceBefore, nTraceAfter,
                    **seqKeys)
 
     def takeOneDuplicate(self, lampsKeys, cams, duplicate, interleaveDark):
@@ -168,11 +171,11 @@ class ShutterDriftFlats(SpsSequence):
     """ Dithered Flats sequence """
     seqtype = 'driftFlats'
 
-    def __init__(self, cams, exptime, duplicate, pixMin, pixMax, doStopHexapod, **seqKeys):
+    def __init__(self, cams, exptime, duplicate, pixMin, pixMax, slitControl, **seqKeys):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         # go home first.
-        self.add('sps', 'slit start', cams=cams)
+        slitControl.start(self, cams)
 
         for iDuplicate in range(duplicate):
             # moving to the beginning of the range // required for N.
@@ -181,9 +184,8 @@ class ShutterDriftFlats(SpsSequence):
 
         # move back home
         self.tail.add('sps', 'slit home', cams=cams)
-        # stop hexapod if required.
-        if doStopHexapod:
-            self.tail.add('sps', 'slit stop', cams=cams)
+        # Turn back off the hexapods this sequence powered on.
+        slitControl.stop(self.tail)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -193,9 +195,9 @@ class ShutterDriftFlats(SpsSequence):
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
 
         pixMin, pixMax, num = cmdKeys['pixelRange'].values
-        doStopHexapod = 'keepHexapodOn' not in cmdKeys
+        slitControl = SlitControl.fromConfig(iicActor, cams, cmdKeys, cls.seqtype)
 
-        return cls(cams, exptime, duplicate, pixMin, pixMax, doStopHexapod, **seqKeys)
+        return cls(cams, exptime, duplicate, pixMin, pixMax, slitControl, **seqKeys)
 
 
 class DriftFlats(ShutterDriftFlats, TimedLampsSequence):
@@ -209,9 +211,9 @@ class DriftFlats(ShutterDriftFlats, TimedLampsSequence):
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
         lampsKeys = translate.lampsKeys(cmdKeys)
         pixMin, pixMax, num = cmdKeys['pixelRange'].values
-        doStopHexapod = 'keepHexapodOn' not in cmdKeys
+        slitControl = SlitControl.fromConfig(iicActor, cams, cmdKeys, cls.seqtype)
 
-        return cls(cams, lampsKeys, duplicate, pixMin, pixMax, doStopHexapod, **seqKeys)
+        return cls(cams, lampsKeys, duplicate, pixMin, pixMax, slitControl, **seqKeys)
 
 
 class ScienceArc(Arcs):
