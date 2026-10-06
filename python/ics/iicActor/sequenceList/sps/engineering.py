@@ -1,6 +1,7 @@
 import ics.iicActor.utils.translate as translate
 import numpy as np
 from ics.iicActor.sps.sequence import SpsSequence
+from ics.iicActor.sps.slitControl import SlitControl
 from ics.iicActor.utils.sequence import Sequence
 
 
@@ -8,7 +9,7 @@ class HexapodStability(SpsSequence):
     """ hexapod stability sequence """
     seqtype = 'hexapodStability'
 
-    def __init__(self, cams, lampsKeys, duplicate, positions, hexapodOff, **seqKeys):
+    def __init__(self, cams, lampsKeys, duplicate, positions, slitControl, **seqKeys):
         """Acquire a hexapod repeatability grid.
 
         Args
@@ -29,11 +30,11 @@ class HexapodStability(SpsSequence):
         SpsSequence.__init__(self, cams, **seqKeys)
 
         # taking an exposure before starting hexapod, (only for the one that were off in the first place).
-        cameraWithHexapodPowerCycled = [cam for cam in cams if cam.specName in hexapodOff]
-        if cameraWithHexapodPowerCycled:
-            self.expose('arc', lampsKeys, cameraWithHexapodPowerCycled, duplicate=duplicate)
+        camsPoweredOff = slitControl.selectCams(cams, slitControl.poweredOff)
+        if camsPoweredOff:
+            self.expose('arc', lampsKeys, camsPoweredOff, duplicate=duplicate)
 
-        self.add('sps', 'slit start', cams=cams)
+        slitControl.start(self, cams)
 
         # taking one exposure in home.
         self.add('sps', 'slit home', cams=cams)
@@ -50,10 +51,11 @@ class HexapodStability(SpsSequence):
         self.add('sps', 'slit home', cams=cams)
         self.expose('arc', lampsKeys, cams, duplicate=duplicate)
 
-        # taking an exposure after the hexapod is turned back off (only for the one that were off in the first place).
-        if cameraWithHexapodPowerCycled:
-            self.add('sps', 'slit stop', cams=cameraWithHexapodPowerCycled)
-            self.expose('arc', lampsKeys, cameraWithHexapodPowerCycled, duplicate=duplicate)
+        # taking an exposure after the hexapod is turned back off (only for the one that this sequence powered on).
+        slitControl.stop(self)
+        camsStopped = slitControl.selectCams(cams, slitControl.toStop)
+        if camsStopped:
+            self.expose('arc', lampsKeys, camsStopped, duplicate=duplicate)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -70,9 +72,9 @@ class HexapodStability(SpsSequence):
         [start, stop, step] = cmdKeys['position'].values if 'position' in cmdKeys else [-0.05, 0.055, 0.01]
         positions = np.arange(start, stop, step)[::-1]
 
-        hexapodOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
+        slitControl = SlitControl.fromConfig(iicActor, cams, cmdKeys, cls.seqtype)
 
-        return cls(cams, lampsKeys, duplicate, positions, hexapodOff, **seqKeys)
+        return cls(cams, lampsKeys, duplicate, positions, slitControl, **seqKeys)
 
 
 class RdaMove(Sequence):
