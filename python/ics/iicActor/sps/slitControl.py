@@ -6,7 +6,7 @@ class SlitControl(object):
     poweredOff : `list` of `str`
         Spectrograph names whose hexapod is powered off when the sequence is built.
     toStop : `list` of `str`
-        Spectrograph names whose hexapod is powered off at the end of the sequence.
+        Spectrograph names whose hexapod is powered off at the end of the sequence, deferred ones included.
     fullInit : `bool`
         Start the powered-off hexapods with a home search rather than from the strut positions saved by slit stop.
     """
@@ -19,11 +19,15 @@ class SlitControl(object):
         self.fullInit = fullInit
 
     @classmethod
-    def fromConfig(cls, iicActor, cams, cmdKeys, seqtype, toStop=None):
+    def fromConfig(cls, iicActor, cams, cmdKeys, seqtype, keepHexapodOn=False):
         """Slit control of a sequence, from the iic slit config.
 
-        The slit section of the `seqtype` config, if any, overrides the iic one, and a keepHexapodOn command keyword
-        overrides both.
+        The slit section of the `seqtype` config, if any, overrides the iic one. keepHexapodOn is set by the argument,
+        the config or the keepHexapodOn command keyword.
+
+        With keepHexapodOn, the power-off is deferred: the hexapods found powered off are recorded as deferred and the
+        sequence powers nothing off. Without it, the sequence powers off the hexapods it found powered off and the
+        deferred ones among its cameras.
 
         Parameters
         ----------
@@ -32,8 +36,8 @@ class SlitControl(object):
             Cameras of the sequence.
         cmdKeys : `opscore.protocols.keys.KeysDictionary`
         seqtype : `str`
-        toStop : `list` of `str`, optional
-            Spectrograph names to power off at the end, the powered-off ones by default.
+        keepHexapodOn : `bool`, optional
+            Defer the power-off to the next sequence.
 
         Returns
         -------
@@ -41,12 +45,18 @@ class SlitControl(object):
         """
         config = dict(iicActor.actorConfig['slit'])
         config.update(iicActor.actorConfig.get(seqtype, {}).get('slit', {}))
-        keepHexapodOn = config['keepHexapodOn'] or 'keepHexapodOn' in cmdKeys
+        keepHexapodOn = keepHexapodOn or config['keepHexapodOn'] or 'keepHexapodOn' in cmdKeys
 
-        poweredOff = iicActor.engine.keyRepo.getPoweredOffHexapods(cams)
-        toStop = poweredOff if toStop is None else toStop
+        keyRepo = iicActor.engine.keyRepo
+        poweredOff = keyRepo.getPoweredOffHexapods(cams)
 
-        return cls(poweredOff, [] if keepHexapodOn else toStop, config['fullInit'])
+        if keepHexapodOn:
+            keyRepo.deferHexapodsOff(poweredOff)
+            toStop = []
+        else:
+            toStop = set(poweredOff) | keyRepo.popDeferredHexapodsOff(cams)
+
+        return cls(poweredOff, toStop, config['fullInit'])
 
     @staticmethod
     def selectCams(cams, specNames):

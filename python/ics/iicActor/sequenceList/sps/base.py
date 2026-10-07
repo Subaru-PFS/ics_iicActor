@@ -130,7 +130,7 @@ class DitheredArcs(TimedLampsSequence):
 
         # move back home and stop hexapod, even if the sequence fails.
         self.tail.add('sps', 'slit home', cams=cams)
-        # Turn back off the hexapods this sequence powered on.
+        # Turn back off the hexapods powered on, unless deferred.
         slitControl.stop(self.tail)
 
     @classmethod
@@ -175,7 +175,7 @@ class DefocusedArcs(TimedLampsSequence):
 
         # move back home and stop hexapod, even if the sequence fails.
         self.tail.add('sps', 'slit home', cams=cams)
-        # Turn back off the hexapods this sequence powered on.
+        # Turn back off the hexapods powered on, unless deferred.
         slitControl.stop(self.tail)
 
     @classmethod

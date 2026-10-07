@@ -16,7 +16,7 @@ class KeyRepo:
     def __init__(self, engine):
         self.engine = engine
         self.logger = logging.getLogger('KeyRepo')
-        self.stateHolder = {}  # Cache for storing temporary states.
+        self.deferredHexapodsOff = set()  # spectrograph names whose hexapod power-off is deferred.
 
     @property
     def actor(self):
@@ -103,33 +103,22 @@ class KeyRepo:
         poweredOff.sort()
         return poweredOff
 
-    def cacheHexapodState(self, cams):
-        """
-        Cache or retrieve the hexapod power-off state based on the design name.
+    def deferHexapodsOff(self, specNames):
+        """Record `specNames` as hexapods to power off by a later sequence."""
+        self.deferredHexapodsOff.update(specNames)
 
-        Parameters
-        ----------
-        cams : list
-            List of camera objects.
+        if specNames:
+            self.logger.info(f'Deferring hexapod power-off for {", ".join(sorted(specNames))}')
 
-        Returns
-        -------
-        list or bool
-            Cached hexapod state if caching is enabled, or `False` if not.
-        """
-        cached = []
-        # Maybe not that robust but at least it's under my control
-        doCache = self.engine.visitManager.activeField.pfsDesign.designName == 'blackDots-moveAll'
-        current = self.getPoweredOffHexapods(cams)
+    def popDeferredHexapodsOff(self, cams):
+        """Remove and return the deferred hexapods among `cams` spectrographs, as a set of spectrograph names."""
+        deferred = self.deferredHexapodsOff & {cam.specName for cam in cams}
+        self.deferredHexapodsOff -= deferred
 
-        if doCache:
-            self.stateHolder['hexapodOff'] = current
-            self.logger.info(f'Caching powered-off hexapods for {", ".join(current)}')
-        else:
-            cached = self.stateHolder.pop('hexapodOff', [])
-            self.logger.info(f'Retrieving cached powered-off hexapods for {", ".join(cached)}')
+        if deferred:
+            self.logger.info(f'Retrieving deferred hexapod power-off for {", ".join(sorted(deferred))}')
 
-        return cached
+        return deferred
 
     def getSelectedArms(self, cams):
         """
@@ -185,16 +174,19 @@ class KeyRepo:
         Returns
         -------
         str
-            The current red resolution ('med' or 'high').
+            The current red resolution ('low' or 'med').
 
         Raises
         ------
         RuntimeError
-            If the current red resolution cannot be determined.
+            If the current red resolution cannot be determined, or is neither 'low' nor 'med'.
         """
         try:
             [current] = set(self.getEnuKeyValues(cams, 'rexm').values())
         except ValueError:
             raise RuntimeError("Could not determine a unique current red resolution")
+
+        if current not in ('low', 'med'):
+            raise RuntimeError(f"Red resolution is {current}, not low or med")
 
         return current

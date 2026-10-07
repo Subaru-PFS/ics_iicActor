@@ -130,11 +130,11 @@ class FiberProfiles(TimedLampsSequence):
         self.add('sps', 'slit home', cams=cams)
         self.takeOneDuplicate(lampsKeys, cams, int(duplicate * nTraceAfter), interleaveDark)
 
-        # Turn back off the hexapods this sequence powered on.
+        # Turn back off the hexapods powered on, unless deferred.
         slitControl.stop(self)
 
     @classmethod
-    def fromCmdKeys(cls, iicActor, cmdKeys, hexapodOff=False):
+    def fromCmdKeys(cls, iicActor, cmdKeys, keepHexapodOn=False):
         """Defining rules to construct ScienceObject object."""
         cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
@@ -147,7 +147,7 @@ class FiberProfiles(TimedLampsSequence):
         nTraceBefore = cmdKeys['nTraceBefore'].values[0] if 'nTraceBefore' in cmdKeys else actorConfig['nTraceBefore']
         nTraceAfter = cmdKeys['nTraceAfter'].values[0] if 'nTraceAfter' in cmdKeys else actorConfig['nTraceAfter']
 
-        slitControl = SlitControl.fromConfig(iicActor, cams, cmdKeys, cls.seqtype, toStop=hexapodOff or [])
+        slitControl = SlitControl.fromConfig(iicActor, cams, cmdKeys, cls.seqtype, keepHexapodOn=keepHexapodOn)
 
         return cls(cams, lampsKeys, positions, duplicate, slitControl, interleaveDark, nTraceBefore, nTraceAfter,
                    **seqKeys)
@@ -184,7 +184,7 @@ class ShutterDriftFlats(SpsSequence):
 
         # move back home
         self.tail.add('sps', 'slit home', cams=cams)
-        # Turn back off the hexapods this sequence powered on.
+        # Turn back off the hexapods powered on, unless deferred.
         slitControl.stop(self.tail)
 
     @classmethod

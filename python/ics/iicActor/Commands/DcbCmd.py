@@ -1,14 +1,14 @@
 from importlib import reload
 
 import ics.iicActor.sequenceList.sps.dcb as dcb
-import ics.iicActor.sequenceList.sps.engineering as eng
+import ics.iicActor.sps.fiberProfilesFlow as fiberProfilesFlow
 import ics.iicActor.utils.translate as translate
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
-from ics.iicActor.utils.sequenceStatus import Flag
 from ics.utils.threading import singleShot
 
 reload(dcb)
+reload(fiberProfilesFlow)
 
 
 class DcbCmd(object):
@@ -27,7 +27,7 @@ class DcbCmd(object):
             ('scienceArc', f'{arcArgs} {commonArgs}', self.scienceArc),
             ('scienceTrace', f'{flatArgs} {windowingArgs} {commonArgs}', self.scienceTrace),
             ('fiberProfiles',
-             f'{flatArgs} [<pixelRange>] [<interleaveDark>] [@skipOtherRedResolution] [<nTraceBefore>] [<nTraceAfter>] {commonArgs}',
+             f'{flatArgs} [<pixelRange>] [<interleaveDark>] [@skipOtherRedResolution] [@(keepHexapodOn)] [<nTraceBefore>] [<nTraceAfter>] {commonArgs}',
              self.fiberProfiles),
 
             ('expose', f'arc {arcArgs} {commonArgs}', self.doArc),
@@ -536,7 +536,7 @@ class DcbCmd(object):
     def fiberProfiles(self, cmd):
         """
         `iic fiberProfiles halogen=FF.F [@doShutterTiming] [pixels=FF.F,FF.F,FF.F] [cam=???] [arm=???] [specNum=???]
-        [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+        [@keepHexapodOn] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Take a set of dithered fiberProfiles data with a given pixel step (default=0.2).
         Sequence is referenced in opdb as iic_sequence.seqtype=ditheredFlats.
@@ -564,38 +564,5 @@ class DcbCmd(object):
         doTest : `bool`
            image/exposure type will be labelled as test, default=flat.
         """
-        cmdKeys = cmd.cmd.keywords
-        specNums = self.actor.spsConfig.keysToSpecNum(cmdKeys)
-        cams = self.actor.spsConfig.keysToCam(cmdKeys)
-
-        hexapodOff = self.actor.engine.keyRepo.cacheHexapodState(cams)  # caching hexapod state if it's off.
-        current = self.actor.engine.keyRepo.getCurrentRedResolution(cams)
-        skipOtherRedResolution = 'skipOtherRedResolution' in cmdKeys
-        cmd.inform(f'text="RDA currently in {current} resolution mode"')
-
-        # Run first set of fiberProfiles in current red resolution.
-        fiberProfiles = dcb.FiberProfiles.fromCmdKeys(self.actor, cmdKeys)
-        self.engine.run(cmd, fiberProfiles, doFinish=False)
-
-        if skipOtherRedResolution:
-            cmd.finish('text="not switching the red grating, finishing sequence here..."')
-            return
-
-        if fiberProfiles.status.flag != Flag.FINISHED:
-            if cmd.alive:
-                cmd.fail('text="fiberProfiles not completed, stopping here."')
-            return
-
-        # Move to the other resolution.
-        targetPosition = 'med' if current == 'low' else 'low'
-        rdaMove = eng.RdaMove(specNums, targetPosition)
-        self.engine.run(cmd, rdaMove, doFinish=False)
-
-        if rdaMove.status.flag != Flag.FINISHED:
-            if cmd.alive:
-                cmd.fail('text="rdaMove not completed, stopping here."')
-            return
-
-        # Run second set of fiberProfiles in the other red resolution.
-        fiberProfiles = dcb.FiberProfiles.fromCmdKeys(self.actor, cmdKeys, hexapodOff=hexapodOff)
-        self.engine.run(cmd, fiberProfiles, doFinish=True)
+        resolutions = fiberProfilesFlow.planRedResolutions(self.actor, cmd)
+        fiberProfilesFlow.run(self.actor, cmd, dcb.FiberProfiles, resolutions)
