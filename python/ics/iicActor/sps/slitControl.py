@@ -8,10 +8,11 @@ class SlitControl(object):
     toStop : `list` of `str`
         Spectrograph names whose hexapod is powered off at the end of the sequence, deferred ones included.
     fullInit : `bool`
-        Start the powered-off hexapods with a home search rather than from the strut positions saved by slit stop.
+        Start the hexapods with a home search, unless already homed, rather than from the strut positions saved by
+        slit stop.
     """
     # sps allows 120s per slit start, a home search from power-off takes ~90s.
-    fullInitTimeLim = 150
+    startTimeLim = 150
 
     def __init__(self, poweredOff, toStop, fullInit):
         self.poweredOff = sorted(poweredOff)
@@ -69,16 +70,8 @@ class SlitControl(object):
         return ','.join([specName[-1] for specName in specNames])
 
     def start(self, cmdList, cams):
-        """Add the slit start commands for `cams` to `cmdList`.
-
-        With fullInit, the powered-off hexapods are started first with a home search; the plain slit start that follows
-        leaves an already started hexapod as it is.
-        """
-        if self.fullInit and self.poweredOff:
-            cmdList.add('sps', 'slit start', fullInit=True, specNums=self.toSpecNums(self.poweredOff),
-                        timeLim=SlitControl.fullInitTimeLim)
-
-        cmdList.add('sps', 'slit start', cams=cams)
+        """Add the slit start command for `cams` to `cmdList`, with a home search when fullInit."""
+        cmdList.add('sps', 'slit start', cams=cams, fullInit=self.fullInit, timeLim=SlitControl.startTimeLim)
 
     def stop(self, cmdList):
         """Add the slit stop command of the hexapods to power off to `cmdList`, if any."""
