@@ -19,8 +19,8 @@ class SpsExpose(VisitedCmd):
 
     def __init__(self, sequence, exptype, mcsExposureBefore=None, **kwargs):
         self.exptype = exptype
-        spsExptype = exptype[3:] if exptype[:3] == 'sci' else exptype
-        super().__init__(sequence, 'sps', f'expose {spsExptype}', parseVisit=True, **kwargs)
+        self.spsExptype = exptype[3:] if exptype[:3] == 'sci' else exptype
+        super().__init__(sequence, 'sps', f'expose {self.spsExptype}', parseVisit=True, **kwargs)
 
         self.visit = None
         self.pfsConfig = None
@@ -284,7 +284,8 @@ class SpsCheckReady(SubCmd):
     """
 
     def __init__(self, sequence, spsExpose, cams, doScienceCheck=False, skipBiaCheck=False):
-        super().__init__(sequence, 'sps', 'checkReady', cams=cams,
+        exptype = 'test' if sequence.doTest else spsExpose.spsExptype
+        super().__init__(sequence, 'sps', f'checkReady {exptype}', cams=cams,
                          doScienceCheck=doScienceCheck, skipBiaCheck=skipBiaCheck)
         self.spsExpose = spsExpose
 
