@@ -123,8 +123,8 @@ class ResourceManager(object):
 
     def inspect(self, sequence):
         """Extract required resources from a given command sequence."""
-        # just get the list of all actors that will be called as start.
-        allDeps = list(set([subCmd.actor for subCmd in sequence.subCmds]))
+        # just get the list of all actors that will be called as start, a subcommand without actor calls none.
+        allDeps = list(set([subCmd.actor for subCmd in sequence.subCmds if subCmd.actor]))
 
         # MCS implicitly needed for some FPS commands
         if 'fps' in allDeps:

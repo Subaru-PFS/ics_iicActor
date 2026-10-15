@@ -1,8 +1,12 @@
+import math
+
 import ics.iicActor.utils.translate as translate
 from ics.iicActor.sequenceList.sps.base import Biases, Darks, Arcs, Flats
 from ics.iicActor.sps.sequence import SpsSequence
 from ics.iicActor.sps.slitControl import SlitControl
 from ics.iicActor.sps.timedLamps import TimedLampsSequence
+from ics.iicActor.utils.subcmd import Wait
+from ics.utils.sps.exposureTiming import ExposureTiming
 
 
 class MasterBiases(Biases):
@@ -249,3 +253,81 @@ class DomeFlat(SpsSequence):
         windowKeys = translate.windowKeys(cmdKeys)
 
         return cls(cams, exptime, duplicate, windowKeys, **seqKeys)
+
+
+class QuartzLadder(SpsSequence):
+    """Quartz exposure-time ladder, measuring the detector response against signal level.
+
+    One block per exposure time X: a bias, then shutter-timed flats reference, X x duplicate, reference, all within one
+    quartz lamp-on period, so lamp drift within a block cancels by interpolating the references. A last bias closes the
+    ladder, each block's bias closing the previous one.
+    """
+    seqtype = 'quartzLadder'
+    # [s] lamp time beyond the exposure timing model; the lamp is stopped at the end of each block anyway.
+    lampMargin = 30
+
+    def __init__(self, cams, exptimes, reference, duplicate, settleTime, h4ReadTime=None, h4IrpRatio=None,
+                 **seqKeys):
+        SpsSequence.__init__(self, cams, **seqKeys)
+        arms = set([cam.arm for cam in cams])
+
+        for iBlock, exptime in enumerate(exptimes):
+            blockExptimes = [reference] + [exptime] * duplicate + [reference]
+            blockSettleTime = settleTime if iBlock == 0 else 0
+            lampTime = QuartzLadder.lampTime(blockExptimes, arms, blockSettleTime,
+                                             h4ReadTime=h4ReadTime, h4IrpRatio=h4IrpRatio)
+
+            self.expose('bias', 0, cams)
+
+            self.add('lamps', f'prepare halogen={lampTime}')
+            self.add('lamps', 'waitForReadySignal', timeLim=240)
+            self.add('lamps', 'go noWait')
+
+            if blockSettleTime:
+                list.append(self, Wait(self, blockSettleTime))
+
+            self.expose('flat', blockExptimes, cams)
+            self.add('lamps', 'stop')
+
+        self.expose('bias', 0, cams)
+
+    @staticmethod
+    def lampTime(exptimes, arms, settleTime, h4ReadTime=None, h4IrpRatio=None, roundToSecs=5):
+        """How long the quartz must burn for one block, in seconds.
+
+        From the lamp go to the last shutter close, from the exposure timing model shared with sps, plus `lampMargin`,
+        rounded up to the next multiple of `roundToSecs`.
+
+        Parameters
+        ----------
+        exptimes : `list` of `float`
+            Exposure times of the block, in order.
+        arms : iterable of `str`
+            Exposed arms, among b, r, m and n.
+        settleTime : `float`
+            Wait between the lamp go and the first exposure.
+        h4ReadTime, h4IrpRatio : `float`, `int`
+            H4 read time and IRP ratio, required with the n arm.
+        """
+        exposureTiming = ExposureTiming.fromInstdata()
+        allButLast = sum([exposureTiming.exposureTime(exptime, arms, readTime=h4ReadTime, irpRatio=h4IrpRatio)
+                          for exptime in exptimes[:-1]])
+        last = exposureTiming.lampOnTime(exptimes[-1], arms, readTime=h4ReadTime, irpRatio=h4IrpRatio)
+        totalSecs = settleTime + allButLast + last + QuartzLadder.lampMargin
+
+        return int(roundToSecs * math.ceil(totalSecs / roundToSecs))
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct QuartzLadder object, the quartzLadder config completing the command keys."""
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
+        seqKeys = translate.seqKeys(cmdKeys)
+
+        config = iicActor.actorConfig['quartzLadder']
+        exptimes = cmdKeys['exptime'].values if 'exptime' in cmdKeys else config['exptime']
+        reference = cmdKeys['reference'].values[0] if 'reference' in cmdKeys else config['reference']
+        duplicate = cmdKeys['duplicate'].values[0] if 'duplicate' in cmdKeys else config['duplicate']
+        settleTime = cmdKeys['settleTime'].values[0] if 'settleTime' in cmdKeys else config['settleTime']
+        nirTiming = iicActor.engine.keyRepo.getNirTiming(cams)
+
+        return cls(cams, list(exptimes), reference, duplicate, settleTime, **nirTiming, **seqKeys)

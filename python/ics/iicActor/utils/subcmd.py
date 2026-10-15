@@ -1,3 +1,5 @@
+import threading
+
 import ics.utils.cmd as cmdUtils
 from ics.iicActor.utils.exception import IicException
 from ics.iicActor.utils.lib import stripQuotes
@@ -119,3 +121,24 @@ class SubCmd(object):
 
     def finishNow(self, cmd):
         """ finish prototype"""
+
+
+class Wait(SubCmd):
+    """Wait `seconds` within a sequence, sending nothing; an abort or a finish now ends the wait early."""
+
+    def __init__(self, sequence, seconds):
+        super().__init__(sequence, '', f'wait {seconds}s', timeLim=seconds)
+        self.seconds = seconds
+        self.interrupted = threading.Event()
+
+    def call(self, cmd):
+        """Wait, unless interrupted."""
+        self.interrupted.wait(self.seconds)
+        lastReply = 'interrupted' if self.interrupted.is_set() else f'waited {self.seconds}s'
+        return CmdRet(0, [], lastReply)
+
+    def abort(self, cmd):
+        self.interrupted.set()
+
+    def finishNow(self, cmd):
+        self.interrupted.set()

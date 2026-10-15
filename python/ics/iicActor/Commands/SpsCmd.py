@@ -37,6 +37,7 @@ class SpsCmd(object):
             ('scienceArc', f'{timedArcArgs} {commonArgs}', self.scienceArc),
             ('scienceTrace', f'{timedFlatArgs} {windowingArgs} {commonArgs}', self.scienceTrace),
             ('domeFlat', f'<exptime> {windowingArgs} {commonArgs}', self.domeFlat),
+            ('quartzLadder', f'[<exptime>] [<reference>] [<settleTime>] {commonArgs}', self.quartzLadder),
             ('scienceObject',
              f'<exptime> {windowingArgs} {timedIisArgs} [<iisHalogen>] [@skipMcsExposure] {commonArgs}',
              self.scienceObject),
@@ -130,6 +131,10 @@ class SpsCmd(object):
                                                  help='nTrace in Home before dithered fiberProfiles'),
                                         keys.Key('nTraceAfter', types.Int(),
                                                  help='nTrace in Home after dithered fiberProfiles'),
+                                        keys.Key('reference', types.Float(),
+                                                 help='quartzLadder reference exposure time (seconds)'),
+                                        keys.Key('settleTime', types.Float(),
+                                                 help='quartzLadder wait after lamp on, first block only (seconds)'),
                                         )
 
     @property
@@ -350,6 +355,43 @@ class SpsCmd(object):
         """
         scienceTrace = calib.ScienceTrace.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, scienceTrace)
+
+    def quartzLadder(self, cmd):
+        """
+        `iic quartzLadder [exptime=FF.F,...] [reference=FF.F] [settleTime=FF.F] [cam=???] [arm=???] [specNum=???]
+         [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+
+        Take a quartz exposure-time ladder, measuring the detector response against signal level.
+        One block per exposure time: a bias, then shutter-timed flats reference, exptime x duplicate, reference within
+        one quartz lamp-on period; a last bias closes the ladder.
+        Sequence is referenced in opdb as iic_sequence.seqtype=quartzLadder.
+        Unset arguments come from the iic quartzLadder config.
+
+        Parameters
+        ---------
+        exptime : list of `float`
+            exposure times of the ladder, one block each.
+        reference : `float`
+            reference exposure time bracketing each block.
+        settleTime : `float`
+            wait between lamp on and the first exposure of the first block, in seconds.
+        cam : list of `str`
+           List of camera to expose, default=all
+        arm : list of `str`
+           List of arm to expose, default=all
+        specNum : list of `int`
+           List of spectrograph module to expose, default=all
+        duplicate : `int`
+           Number of exposures per exposure time within a block.
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        doTest : `bool`
+           image/exposure type will be labelled as test.
+        """
+        quartzLadder = calib.QuartzLadder.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        self.engine.runInThread(cmd, quartzLadder)
 
     def domeFlat(self, cmd):
         """
