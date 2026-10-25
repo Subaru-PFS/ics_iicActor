@@ -9,6 +9,7 @@ import pandas as pd
 from ics.iicActor.utils import engine
 from ics.iicActor.utils import keyBuffer
 from ics.utils.sps.spectroIds import getSite
+from opscore.utility.qstr import qstr
 from pfs.datamodel.pfsConfig import PfsDesign, TargetType
 from pfs.utils.fiberids import FiberIds
 from pfs.utils.pfsConfigUtils import getDateDir
@@ -86,6 +87,25 @@ class IicActor(actorcore.ICC.ICC):
         """"""
         for actor in ['hub', 'sps', 'dcb', 'dcb2']:
             self.cmdr.bgCall(callFunc=None, actor=actor, cmdStr='status')
+
+        self.checkPfsConfigFallbackDir()
+
+    def checkPfsConfigFallbackDir(self):
+        """Create the local pfsConfig fallback directory, warning if it is not writable or holds pfsConfig files."""
+        fallbackDir = self.actorConfig['pfsConfig']['fallbackDir']
+
+        try:
+            os.makedirs(fallbackDir, exist_ok=True)
+        except OSError as e:
+            self.bcast.warn(f'text={qstr(f"pfsConfig fallback directory {fallbackDir} cannot be created: {e}")}')
+            return
+
+        if not os.access(fallbackDir, os.W_OK):
+            self.bcast.warn(f'text="pfsConfig fallback directory {fallbackDir} is not writable"')
+
+        pending = [fileName for fileName in os.listdir(fallbackDir) if fileName.startswith('pfsConfig-')]
+        if pending:
+            self.bcast.warn(f'text="{len(pending)} pfsConfig files in {fallbackDir}, to be moved to /data/raw by hand"')
 
     def _onDesignInputsChanged(self, cmd=None, designedAt=None):
         """Called from callbacks only."""

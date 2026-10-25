@@ -1,4 +1,6 @@
 import logging
+import os
+import socket
 
 import ics.utils.cmd as cmdUtils
 import ics.utils.sps.fits as fits
@@ -24,6 +26,8 @@ class SpsExpose(VisitedCmd):
 
         self.visit = None
         self.pfsConfig = None
+        self.pfsConfigPath = None
+        self.isPfsConfigFallback = False
         self.doWritePfsConfig = True
         self.mcsExposureBefore = mcsExposureBefore
 
@@ -204,6 +208,10 @@ class SpsExpose(VisitedCmd):
         if dINSROT not in {None, float(fitsMhs.INVALID)} and abs(dINSROT) > maxDeltaINSROT:
             pfsConfig.setInstrumentStatusFlag(InstrumentStatusFlag.INSROT_MISMATCH)
 
+        # Create the pfsConfig directory of the visit day before the detectors, which create /data/raw/$DATE without
+        # group write; the pfsConfig is written to this path even if the UTC day rolls over before the exposure ends.
+        self.pfsConfigPath = self.makePfsConfigPath(pfsConfig)
+
         # Insert into opdb immediately
         self.sequence.engine.opdb.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=pfsConfig.visit0,
                                                      camMask=pfsConfig.camMask, instStatusFlag=pfsConfig.instStatusFlag)
@@ -225,20 +233,62 @@ class SpsExpose(VisitedCmd):
         )
         self.writePfsConfig(self.pfsConfig)
 
+    def makePfsConfigPath(self, pfsConfig):
+        """Path to write pfsConfig to, creating its directory; in the local fallback directory if that fails."""
+        try:
+            return pfsConfigUtils.makePfsConfigDir(pfsConfig)
+        except OSError as e:
+            return self.fallbackPath(pfsConfig, reason=e)
+
+    def fallbackPath(self, pfsConfig, reason):
+        """Path of pfsConfig in the local fallback directory, warning why it is used.
+
+        Raises OSError if the fallback directory cannot be created either.
+        """
+        fallbackDir = self.iicActor.actorConfig['pfsConfig']['fallbackDir']
+        os.makedirs(fallbackDir, exist_ok=True)
+
+        self.isPfsConfigFallback = True
+        filepath = os.path.join(fallbackDir, pfsConfig.filename)
+        text = (f'{reason}: pfsConfig of visit {pfsConfig.visit} will be written to {socket.gethostname()}:{filepath}, '
+                f'to be moved to /data/raw by hand')
+        self.sequence.getCmd().warn(f'text={qstr(text)}')
+        return filepath
+
+    def writeOrFallback(self, pfsConfig):
+        """Write pfsConfig to its path, or to the local fallback directory if that write fails."""
+        try:
+            pfsConfigUtils.writePfsConfig(pfsConfig, filepath=self.pfsConfigPath)
+        except OSError as e:
+            if self.isPfsConfigFallback:
+                raise
+
+            # a failed write can leave a partial file, which must not be taken for the pfsConfig.
+            try:
+                os.remove(self.pfsConfigPath)
+            except OSError:
+                pass
+
+            self.pfsConfigPath = self.fallbackPath(pfsConfig, reason=e)
+            pfsConfigUtils.writePfsConfig(pfsConfig, filepath=self.pfsConfigPath)
+
     def writePfsConfig(self, pfsConfig, doRaise=False):
-        """Write pfsConfig to disk and track with pfsConfig key."""
+        """Write pfsConfig to disk and track with pfsConfig key, not generated for a pfsConfig in fallback directory."""
         if not self.doWritePfsConfig or pfsConfig is None:
             return
 
         # Save pfsConfig to disk
         try:
-            pfsConfigUtils.writePfsConfig(pfsConfig)
-            self.iicActor.genPfsConfigKey(self.sequence.getCmd(), pfsConfig)
+            self.writeOrFallback(pfsConfig)
+
+            if not self.isPfsConfigFallback:
+                self.iicActor.genPfsConfigKey(self.sequence.getCmd(), pfsConfig)
+
             self.doWritePfsConfig = False  # Prevent redundant writes
         except Exception as e:
             if doRaise:
                 raise
-            self.sequence.getCmd().warn(f'text="Failed to write {pfsConfig.filename} : {e}"')
+            self.sequence.getCmd().warn(f'text={qstr(f"Failed to write {pfsConfig.filename} : {e}")}')
 
     def register(self):
         """Register current visit as active."""
