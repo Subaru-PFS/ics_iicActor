@@ -81,6 +81,7 @@ class IicActor(actorcore.ICC.ICC):
 
             self.models['fps'].keyVarDict['pfsConfig'].addCallback(self.fpsConfigCB)
             self.models['sps'].keyVarDict['fiberIllumination'].addCallback(self.updateFiberIlluminationCB)
+            self.models['sps'].keyVarDict['exposureTimings'].addCallback(self.exposureTimingsCB)
 
             reactor.callLater(1, self.letsGetReadyToRumble)
 
@@ -267,6 +268,21 @@ class IicActor(actorcore.ICC.ICC):
         elif status == 'inProgress' and self.visitManager.activeField:
             # Cobras are about to move, resetting pfsConfig0.
             self.visitManager.activeField.setPfsConfig0(None)
+
+    def exposureTimingsCB(self, keyVar):
+        """Callback called whenever sps.exposureTimings is generated."""
+        try:
+            visit, startedAt, endedAt = keyVar.getValue()
+        except ValueError:
+            return
+
+        spsExpose = self.visitManager.activeVisit.get(visit, None)
+
+        if not spsExpose:
+            self.logger.warning(f'Could not find matching sps exposure with visit={visit}')
+            return
+
+        spsExpose.setExposureTimings(startedAt, endedAt)
 
     def updateFiberIlluminationCB(self, keyVar):
         """Callback called whenever sps.fiberIllumination is generated."""
