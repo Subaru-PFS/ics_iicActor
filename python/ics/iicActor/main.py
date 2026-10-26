@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import glob
 import os
 
 import actorcore.ICC
@@ -103,7 +104,7 @@ class IicActor(actorcore.ICC.ICC):
         if not os.access(fallbackDir, os.W_OK):
             self.bcast.warn(f'text="pfsConfig fallback directory {fallbackDir} is not writable"')
 
-        pending = [fileName for fileName in os.listdir(fallbackDir) if fileName.startswith('pfsConfig-')]
+        pending = glob.glob(os.path.join(fallbackDir, '*', 'pfsConfig', 'pfsConfig-*.fits'))
         if pending:
             self.bcast.warn(f'text="{len(pending)} pfsConfig files in {fallbackDir}, to be moved to /data/raw by hand"')
 

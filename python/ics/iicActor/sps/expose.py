@@ -1,5 +1,6 @@
 import logging
 import os
+import pathlib
 import socket
 
 import ics.utils.cmd as cmdUtils
@@ -238,18 +239,19 @@ class SpsExpose(VisitedCmd):
         try:
             return pfsConfigUtils.makePfsConfigDir(pfsConfig)
         except OSError as e:
-            return self.fallbackPath(pfsConfig, reason=e)
+            return self.fallbackPath(pfsConfig, pfsConfigUtils.getPfsConfigPath(pfsConfig), reason=e)
 
-    def fallbackPath(self, pfsConfig, reason):
+    def fallbackPath(self, pfsConfig, rawPath, reason):
         """Path of pfsConfig in the local fallback directory, warning why it is used.
 
-        Raises OSError if the fallback directory cannot be created either.
+        The fallback directory mirrors /data/raw: rawPath's $DATE/pfsConfig/<file> is kept under it.
+        Raises OSError if that directory cannot be created either.
         """
         fallbackDir = self.iicActor.actorConfig['pfsConfig']['fallbackDir']
-        os.makedirs(fallbackDir, exist_ok=True)
+        filepath = os.path.join(fallbackDir, *pathlib.Path(rawPath).parts[-3:])
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
         self.isPfsConfigFallback = True
-        filepath = os.path.join(fallbackDir, pfsConfig.filename)
         text = (f'{reason}: pfsConfig of visit {pfsConfig.visit} will be written to {socket.gethostname()}:{filepath}, '
                 f'to be moved to /data/raw by hand')
         self.sequence.getCmd().warn(f'text={qstr(text)}')
@@ -269,7 +271,7 @@ class SpsExpose(VisitedCmd):
             except OSError:
                 pass
 
-            self.pfsConfigPath = self.fallbackPath(pfsConfig, reason=e)
+            self.pfsConfigPath = self.fallbackPath(pfsConfig, self.pfsConfigPath, reason=e)
             pfsConfigUtils.writePfsConfig(pfsConfig, filepath=self.pfsConfigPath)
 
     def writePfsConfig(self, pfsConfig, doRaise=False):
