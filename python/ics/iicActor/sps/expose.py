@@ -215,10 +215,6 @@ class SpsExpose(VisitedCmd):
         # group write; the pfsConfig is written to this path even if the UTC day rolls over before the exposure ends.
         self.pfsConfigPath = self.makePfsConfigPath(pfsConfig)
 
-        # Insert into opdb immediately
-        self.sequence.engine.opdb.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=pfsConfig.visit0,
-                                                     camMask=pfsConfig.camMask, instStatusFlag=pfsConfig.instStatusFlag)
-
         # writing pfsConfig right away since it doesn't need any further update.
         if self.exptype in ['bias', 'dark']:
             self.writePfsConfig(pfsConfig, doRaise=True)
@@ -289,11 +285,14 @@ class SpsExpose(VisitedCmd):
         if not self.doWritePfsConfig or pfsConfig is None:
             return
 
-        # obstime is final once the pfsConfig is written.
+        # inserted once, obstime being final when the pfsConfig is written.
         try:
-            self.sequence.engine.opdb.updatePfsConfigSpsObservedAt(pfsConfig.visit, pfsConfig.obstime)
+            opdb = self.sequence.engine.opdb
+            opdb.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=pfsConfig.visit0,
+                                    camMask=pfsConfig.camMask, instStatusFlag=pfsConfig.instStatusFlag,
+                                    observedAt=pfsConfig.obstime)
         except Exception as e:
-            text = f'Failed to set observed_at of visit {pfsConfig.visit} : {e}'
+            text = f'Failed to insert pfs_config_sps of visit {pfsConfig.visit} : {e}'
             self.sequence.getCmd().warn(f'text={qstr(text)}')
 
         # Save pfsConfig to disk
