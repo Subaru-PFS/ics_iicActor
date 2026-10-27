@@ -37,6 +37,7 @@ class SpsCmd(object):
             ('scienceArc', f'{timedArcArgs} {commonArgs}', self.scienceArc),
             ('scienceTrace', f'{timedFlatArgs} {windowingArgs} {commonArgs}', self.scienceTrace),
             ('domeFlat', f'<exptime> {windowingArgs} {commonArgs}', self.domeFlat),
+            ('ramp', f'object <exptime> {identArgs} {translate.seqArgs}', self.rampObject),
             ('scienceObject',
              f'<exptime> {windowingArgs} {timedIisArgs} [<iisHalogen>] [@skipMcsExposure] {commonArgs}',
              self.scienceObject),
@@ -350,6 +351,37 @@ class SpsCmd(object):
         """
         scienceTrace = calib.ScienceTrace.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, scienceTrace)
+
+    def rampObject(self, cmd):
+        """
+        `iic ramp object exptime=FF.F [cam=???] [arm=???] [specNum=???] [groupId=N] [name=\"SSS\"] [comments=\"SSS\"]
+         [@doTest]`
+
+        Take one H4 ramp that leaves the shutters alone, integrating the light let in by the exposures taken alongside
+        it. Only the n cameras are exposed, and only they are locked.
+        Sequence is referenced in opdb as iic_sequence.seqtype=rampObject.
+
+        Parameters
+        ---------
+        exptime : `float`
+            ramp exposure time.
+        cam : list of `str`
+           List of camera to expose, default=all n cameras.
+        arm : list of `str`
+           List of arm to expose, default=n.
+        specNum : list of `int`
+           List of spectrograph module to expose, default=all.
+        groupId : `int`
+           optional sequence group id.
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=object.
+        """
+        rampObject = science.RampObject.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        self.engine.runInThread(cmd, rampObject)
 
     def domeFlat(self, cmd):
         """
