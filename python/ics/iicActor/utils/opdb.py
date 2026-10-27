@@ -158,10 +158,14 @@ class OpdbHandler:
         self.insert('sequence_group', group_id=int(new_group_id), group_name=group_name, created_at=pd.Timestamp.now())
         return new_group_id
 
-    def insertPfsConfigSps(self, pfs_visit_id, visit0, camMask, instStatusFlag, observedAt):
-        """Insert into pfs_config_sps table, observedAt being an ISO-formatted string."""
+    def insertPfsConfigSps(self, pfs_visit_id, visit0, camMask, instStatusFlag, requestedAt):
+        """Insert into pfs_config_sps table, requestedAt being an ISO-formatted string."""
         self.insert('pfs_config_sps', pfs_visit_id=int(pfs_visit_id), visit0=int(visit0),
-                    cam_mask=camMask, inst_status_flag=int(instStatusFlag), observed_at=observedAt)
+                    cam_mask=camMask, inst_status_flag=int(instStatusFlag), requested_at=requestedAt)
+
+    def insertPfsConfigSpsObserved(self, pfs_visit_id, observedAt):
+        """Insert into pfs_config_sps_observed table, observedAt being an ISO-formatted string."""
+        self.insert('pfs_config_sps_observed', pfs_visit_id=int(pfs_visit_id), observed_at=observedAt)
 
     def ingest(self, cmd, pfsDesign, designed_at=None):
         """Inserting into opdb."""

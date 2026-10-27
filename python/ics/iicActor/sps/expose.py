@@ -215,6 +215,11 @@ class SpsExpose(VisitedCmd):
         # group write; the pfsConfig is written to this path even if the UTC day rolls over before the exposure ends.
         self.pfsConfigPath = self.makePfsConfigPath(pfsConfig)
 
+        # Insert into opdb immediately, obstime still being the time the pfsConfig was made.
+        self.sequence.engine.opdb.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=pfsConfig.visit0,
+                                                     camMask=pfsConfig.camMask, instStatusFlag=pfsConfig.instStatusFlag,
+                                                     requestedAt=pfsConfig.obstime)
+
         # writing pfsConfig right away since it doesn't need any further update.
         if self.exptype in ['bias', 'dark']:
             self.writePfsConfig(pfsConfig, doRaise=True)
@@ -285,16 +290,6 @@ class SpsExpose(VisitedCmd):
         if not self.doWritePfsConfig or pfsConfig is None:
             return
 
-        # inserted once, obstime being final when the pfsConfig is written.
-        try:
-            opdb = self.sequence.engine.opdb
-            opdb.insertPfsConfigSps(pfs_visit_id=pfsConfig.visit, visit0=pfsConfig.visit0,
-                                    camMask=pfsConfig.camMask, instStatusFlag=pfsConfig.instStatusFlag,
-                                    observedAt=pfsConfig.obstime)
-        except Exception as e:
-            text = f'Failed to insert pfs_config_sps of visit {pfsConfig.visit} : {e}'
-            self.sequence.getCmd().warn(f'text={qstr(text)}')
-
         # Save pfsConfig to disk
         try:
             self.writeOrFallback(pfsConfig)
@@ -307,6 +302,15 @@ class SpsExpose(VisitedCmd):
             if doRaise:
                 raise
             self.sequence.getCmd().warn(f'text={qstr(f"Failed to write {pfsConfig.filename} : {e}")}')
+            return
+
+        # inserted once the pfsConfig is written, obstime being final.
+        try:
+            self.sequence.engine.opdb.insertPfsConfigSpsObserved(pfs_visit_id=pfsConfig.visit,
+                                                                 observedAt=pfsConfig.obstime)
+        except Exception as e:
+            text = f'Failed to insert pfs_config_sps_observed of visit {pfsConfig.visit} : {e}'
+            self.sequence.getCmd().warn(f'text={qstr(text)}')
 
     def register(self):
         """Register current visit as active."""
