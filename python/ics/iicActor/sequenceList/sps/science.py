@@ -1,4 +1,5 @@
 import ics.iicActor.utils.translate as translate
+from ics.iicActor.sps.expose import SpsExpose
 from ics.iicActor.sps.sequence import SpsSequence
 from ics.iicActor.utils.sequenceStatus import Flag
 
@@ -67,3 +68,36 @@ class ScienceObjectLoop(ScienceObject):
             self.status.amend()
             # execute command again.
             self.commandLogic(*args, **kwargs)
+
+
+class RampObject(SpsSequence):
+    """One H4 ramp that leaves the shutters alone, integrating the light let in by the exposures taken alongside it.
+
+    The ramp is an sps object exposure taken with noShutter. noDeps restricts its resources to the H4s, so that other
+    sequences can drive the shutters while it runs.
+    """
+    seqtype = 'rampObject'
+    lightBeam = False
+
+    def __init__(self, cams, exptime, **seqKeys):
+        SpsSequence.__init__(self, cams, **seqKeys)
+
+        spsExpose = SpsExpose.specify(self, 'object', exptime, cams, doTest=self.doTest, noShutter=True)
+        self.checkReady(spsExpose, cams)
+        list.append(self, spsExpose)
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct RampObject object, on the n cameras only."""
+        cams = [cam for cam in SpsSequence.keysToCam(iicActor, cmdKeys) if cam.arm == 'n']
+        if not cams:
+            raise ValueError('ramp object takes n cameras only, none selected')
+
+        exptime, __ = translate.spsExposureKeys(cmdKeys)
+        if len(exptime) != 1:
+            raise ValueError(f'ramp object takes a single exptime, got {",".join(map(str, exptime))}')
+
+        seqKeys = translate.seqKeys(cmdKeys)
+        seqKeys['noDeps'] = True
+
+        return cls(cams, exptime[0], **seqKeys)
