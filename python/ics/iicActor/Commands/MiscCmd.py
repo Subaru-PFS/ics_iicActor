@@ -1,3 +1,4 @@
+import threading
 from importlib import reload
 
 import ics.iicActor.sequenceList.fps as fpsSequenceList
@@ -6,6 +7,7 @@ import ics.iicActor.sequenceList.sps as spsSequenceList
 import ics.iicActor.sps.sequence as spsSequence
 import ics.iicActor.utils.lib as iicUtils
 import ics.iicActor.utils.translate as translate
+from ics.iicActor.utils.blindMoveCalibration import BlindMoveCalibration
 import ics.utils.cmd as cmdUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
@@ -23,6 +25,10 @@ class MiscCmd(object):
     def __init__(self, actor):
         # This lets us access the rest of the actor.
         self.actor = actor
+        # The blind-move calibration of this session, see calibrateBlindMove, and the lock
+        # one calibrateBlindMove command holds while it runs.
+        self.blindMoveCalibration = None
+        self.blindMoveLock = threading.Lock()
 
         # Declare the commands we implement. When the actor is started
         # these are registered with the parser, which will call the
@@ -41,7 +47,14 @@ class MiscCmd(object):
              self.takeNextThetaPhiScan),
             ('thetaPhiScan', f'takeNextPhi [<groupId>] [<phiAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
              self.takeNextPhiThetaScan),
-            ('declareHomeDesign', '[@skipGenVisit0]', self.declareHomeDesign)
+            ('declareHomeDesign', '[@skipGenVisit0]', self.declareHomeDesign),
+            ('calibrateBlindMove', f'start [<dotTargets>] [<nRuns>] [<validationTarget>] [<nValidationRuns>] '
+                                   f'[<dotThetaOffset>] [<maskFile>] {translate.seqArgs}',
+             self.startBlindMoveCalibration),
+            ('calibrateBlindMove', 'continue', self.continueBlindMoveCalibration),
+            ('calibrateBlindMove', f'validate [<calibId>] [<validationTarget>] [<nValidationRuns>] '
+                                   f'[<dotThetaOffset>] [<maskFile>] {translate.seqArgs}',
+             self.validateBlindMoveCalibration),
         ]
 
         # Define typed command arguments for the above commands.
@@ -75,6 +88,16 @@ class MiscCmd(object):
                                                  help="Designed theta angle (deg)"),
                                         keys.Key("phiAngle", types.Int(), units='deg',
                                                  help="Designed phi angle (deg)"),
+                                        keys.Key('dotTargets', types.Float() * (1,),
+                                                 help='push depths of the calibration runs, in order'),
+                                        keys.Key('nRuns', types.Int(),
+                                                 help='times the calibration depths are repeated'),
+                                        keys.Key('validationTarget', types.Float(),
+                                                 help='push depth of the validation runs'),
+                                        keys.Key('nValidationRuns', types.Int(), help='validation runs'),
+                                        keys.Key('dotThetaOffset', types.Float(), units='deg',
+                                                 help='turn of the black dots about the cobra centres'),
+                                        keys.Key('calibId', types.Int(), help='blind-move calibration'),
                                         )
 
     @property
@@ -88,6 +111,198 @@ class MiscCmd(object):
         designId = int(keys['fpsDesignId'].values[0], 16)
 
         return designId
+
+    def _callFps(self, cmd, cmdStr, timeLim, failCmd=True):
+        """Send `cmdStr` to fps for `cmd`; the cmdVar, or None if it failed.
+
+        The failure is reported on `cmd`, which is also failed with `failCmd`.
+        """
+        cmdVar = self.actor.cmdr.call(actor='fps', cmdStr=cmdStr, forUserCmd=cmd, timeLim=timeLim)
+        if cmdVar.didFail:
+            reason = qstr(f'fps {cmdStr} failed: {cmdUtils.interpretFailure(cmdVar)}')
+            if failCmd:
+                cmd.fail(f'text={reason}')
+            else:
+                cmd.warn(f'text={reason}')
+            return None
+        return cmdVar
+
+    def _declareTurnedDotDesign(self, cmd, cmdKeys, config):
+        """Have fps create the black-dot design with its dots turned into view, and declare it.
+
+        Returns
+        -------
+        `int` or None
+            The designId; None once `cmd` has been failed.
+        """
+        offset = float(config['dotThetaOffset'])
+        maskFileArgs = translate.getMaskFileArgsFromCmd(cmdKeys, self.actor.actorConfig)
+        cmdVar = self._callFps(cmd, f'createBlackDotDesign dotThetaOffset={offset:g} '
+                                    f'designName=blindMove_turned{offset:g} {maskFileArgs}'.strip(), 10)
+        if cmdVar is None:
+            return None
+        designId = int(cmdUtils.cmdVarToKeys(cmdVar)['fpsDesignId'].values[0], 16)
+        self.actor.declareFpsDesign(cmd, designId=designId)
+        return designId
+
+    def _runBlindMove(self, cmd, calibration, dotTarget, dotCalib):
+        """One blind-move run, retried up to calibration.nRetries times; its visit, or None."""
+        illuminators = translate.illuminatorKeys(self.actor.actorConfig)
+        for attempt in range(calibration.nRetries + 1):
+            run = fpsSequenceList.BlindMoveRun(calibration.designId, dotTarget=dotTarget, dotCalib=dotCalib,
+                                               **calibration.runConfig, **calibration.seqKeys, **illuminators)
+            self.engine.run(cmd, run, doFinish=False, failCmd=False)
+            if run.status.flag == Flag.FINISHED:
+                return run.visit.visitId
+            # Only a run that failed is taken again; one aborted or finished by the operator,
+            # or refused its resources, stops the command.
+            if run.status.flag != Flag.FAILED or not cmd.alive:
+                return None
+            if attempt < calibration.nRetries:
+                cmd.warn(f'text="blind-move run at dotTarget={dotTarget} not completed, retrying"')
+        return None
+
+    def _advanceBlindMoveCalibration(self, cmd, calibration):
+        """Do every step of `calibration` not done yet, in order, and finish or fail `cmd`."""
+
+        def stop(why):
+            if cmd.alive:
+                cmd.fail(f'text="{why}; {calibration}. iic calibrateBlindMove continue resumes here."')
+
+        for dotTarget in calibration.remainingCalibration:
+            visit = self._runBlindMove(cmd, calibration, dotTarget, dotCalib='none')
+            if visit is None:
+                return stop(f'calibration run at dotTarget={dotTarget} not completed')
+            calibration.calibrationVisits.append(visit)
+
+        if calibration.calibId is None:
+            visits = ','.join(map(str, calibration.calibrationVisits))
+            cmdVar = self._callFps(cmd, f'calibrateBlindMove visits={visits}', 300, failCmd=False)
+            if cmdVar is None:
+                return stop('fps calibrateBlindMove failed')
+            replyKeys = cmdUtils.cmdVarToKeys(cmdVar)
+            if 'blindMoveCalibId' not in replyKeys:
+                return stop('fps calibrateBlindMove did not report blindMoveCalibId; is fps up to date?')
+            calibration.calibId = int(replyKeys['blindMoveCalibId'].values[0])
+            cmd.inform(f'text="blind-move calibration {calibration.calibId} fitted on visits '
+                       f'{calibration.calibrationVisits}"')
+
+        for dotTarget in calibration.remainingValidation:
+            visit = self._runBlindMove(cmd, calibration, dotTarget, dotCalib=calibration.calibId)
+            if visit is None:
+                return stop(f'validation run at dotTarget={dotTarget} not completed')
+            calibration.validationVisits.append(visit)
+
+        visits = ','.join(map(str, calibration.validationVisits))
+        if self._callFps(cmd, f'validateBlindMove calibId={calibration.calibId} visits={visits}', 120,
+                         failCmd=False) is None:
+            if cmd.alive:
+                cmd.fail(f'text="calibration {calibration.calibId} not validated on visits '
+                         f'{calibration.validationVisits}; iic calibrateBlindMove validate takes new '
+                         f'validation runs"')
+            return
+        calibration.validated = True
+        cmd.finish(f'text="blind-move calibration {calibration.calibId} validated, now the default; '
+                   f'{calibration}"')
+
+    def _newBlindMoveCalibration(self, cmd, withCalibration, calibId=None):
+        """A BlindMoveCalibration planned from the config and `cmd`, on a freshly declared design."""
+        cmdKeys = cmd.cmd.keywords
+        config = translate.resolveCmdConfig(cmdKeys, self.actor.actorConfig, 'calibrateBlindMove')
+
+        designId = self._declareTurnedDotDesign(cmd, cmdKeys, config)
+        if designId is None:
+            return None
+
+        depths = config['dotTargets']
+        depths = list(depths) if isinstance(depths, (list, tuple)) else [depths]
+        runConfig = {key: config[key] for key in fpsSequenceList.BlindMoveRun.configKeys}
+        # Every run of the session in one sequence group.
+        seqKeys = translate.seqKeys(cmdKeys)
+        if seqKeys.get('groupId') is None:
+            seqKeys['groupId'] = self.engine.requestGroupId('calibrateBlindMove')
+        return BlindMoveCalibration(designId,
+                                    depths * int(config['nRuns']) if withCalibration else [],
+                                    [config['validationTarget']] * int(config['nValidationRuns']),
+                                    runConfig, seqKeys,
+                                    nRetries=config.get('nRetries', 0), calibId=calibId)
+
+    def _blindMoveCommand(self, cmd, step):
+        """Run `step(cmd)` holding the calibrateBlindMove lock, or refuse if another holds it."""
+        if not self.blindMoveLock.acquire(blocking=False):
+            cmd.fail('text="a calibrateBlindMove command is already running"')
+            return
+        try:
+            step(cmd)
+        finally:
+            self.blindMoveLock.release()
+
+    @singleShot
+    def startBlindMoveCalibration(self, cmd):
+        """Start a blind-move calibration: calibration runs, fit, validation runs, validation.
+
+        The calibration runs push unaimed (dotCalib=none), whatever the default calibration;
+        the validation runs aim through the new one.  A calibration that fails validation
+        stays in opdb but does not become the default.
+        """
+        self._blindMoveCommand(cmd, self._startBlindMoveCalibration)
+
+    def _startBlindMoveCalibration(self, cmd):
+        calibration = self._newBlindMoveCalibration(cmd, withCalibration=True)
+        if calibration is None:
+            return
+        self.blindMoveCalibration = calibration
+        self._advanceBlindMoveCalibration(cmd, calibration)
+
+    @singleShot
+    def continueBlindMoveCalibration(self, cmd):
+        """Resume the blind-move calibration of this session from its first step not done."""
+        self._blindMoveCommand(cmd, self._continueBlindMoveCalibration)
+
+    def _continueBlindMoveCalibration(self, cmd):
+        calibration = self.blindMoveCalibration
+        if calibration is None:
+            cmd.fail('text="no blind-move calibration to continue; iic calibrateBlindMove start"')
+            return
+        if calibration.validated:
+            cmd.fail(f'text="nothing to continue: {calibration}"')
+            return
+        self.actor.declareFpsDesign(cmd, designId=calibration.designId)
+        self._advanceBlindMoveCalibration(cmd, calibration)
+
+    @singleShot
+    def validateBlindMoveCalibration(self, cmd):
+        """New validation runs for this session's calibration, or for calibId=N on a new design."""
+        self._blindMoveCommand(cmd, self._validateBlindMoveCalibration)
+
+    def _validateBlindMoveCalibration(self, cmd):
+        cmdKeys = cmd.cmd.keywords
+        if 'calibId' in cmdKeys:
+            previous = self.blindMoveCalibration
+            if previous is not None and not previous.validated:
+                cmd.warn(f'text="replacing the unfinished blind-move calibration ({previous})"')
+            calibration = self._newBlindMoveCalibration(cmd, withCalibration=False,
+                                                        calibId=int(cmdKeys['calibId'].values[0]))
+            if calibration is None:
+                return
+            self.blindMoveCalibration = calibration
+        else:
+            calibration = self.blindMoveCalibration
+            if calibration is None or calibration.calibId is None:
+                cmd.fail('text="no fitted blind-move calibration to validate; give calibId="')
+                return
+            if 'dotThetaOffset' in cmdKeys or 'maskFile' in cmdKeys:
+                cmd.fail('text="the session design is fixed; give calibId= to validate on a new one"')
+                return
+            # The validation plan, from the session's unless given.
+            target = (cmdKeys['validationTarget'].values[0] if 'validationTarget' in cmdKeys
+                      else calibration.validationTargets[0])
+            nRuns = (cmdKeys['nValidationRuns'].values[0] if 'nValidationRuns' in cmdKeys
+                     else len(calibration.validationTargets))
+            calibration.validationTargets = [float(target)] * int(nRuns)
+            calibration.newValidation()
+            self.actor.declareFpsDesign(cmd, designId=calibration.designId)
+        self._advanceBlindMoveCalibration(cmd, calibration)
 
     def fiberIdentification(self, cmd):
         """"""
