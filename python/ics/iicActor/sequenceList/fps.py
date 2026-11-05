@@ -195,8 +195,9 @@ class BlindMoveRun(MoveToPfsDesign):
     seqtype = 'blindMoveRun'
 
     configKeys = ('nIteration', 'tolerance', 'exptime', 'noHome', 'twoStepsOff', 'shortExpOff', 'noTweak',
-                  'skipFiducialInterferenceCheck', 'dotLanding')
-    """The keys of the calibrateBlindMove config section a run takes."""
+                  'skipFiducialInterferenceCheck')
+    """The keys of the calibrateBlindMove config section a run takes.  The run lands at fps'
+    convergence.dotLanding."""
 
     def __init__(self, designId, exptime, **kwargs):
         super().__init__(designId, exptime=exptime, **kwargs)
