@@ -48,7 +48,7 @@ class Engine(object):
         """
         return self.run(*args, **kwargs)
 
-    def run(self, cmd, sequence, doFinish=True, mode=ExecMode.FULLAUTO):
+    def run(self, cmd, sequence, doFinish=True, mode=ExecMode.FULLAUTO, failCmd=True):
         """
         Main engine function to manage command execution, resource allocation, and sequence flow.
 
@@ -62,6 +62,9 @@ class Engine(object):
             Whether to automatically finish the command after execution, by default True.
         mode : int, optional
             Execution mode flags determining the sequence flow, by default ExecMode.FULLAUTO.
+        failCmd : bool, optional
+            Whether a sequence that raises fails the command, by default True.  When False the
+            failure is only warned, and the caller reads sequence.status.flag.
 
         Notes
         -----
@@ -94,7 +97,8 @@ class Engine(object):
                         sequence.finalize()
 
         except Exception as e:
-            sequence.getCmd().fail(f'text="{str(e)}"')
+            report = sequence.getCmd().fail if failCmd else sequence.getCmd().warn
+            report(f'text="{str(e)}"')
             return
 
         finally:

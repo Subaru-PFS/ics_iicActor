@@ -113,14 +113,20 @@ class MoveToPfsDesign(FpsSequence):
     seqtype = 'moveToPfsDesign'
 
     def __init__(self, designId, nIteration, tolerance, exptime, noHome, twoStepsOff, shortExpOff, noTweak,
-                 skipFiducialInterferenceCheck, maskFile=False, **fpsKeys):
+                 skipFiducialInterferenceCheck, maskFile=False, dotTarget=None, dotLanding=None, dotCalib=None,
+                 **fpsKeys):
         super().__init__(**fpsKeys)
+
+        # The black-dot depths and calibration are fps's own unless a sequence names them.
+        dotKeys = {name: value for name, value in (('dotTarget', dotTarget), ('dotLanding', dotLanding),
+                                                   ('dotCalib', dotCalib))
+                   if value is not None}
 
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
                  tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=not noHome, twoStepsOff=twoStepsOff,
                  shortExpOff=shortExpOff, noTweak=noTweak, skipFiducialInterferenceCheck=skipFiducialInterferenceCheck,
-                 timeLim=600)
+                 **dotKeys, timeLim=600)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -177,6 +183,25 @@ class NearDotConvergence(MoveToPfsDesign):
         illuminators = translate.illuminatorKeys(iicActor.actorConfig)
         nearDotConvergenceConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'nearDotConvergence')
         return cls(designId, maskFile=maskFile, **nearDotConvergenceConfig, **seqKeys, **illuminators)
+
+
+class BlindMoveRun(MoveToPfsDesign):
+    """A convergence on turned black dots, then the frame that measures its two blind moves.
+
+    On a design whose dots are turned into view of MCS (fps createBlackDotDesign
+    dotThetaOffset=), fps measureBlindMove records the landing and the push of every dot
+    cobra in opdb cobra_blind_move, for fps calibrateBlindMove and validateBlindMove.
+    """
+    seqtype = 'blindMoveRun'
+
+    configKeys = ('nIteration', 'tolerance', 'exptime', 'noHome', 'twoStepsOff', 'shortExpOff', 'noTweak',
+                  'skipFiducialInterferenceCheck', 'dotLanding')
+    """The keys of the calibrateBlindMove config section a run takes."""
+
+    def __init__(self, designId, exptime, **kwargs):
+        super().__init__(designId, exptime=exptime, **kwargs)
+
+        self.add('fps', 'measureBlindMove', timeLim=60 + exptime)
 
 
 class DotCrossing(FpsSequence):
