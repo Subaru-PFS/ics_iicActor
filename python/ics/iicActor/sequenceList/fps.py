@@ -114,7 +114,7 @@ class MoveToPfsDesign(FpsSequence):
 
     def __init__(self, designId, nIteration, tolerance, exptime, noHome, twoStepsOff, shortExpOff, noTweak,
                  skipFiducialInterferenceCheck, maskFile=False, dotTarget=None, dotLanding=None, dotCalib=None,
-                 **fpsKeys):
+                 aimLanding=False, **fpsKeys):
         super().__init__(**fpsKeys)
 
         # The black-dot depths and calibration are fps's own unless a sequence names them.
@@ -126,7 +126,7 @@ class MoveToPfsDesign(FpsSequence):
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
                  tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=not noHome, twoStepsOff=twoStepsOff,
                  shortExpOff=shortExpOff, noTweak=noTweak, skipFiducialInterferenceCheck=skipFiducialInterferenceCheck,
-                 **dotKeys, timeLim=600)
+                 aimLanding=aimLanding, **dotKeys, timeLim=600)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -197,7 +197,8 @@ class BlindMoveRun(MoveToPfsDesign):
     configKeys = ('nIteration', 'tolerance', 'exptime', 'noHome', 'twoStepsOff', 'shortExpOff', 'noTweak',
                   'skipFiducialInterferenceCheck')
     """The keys of the calibrateBlindMove config section a run takes.  The run lands at fps'
-    convergence.dotLanding."""
+    convergence.dotLanding and pushes to its dotTarget; the calibration and aimLanding are
+    given per run."""
 
     def __init__(self, designId, exptime, **kwargs):
         super().__init__(designId, exptime=exptime, **kwargs)
