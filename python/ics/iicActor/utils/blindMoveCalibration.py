@@ -2,46 +2,52 @@ class BlindMoveCalibration:
     """One operating-point blind-move calibration in progress: its plan, fixed at start, and
     what is done.
 
-    The plan is a turned black-dot design, the calibration the session is aimed through and
-    the runs of each step, in order:
+    The plan is a turned black-dot design and the runs of each iteration and of the
+    validation.  Every run lands at fps' landing depth and pushes to its target.  The first
+    iteration's runs are commanded through the motor map alone; each next iteration's are
+    aimed, landing and push, through the calibration fps calibrateBlindMove operatingPoint
+    fits on the iteration before.  The last iteration's calibration is the session's: its
+    validation runs are aimed through it, then fps validateBlindMove judges them.
 
-        run           at fps' landing depth and target, aimed through the prior, landing too
-        fit           fps calibrateBlindMove operatingPoint on the runs
-        validation    at the operating point, aimed through the new calibration, then fps
-                      validateBlindMove
-
-    Progress is the visits of each step and the calibration fitted, so a sequence that
-    stopped can be continued from the first step not done.
+    Progress is the visits and the calibration fitted of each iteration, and the validation
+    visits, so a sequence that stopped can be continued from the first step not done.  A
+    session that only validates has no iteration and the calibration it was given.
     """
 
-    STEPS = ('run', 'validation')
-
-    def __init__(self, designId, priorCalibId, runConfig, seqKeys, nRuns=0, nValidationRuns=0,
-                 nRetries=0, calibId=None):
+    def __init__(self, designId, runConfig, seqKeys, nRuns=(), nValidationRuns=0, nRetries=0,
+                 calibId=None):
         self.designId = designId
-        self.priorCalibId = priorCalibId
         self.runConfig = dict(runConfig)
         self.seqKeys = dict(seqKeys)
-        self.planned = dict(run=int(nRuns), validation=int(nValidationRuns))
+        self.planned = [int(n) for n in nRuns]
+        self.nValidationRuns = int(nValidationRuns)
         self.nRetries = int(nRetries)
 
-        self.visits = {step: [] for step in self.STEPS}
-        self.calibId = calibId
+        self.visits = [[] for _ in self.planned]
+        self.fitted = [None for _ in self.planned]
+        self.validationVisits = []
+        self.givenCalibId = calibId
         self.validated = False
 
-    def remaining(self, step):
-        """Runs of `step` still to take."""
-        return self.planned[step] - len(self.visits[step])
+    @property
+    def calibId(self):
+        """The calibration the validation judges: the last iteration's, or the one given."""
+        return self.fitted[-1] if self.planned else self.givenCalibId
+
+    def aimedThrough(self, iteration):
+        """The calibration the runs of `iteration` are aimed through; None at the motor map."""
+        return None if iteration == 0 else self.fitted[iteration - 1]
 
     def newValidation(self, nRuns):
         """Discard the validation runs so far: the next `nRuns` start a fresh validation."""
-        self.planned['validation'] = int(nRuns)
-        self.visits['validation'] = []
+        self.nValidationRuns = int(nRuns)
+        self.validationVisits = []
         self.validated = False
 
     def __str__(self):
-        done = ', '.join(f'{step} {len(self.visits[step])}/{self.planned[step]}'
-                         for step in self.STEPS if self.planned[step])
+        steps = [f'iteration {i + 1} {len(v)}/{n}' + ('' if c is None else f' (calibration {c})')
+                 for i, (v, n, c) in enumerate(zip(self.visits, self.planned, self.fitted))]
+        if self.nValidationRuns:
+            steps.append(f'validation {len(self.validationVisits)}/{self.nValidationRuns}')
         calib = 'not fitted' if self.calibId is None else f'calibration {self.calibId}'
-        aimed = '' if self.priorCalibId is None else f'aimed through {self.priorCalibId}: '
-        return f'{aimed}{done}; {calib}, {"validated" if self.validated else "not validated"}'
+        return f'{", ".join(steps)}; {calib}, {"validated" if self.validated else "not validated"}'
