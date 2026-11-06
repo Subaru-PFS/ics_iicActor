@@ -20,6 +20,13 @@ reload(iicUtils)
 reload(miscSequenceList)
 
 
+MIN_ITERATION_RUNS = 3
+"""Runs an iteration of calibrateBlindMove needs: fps calibrates no cobra on fewer by default."""
+
+PROVISIONAL_MIN_RUNS = 2
+"""Usable runs a cobra needs in the fit of an iteration that only aims the next one."""
+
+
 class MiscCmd(object):
 
     def __init__(self, actor):
@@ -48,7 +55,7 @@ class MiscCmd(object):
             ('thetaPhiScan', f'takeNextPhi [<groupId>] [<phiAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
              self.takeNextPhiThetaScan),
             ('declareHomeDesign', '[@skipGenVisit0]', self.declareHomeDesign),
-            ('calibrateBlindMove', f'start [<priorCalib>] [<nRuns>] [<nValidationRuns>] '
+            ('calibrateBlindMove', f'start [<nRuns>] [<nValidationRuns>] '
                                    f'[<dotThetaOffset>] [<maskFile>] {translate.seqArgs}',
              self.startBlindMoveCalibration),
             ('calibrateBlindMove', 'continue', self.continueBlindMoveCalibration),
@@ -88,11 +95,9 @@ class MiscCmd(object):
                                                  help="Designed theta angle (deg)"),
                                         keys.Key("phiAngle", types.Int(), units='deg',
                                                  help="Designed phi angle (deg)"),
-                                        keys.Key('priorCalib', types.Int(),
-                                                 help='blind-move calibration the session starts from; '
-                                                      'the default if absent'),
-                                        keys.Key('nRuns', types.Int(),
-                                                 help='calibration runs at the operating point'),
+                                        keys.Key('nRuns', types.Int() * (1,),
+                                                 help='runs of each iteration at the operating point, '
+                                                      'the first at the motor map'),
                                         keys.Key('nValidationRuns', types.Int(), help='validation runs'),
                                         keys.Key('dotThetaOffset', types.Float(), units='deg',
                                                  help='turn of the black dots about the cobra centres'),
@@ -168,11 +173,14 @@ class MiscCmd(object):
                 cmd.warn('text="blind-move run not completed, retrying"')
         return None
 
-    def _fitBlindMove(self, cmd, calibration):
-        """Have fps measure a calibration on the session's runs; its id, or None."""
-        cmdStr = f'calibrateBlindMove visits={",".join(map(str, calibration.visits["run"]))} operatingPoint'
-        if calibration.priorCalibId is not None:
-            cmdStr += f' priorCalib={calibration.priorCalibId}'
+    def _fitBlindMove(self, cmd, visits, aimedThrough=None, minRuns=None):
+        """Have fps measure a calibration on `visits`, aimed through calibration `aimedThrough`
+        if not None, with fps' minRuns unless given; its id, or None."""
+        cmdStr = f'calibrateBlindMove visits={",".join(map(str, visits))} operatingPoint'
+        if aimedThrough is not None:
+            cmdStr += f' priorCalib={aimedThrough}'
+        if minRuns is not None:
+            cmdStr += f' minRuns={minRuns}'
         cmdVar = self._callFps(cmd, cmdStr, 300, failCmd=False)
         if cmdVar is None:
             return None
@@ -189,55 +197,58 @@ class MiscCmd(object):
             if cmd.alive:
                 cmd.fail(f'text="{why}; {calibration}. iic calibrateBlindMove continue resumes here."')
 
-        def runs(step, **runKeys):
-            """Take the runs of `step` not taken yet; whether they all completed."""
-            for _ in range(calibration.remaining(step)):
-                visit = self._runBlindMove(cmd, calibration, **runKeys)
+        def runs(visits, planned, calibId):
+            """Take the runs not taken yet, aimed through calibId; whether they all completed."""
+            while len(visits) < planned:
+                visit = self._runBlindMove(cmd, calibration, calibId=calibId, aimLanding=True)
                 if visit is None:
                     return False
-                calibration.visits[step].append(visit)
+                visits.append(visit)
             return True
 
-        if not runs('run', calibId=calibration.priorCalibId, aimLanding=True):
-            return stop('calibration run not completed')
+        for i, planned in enumerate(calibration.planned):
+            if not runs(calibration.visits[i], planned, calibration.aimedThrough(i)):
+                return stop(f'iteration {i + 1} run not completed')
+            last = i == len(calibration.planned) - 1
+            if calibration.fitted[i] is None:
+                calibration.fitted[i] = self._fitBlindMove(cmd, calibration.visits[i],
+                                                           aimedThrough=calibration.aimedThrough(i),
+                                                           minRuns=None if last else PROVISIONAL_MIN_RUNS)
+                if calibration.fitted[i] is None:
+                    return stop(f'fps calibrateBlindMove failed on iteration {i + 1}')
+                use = 'the session\'s calibration' if last else f'aims iteration {i + 2}'
+                cmd.inform(f'text="iteration {i + 1}: blind-move calibration {calibration.fitted[i]} '
+                           f'measured on visits {calibration.visits[i]}, {use}"')
 
-        if calibration.calibId is None:
-            calibration.calibId = self._fitBlindMove(cmd, calibration)
-            if calibration.calibId is None:
-                return stop('fps calibrateBlindMove failed')
-            cmd.inform(f'text="blind-move calibration {calibration.calibId} measured on visits '
-                       f'{calibration.visits["run"]}"')
-
-        if not runs('validation', calibId=calibration.calibId, aimLanding=True):
+        if not runs(calibration.validationVisits, calibration.nValidationRuns, calibration.calibId):
             return stop('validation run not completed')
 
-        visits = ','.join(map(str, calibration.visits['validation']))
+        visits = ','.join(map(str, calibration.validationVisits))
         if self._callFps(cmd, f'validateBlindMove calibId={calibration.calibId} visits={visits}', 120,
                          failCmd=False) is None:
             if cmd.alive:
                 cmd.fail(f'text="calibration {calibration.calibId} not validated on visits '
-                         f'{calibration.visits["validation"]}; iic calibrateBlindMove validate takes new '
+                         f'{calibration.validationVisits}; iic calibrateBlindMove validate takes new '
                          f'validation runs"')
             return
         calibration.validated = True
         cmd.finish(f'text="blind-move calibration {calibration.calibId} validated, now the default; '
                    f'{calibration}"')
 
-    def _defaultBlindMoveCalibId(self):
-        """The calibration fps aims through by default, that of the newest validation row; None if none."""
-        rows = self.engine.opdb.fetch('SELECT blind_move_calib_id FROM blind_move_calib_validation '
-                                      'ORDER BY validated_at DESC, blind_move_calib_validation_id DESC LIMIT 1')
-        return None if rows.empty else int(rows.iloc[0, 0])
-
     def _newBlindMoveCalibration(self, cmd, withCalibration, calibId=None):
         """A BlindMoveCalibration planned from the config and `cmd`, on a freshly declared design."""
         cmdKeys = cmd.cmd.keywords
         config = translate.resolveCmdConfig(cmdKeys, self.actor.actorConfig, 'calibrateBlindMove')
 
-        prior = None
+        nRuns = []
         if withCalibration:
-            prior = (int(cmdKeys['priorCalib'].values[0]) if 'priorCalib' in cmdKeys
-                     else self._defaultBlindMoveCalibId())
+            nRuns = config.get('nRuns', [4, 5])
+            nRuns = [int(nRuns)] if isinstance(nRuns, int) else [int(n) for n in nRuns]
+            if len(nRuns) < 2 or min(nRuns) < MIN_ITERATION_RUNS:
+                cmd.fail(f'text="calibrateBlindMove: nRuns={",".join(map(str, nRuns))}: at least two '
+                         f'iterations of {MIN_ITERATION_RUNS} runs or more are needed, one at the motor '
+                         f'map and one aimed through its fit"')
+                return None
 
         designId = self._declareTurnedDotDesign(cmd, cmdKeys, config)
         if designId is None:
@@ -248,10 +259,9 @@ class MiscCmd(object):
         seqKeys = translate.seqKeys(cmdKeys)
         if seqKeys.get('groupId') is None:
             seqKeys['groupId'] = self.engine.requestGroupId('calibrateBlindMove')
-        plan = dict(nRuns=config.get('nRuns', 5)) if withCalibration else {}
-        return BlindMoveCalibration(designId, prior, runConfig, seqKeys,
+        return BlindMoveCalibration(designId, runConfig, seqKeys, nRuns=nRuns,
                                     nValidationRuns=config.get('nValidationRuns', 2),
-                                    nRetries=config.get('nRetries', 0), calibId=calibId, **plan)
+                                    nRetries=config.get('nRetries', 0), calibId=calibId)
 
     def _blindMoveCommand(self, cmd, step):
         """Run `step(cmd)` holding the calibrateBlindMove lock, or refuse if another holds it."""
@@ -267,7 +277,7 @@ class MiscCmd(object):
     def startBlindMoveCalibration(self, cmd):
         """Start an operating-point blind-move calibration, see `BlindMoveCalibration`.
 
-        Its runs are aimed through priorCalib, else the default calibration.  A calibration
+        No calibration enters it: the first iteration runs at the motor map.  A calibration
         that fails validation stays in opdb but does not become the default.
         """
         self._blindMoveCommand(cmd, self._startBlindMoveCalibration)
@@ -321,7 +331,7 @@ class MiscCmd(object):
                 return
             # The validation plan, from the session's unless given.
             nRuns = (cmdKeys['nValidationRuns'].values[0] if 'nValidationRuns' in cmdKeys
-                     else calibration.planned['validation'])
+                     else calibration.nValidationRuns)
             calibration.newValidation(nRuns)
             self.actor.declareFpsDesign(cmd, designId=calibration.designId)
         self._advanceBlindMoveCalibration(cmd, calibration)
