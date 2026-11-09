@@ -152,12 +152,10 @@ class FpsCmd(object):
             cmd.fail('text="no boresight loop to reduce"')
             return
 
-        startFrame = self.boresightLoop.startFrame
-        endFrame = self.boresightLoop.endFrame
-        nFrames = endFrame - startFrame + 1
+        frameIds = self.boresightLoop.frameIds
 
-        if nFrames < 2:
-            cmd.fail('text="not enough frames to reduce')
+        if len(frameIds) < 2:
+            cmd.fail('text="not enough frames to reduce"')
             return
 
         # setting sequence status back to ready, hard amend because flexibility.
@@ -165,7 +163,7 @@ class FpsCmd(object):
         self.boresightLoop.status.hardAmend()
 
         # adding calculateBoresight command.
-        self.boresightLoop.addReduce(startFrame, endFrame)
+        self.boresightLoop.addReduce(frameIds)
         self.engine.run(cmd, self.boresightLoop, mode=ExecMode.EXECUTE | ExecMode.CONCLUDE)
 
         # no further reference to the object.

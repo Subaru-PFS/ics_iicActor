@@ -1,4 +1,5 @@
 import ics.iicActor.utils.translate as translate
+import ics.utils.cmd as cmdUtils
 from ics.iicActor.utils.visited import VisitedSequence
 
 
@@ -58,12 +59,10 @@ class BoresightLoop(FpsSequence):
         self.nExposures = nExposures
 
     @property
-    def startFrame(self):
-        return self.visit.visitId * 100
-
-    @property
-    def endFrame(self):
-        return self.visit.visitId * 100 + self.visit.frameId() - 1
+    def frameIds(self):
+        """The MCS frames the loop exposed successfully."""
+        return [int(cmdUtils.findCmdKeyValue(subCmd.cmdStr, 'frameId')) for subCmd in self.cmdList
+                if subCmd.actor == 'mcs' and subCmd.cmdHead == 'expose' and subCmd.cmdRet.succeed]
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -81,9 +80,9 @@ class BoresightLoop(FpsSequence):
         for i in range(self.nExposures):
             self.append('mcs', 'expose object', exptime=self.exptime, frameId=self.visit.nextFrameId(), doFibreId=True)
 
-    def addReduce(self, startFrame, endFrame):
+    def addReduce(self, frameIds):
         """Close out the current boresight acquisition loop and process the data."""
-        self.append('fps', 'calculateBoresight', startFrame=startFrame, endFrame=endFrame, timeLim=30)
+        self.append('fps', 'calculateBoresight', frameIds=frameIds, writeToDB=True, timeLim=30)
 
 
 class FpsLoop(FpsSequence):
