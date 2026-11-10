@@ -82,7 +82,7 @@ class BoresightLoop(FpsSequence):
 
     def addReduce(self, frameIds):
         """Close out the current boresight acquisition loop and process the data."""
-        self.append('fps', 'calculateBoresight', frameIds=frameIds, writeToDB=True, timeLim=30)
+        self.append('fps', 'calculateBoresight', frameIds=frameIds, writeToDB=True, timeLim=180)
 
 
 class FpsLoop(FpsSequence):
