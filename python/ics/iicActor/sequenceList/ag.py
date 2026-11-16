@@ -1,20 +1,12 @@
 import ics.iicActor.utils.translate as translate
 from ics.iicActor.utils.sequence import Sequence
-from ics.iicActor.utils.visited import VisitedCmd, VisitedSequence
-
-
-class AgVisitedCmd(VisitedCmd):
-    visitCmdArg = 'visit_id'
+from ics.iicActor.utils.visited import VisitedSequence
 
 
 class AgSequence(VisitedSequence):
     """Placeholder for ag sequence."""
     caller = 'ag'
     insertVisitSet = False
-
-    def instantiate(self, actor, cmdStr, parseVisit=False, parseFrameId=False, **kwargs):
-        """I have to redefine this because visit argument is spelled differently for ag."""
-        return AgVisitedCmd(self, actor, cmdStr, parseVisit=parseVisit, parseFrameId=parseFrameId, **kwargs)
 
     def finalize(self):
         VisitedSequence.finalize(self)
@@ -32,7 +24,7 @@ class AcquireField(AgSequence):
         AgSequence.__init__(self, **seqKeys)
 
         self.add('ag', 'acquire_field', parseVisit=True,
-                 design_id=designId, exposure_time=exptime, guide=guide, magnitude=magnitude, dry_run=dryRun,
+                 designId=designId, exptime=exptime, guide=guide, magnitude=magnitude, dry_run=dryRun,
                  fit_dscale=fit_dScale, fit_dinr=fit_dInR, exposure_delay=exposure_delay, tec_off=tec_off,
                  visit0=visit0)
 
@@ -74,7 +66,7 @@ class AutoguideStart(AgSequence):
         AgSequence.__init__(self, **seqKeys)
 
         self.add('ag', 'autoguide start', parseVisit=True,
-                 design_id=designId, exposure_time=exptime, cadence=cadence, center=center, magnitude=magnitude,
+                 designId=designId, exptime=exptime, cadence=cadence, center=center, magnitude=magnitude,
                  from_sky=fromSky, dry_run=dryRun, fit_dscale=fit_dScale, fit_dinr=fit_dInR,
                  exposure_delay=exposure_delay, tec_off=tec_off, max_correction=max_correction, visit0=visit0,
                  filter_bad_shape=filter_bad_shape)
@@ -138,7 +130,7 @@ class FocusSweep(AgSequence):
     def __init__(self, designId, exptime, fit_dScale, fit_dInR, exposure_delay, tec_off, **seqKeys):
         AgSequence.__init__(self, **seqKeys)
 
-        self.parseKwargs = dict(design_id=designId, exposure_time=exptime, fit_dScale=fit_dScale,
+        self.parseKwargs = dict(designId=designId, exptime=exptime, fit_dScale=fit_dScale,
                                 fit_dInR=fit_dInR,
                                 exposure_delay=exposure_delay, tec_off=tec_off)
 
