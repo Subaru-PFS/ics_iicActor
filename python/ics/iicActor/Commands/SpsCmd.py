@@ -28,7 +28,7 @@ class SpsCmd(object):
         timedIisArgs = '[<iisArgon>] [<iisHgar>] [<iisNeon>] [<iisKrypton>] [<iisHydrogen>] [<iisHelium>]'
         timedArcArgs = f'[<hgar>] [<hgcd>] [<argon>] [<neon>] [<krypton>] [<xenon>] {timedIisArgs} [@doShutterTiming]'
         timedFlatArgs = '[<halogen>] [<allFiberLamp>] [<iisHalogen>] [@doShutterTiming]'
-        windowingArgs = '[<window>] [<blueWindow>] [<redWindow>]'
+        windowingArgs = '[<window>] [<blueWindow>] [<redWindow>] [<rowbin>]'
 
         self.vocab = [
             ('masterBiases', f'{commonArgs}', self.masterBiases),
@@ -110,6 +110,8 @@ class SpsCmd(object):
                                                  help='first row, total number of rows to read'),
                                         keys.Key("redWindow", types.Int() * (1, 2),
                                                  help='first row, total number of rows to read'),
+                                        keys.Key("rowbin", types.Int(),
+                                                 help='number of rows binned together on a full-frame read'),
                                         keys.Key('interleaveDark', types.Float(),
                                                  help='darkTime for interleaved darks)'),
 
@@ -313,12 +315,13 @@ class SpsCmd(object):
 
     def scienceTrace(self, cmd):
         """
-        `iic scienceTrace halogen=FF.F [@doShutterTiming] [window=???] [blueWindow=???] [redWindow=???] [cam=???]
-        [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+        `iic scienceTrace halogen=FF.F [@doShutterTiming] [window=???] [blueWindow=???] [redWindow=???] [rowbin=N]
+        [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Check focus and take a set of fiberTrace.
         Sequence is referenced in opdb as iic_sequence.seqtype=scienceTrace.
-        Note that if the exposure is windowed, the seqtype will actually be scienceTrace_windowed.
+        Note that if the exposure is windowed, the seqtype will actually be scienceTrace_windowed,
+        and scienceTrace_binned if it is binned.
 
         Parameters
         ---------
@@ -332,6 +335,8 @@ class SpsCmd(object):
             first row, total number of rows. (blue arm)
         redWindow : `int`,`int`
             first row, total number of rows. (red arm)
+        rowbin : `int`
+            number of rows binned together on a full-frame read, instead of a window.
         cam : list of `str`
            List of camera to expose, default=all
         arm : list of `str`
@@ -385,12 +390,13 @@ class SpsCmd(object):
 
     def domeFlat(self, cmd):
         """
-        `iic domeFlat exptime=??? [window=???] [blueWindow=???] [redWindow=???] [cam=???] [arm=???] [specNum=???]
-         [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+        `iic domeFlat exptime=??? [window=???] [blueWindow=???] [redWindow=???] [rowbin=N] [cam=???] [arm=???]
+         [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Check focus and take a set of fiberTrace, this sequence rely on an external illuminator (HSC lamps).
         Sequence is referenced in opdb as iic_sequence.seqtype=domeFlat.
-        Note that if the exposure is windowed, the seqtype will actually be domeFlat_windowed.
+        Note that if the exposure is windowed, the seqtype will actually be domeFlat_windowed,
+        and domeFlat_binned if it is binned.
 
         Parameters
         ---------
@@ -402,6 +408,8 @@ class SpsCmd(object):
             first row, total number of rows. (blue arm)
         redWindow : `int`,`int`
             first row, total number of rows. (red arm)
+        rowbin : `int`
+            number of rows binned together on a full-frame read, instead of a window.
         cam : list of `str`
            List of camera to expose, default=all
         arm : list of `str`
@@ -424,12 +432,13 @@ class SpsCmd(object):
 
     def scienceObject(self, cmd):
         """
-        `iic scienceObject exptime=??? [window=???] [blueWindow=???] [redWindow=???] [cam=???] [arm=???] [specNum=???]
-        [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+        `iic scienceObject exptime=??? [window=???] [blueWindow=???] [redWindow=???] [rowbin=N] [cam=???] [arm=???]
+        [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
 
         Check focus and take a set of object exposure.
         Sequence is referenced in opdb as iic_sequence.seqtype=scienceObject.
-        Note that if the exposure is windowed, the seqtype will actually be scienceObject_windowed.
+        Note that if the exposure is windowed, the seqtype will actually be scienceObject_windowed,
+        and scienceObject_binned if it is binned.
 
         Parameters
         ---------
@@ -441,6 +450,8 @@ class SpsCmd(object):
             first row, total number of rows. (blue arm)
         redWindow : `int`,`int`
             first row, total number of rows. (red arm)
+        rowbin : `int`
+            number of rows binned together on a full-frame read, instead of a window.
         cam : list of `str`
            List of camera to expose, default=all
         arm : list of `str`

@@ -74,7 +74,7 @@ class Flats(TimedLampsSequence):
     exptype = 'flat'
 
     def __init__(self, cams, lampsKeys, duplicate, windowKeys, **seqKeys):
-        SpsSequence.__init__(self, cams, isWindowed=bool(windowKeys), **seqKeys)
+        SpsSequence.__init__(self, cams, windowKeys=windowKeys, **seqKeys)
 
         self.expose(self.exptype, lampsKeys, cams, duplicate=duplicate, windowKeys=windowKeys)
 

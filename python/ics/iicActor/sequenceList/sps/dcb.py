@@ -158,7 +158,7 @@ class Flats(SpsSequence):
     seqtype = 'flats'
 
     def __init__(self, cams, exptime, dcbOn, dcbOff, duplicate, windowKeys, **seqKeys):
-        SpsSequence.__init__(self, cams, isWindowed=bool(windowKeys), **seqKeys)
+        SpsSequence.__init__(self, cams, windowKeys=windowKeys, **seqKeys)
 
         # adding dcbOn and dcbOff commands.
         if any(dcbOn.values()):

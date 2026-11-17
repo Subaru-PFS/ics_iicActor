@@ -236,7 +236,7 @@ class DomeFlat(SpsSequence):
     doScienceCheck = True
 
     def __init__(self, cams, exptime, duplicate, windowKeys, **seqKeys):
-        SpsSequence.__init__(self, cams, isWindowed=bool(windowKeys), **seqKeys)
+        SpsSequence.__init__(self, cams, windowKeys=windowKeys, **seqKeys)
 
         self.expose('domeflat', exptime, cams, duplicate=duplicate, windowKeys=windowKeys)
 
