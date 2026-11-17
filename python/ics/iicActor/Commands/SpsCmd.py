@@ -49,7 +49,7 @@ class SpsCmd(object):
 
             ('bias', f'{commonArgs}', self.doBias),
             ('dark', f'<exptime> {commonArgs}', self.doDark),
-            ('expose', f'arc {timedArcArgs} {commonArgs}', self.doArc),
+            ('expose', f'arc {timedArcArgs} {windowingArgs} {commonArgs}', self.doArc),
             ('expose', f'flat {timedFlatArgs} {windowingArgs} {commonArgs}', self.doFlat),
 
             ('driftFlats', f'{timedFlatArgs} [<pixelRange>] [@(keepHexapodOn)] {commonArgs}', self.driftFlats),
@@ -613,10 +613,13 @@ class SpsCmd(object):
     def doArc(self, cmd):
         """
         `iic expose arc [hgar=FF.F] [hgcd=FF.F] [argon=FF.F] [neon=FF.F] [krypton=FF.F] [xenon=FF.F] [@doShutterTiming]
+        [window=???] [blueWindow=???] [redWindow=???] [rowbin=N]
         [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
 
         Take a set of arc exposure.
         Sequence is referenced in opdb as iic_sequence.seqtype=arcs.
+        Note that if the exposure is windowed, the seqtype will actually be arcs_windowed,
+        and arcs_binned if it is binned.
 
         Parameters
         ---------
@@ -634,6 +637,14 @@ class SpsCmd(object):
             number of second to trigger xenon lamp.
         doShutterTiming : `bool`
            if True, use the shutters to control exposure time, ie fire the lamps before opening the shutters.
+        window : `int`,`int`
+            first row, total number of rows.
+        blueWindow : `int`,`int`
+            first row, total number of rows. (blue arm)
+        redWindow : `int`,`int`
+            first row, total number of rows. (red arm)
+        rowbin : `int`
+            number of rows binned together on a full-frame read, instead of a window.
         cam : list of `str`
            List of camera to expose, default=all
         arm : list of `str`

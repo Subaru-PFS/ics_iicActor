@@ -2,6 +2,7 @@
 import types
 
 import ics.iicActor.utils.translate as translate
+from ics.iicActor.sequenceList.sps.base import Arcs
 from ics.iicActor.sequenceList.sps.science import ScienceObject
 
 CAMS = ['b1', 'r1']
@@ -60,3 +61,46 @@ def test_fullFrameScienceObject():
     assert sequence.seqtype == 'scienceObject'
     assert 'rowbin' not in exposeCmd(sequence) and 'window' not in exposeCmd(sequence)
     assert spsExpose(sequence).mcsExposureBefore['enabled']
+
+
+class LightSource(str):
+    """A light source name with the lamps actor it drives."""
+    lampsActor = 'pfilamps'
+
+
+class Cam(str):
+    """A camera name with the attributes a timed-lamps sequence reads from it."""
+
+    def __new__(cls, name):
+        cam = super().__new__(cls, name)
+        cam.arm = name[0]
+        cam.lightSource = LightSource('pfi')
+        return cam
+
+
+def arcs(**keywords):
+    """iic expose arc neon=5 with these keywords, built as the command builds it."""
+    cams = [Cam(name) for name in CAMS]
+    spsConfig = types.SimpleNamespace(keysToCam=lambda cmdKeys, configDict=None: cams)
+    keyRepo = types.SimpleNamespace(getNirTiming=lambda cams: dict())
+    iicActor = types.SimpleNamespace(spsConfig=spsConfig, engine=types.SimpleNamespace(keyRepo=keyRepo))
+    return Arcs.fromCmdKeys(iicActor, CmdKeys(neon=[5.0], **keywords))
+
+
+def test_binnedArcs():
+    sequence = arcs(rowbin=[25])
+    assert sequence.seqtype == 'arcs_binned'
+    assert 'rowbin=25' in exposeCmd(sequence) and 'window' not in exposeCmd(sequence)
+
+
+def test_windowedArcs():
+    sequence = arcs(blueWindow=[500, 1000])
+    assert sequence.seqtype == 'arcs_windowed'
+    assert 'blueWindow=500,1000' in exposeCmd(sequence) and 'rowbin' not in exposeCmd(sequence)
+
+
+def test_fullFrameArcs():
+    # Negative control: neither window nor rowbin.
+    sequence = arcs()
+    assert sequence.seqtype == 'arcs'
+    assert 'rowbin' not in exposeCmd(sequence) and 'window' not in exposeCmd(sequence)
