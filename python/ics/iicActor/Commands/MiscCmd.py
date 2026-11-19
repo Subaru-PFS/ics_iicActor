@@ -55,6 +55,7 @@ class MiscCmd(object):
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
             ('dotRoach', f'[<exptime>] [<maskFile>] [@(hscLamps)] [<mode>] {identArgs} {translate.seqArgs}',
              self.dotRoach),
+            ('fastRoach', f'[<maskFile>] {translate.seqArgs}', self.fastRoach),
             ('thetaPhiScan', 'start', self.startNewThetaPhiScan),
             ('thetaPhiScan', f'takeNextTheta [<groupId>] [<thetaAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
              self.takeNextThetaPhiScan),
@@ -359,6 +360,27 @@ class MiscCmd(object):
 
         genPfsConfigFromMcs = fpsSequenceList.GenBlackDotsConfig.fromCmdKeys(self.actor, cmdKeys, designId=designId)
         self.engine.run(cmd, genPfsConfigFromMcs)
+
+    @singleShot
+    def fastRoach(self, cmd):
+        """Converge every working cobra, or those of maskFile, onto its black dot in one convergence."""
+        self._fastRoach(cmd)
+
+    def _fastRoach(self, cmd):
+        cmdKeys = cmd.cmd.keywords
+        if 'fastRoach' not in self.actor.actorConfig:
+            cmd.fail('text="no fastRoach section in the iic config (pfs_instdata iic.yaml)"')
+            return
+
+        maskFileArgs = translate.getMaskFileArgsFromCmd(cmdKeys, self.actor.actorConfig)
+        cmdVar = self._callFps(cmd, f'createBlackDotDesign {maskFileArgs}'.strip(), 10)
+        if cmdVar is None:
+            return
+        designId = int(cmdUtils.cmdVarToKeys(cmdVar)['fpsDesignId'].values[0], 16)
+        self.actor.declareFpsDesign(cmd, designId=designId)
+
+        fastRoach = fpsSequenceList.FastRoach.fromCmdKeys(self.actor, cmdKeys, designId=designId)
+        self.engine.run(cmd, fastRoach)
 
     @singleShot
     def dotRoach(self, cmd):
