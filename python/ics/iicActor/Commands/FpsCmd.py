@@ -38,8 +38,8 @@ class FpsCmd(object):
             ('fpsLoop', '[<expTime>] [<cnt>]', self.fpsLoop),
 
             ('moveToPfsDesign',
-             f'[<designId>] [<exptime>] [<maskFile>] [@(noHome)] [@(twoStepsOff)] [@(noTweak)] [<nIteration>] '
-             f'[<tolerance>] [@shortExpOff] {translate.seqArgs}',
+             f'[<designId>] [<exptime>] [<maskFile>] [<targetMaskFile>] [@(noHome)] [@(twoStepsOff)] [@(noTweak)] '
+             f'[<nIteration>] [<tolerance>] [@shortExpOff] {translate.seqArgs}',
              self.moveToPfsDesign),
 
             ('moveToHome',
@@ -91,6 +91,9 @@ class FpsCmd(object):
                                                  help='filename containing which fibers to expose.'),
                                         keys.Key('wrtMaskFile', types.String() * (1,),
                                                  help='move with respect to that maskFile.'),
+                                        keys.Key('targetMaskFile', types.String() * (1,),
+                                                 help='maskFile of the cobras sent to their design target, '
+                                                      'the other working cobras going to their black dot.'),
                                         )
 
     @property
@@ -206,7 +209,7 @@ class FpsCmd(object):
 
     def moveToPfsDesign(self, cmd):
         """
-        `iic moveToPfsDesign designId=??? [name=\"SSS\"] [comments=\"SSS\"]`
+        `iic moveToPfsDesign designId=??? [targetMaskFile=SSS] [name=\"SSS\"] [comments=\"SSS\"]`
 
         Move cobras to provided pfsDesignId.
 
@@ -214,6 +217,9 @@ class FpsCmd(object):
         ---------
         designId : `int`
            specified designId .
+        targetMaskFile : `str`
+           maskFile name: only its cobras go to their design target, the other working cobras go to their
+           black dot.
         name : `str`
            To be inserted in opdb:iic_sequence.name.
         comments : `str`
