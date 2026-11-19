@@ -1,3 +1,5 @@
+import os
+
 import ics.iicActor.utils.translate as translate
 import ics.utils.cmd as cmdUtils
 from ics.iicActor.utils.visited import VisitedSequence
@@ -112,8 +114,8 @@ class MoveToPfsDesign(FpsSequence):
     seqtype = 'moveToPfsDesign'
 
     def __init__(self, designId, nIteration, tolerance, exptime, noHome, twoStepsOff, shortExpOff, noTweak,
-                 skipFiducialInterferenceCheck, maskFile=False, dotTarget=None, dotLanding=None, dotCalib=None,
-                 aimLanding=False, **fpsKeys):
+                 skipFiducialInterferenceCheck, maskFile=False, targetMaskFile=False, dotTarget=None,
+                 dotLanding=None, dotCalib=None, aimLanding=False, **fpsKeys):
         super().__init__(**fpsKeys)
 
         # The black-dot depths and calibration are fps's own unless a sequence names them.
@@ -123,7 +125,8 @@ class MoveToPfsDesign(FpsSequence):
 
         # move to pfsDesign.
         self.add('fps', 'moveToPfsDesign', parseVisit=True, designId=designId, iteration=nIteration,
-                 tolerance=tolerance, maskFile=maskFile, exptime=exptime, goHome=not noHome, twoStepsOff=twoStepsOff,
+                 tolerance=tolerance, maskFile=maskFile, targetMaskFile=targetMaskFile, exptime=exptime,
+                 goHome=not noHome, twoStepsOff=twoStepsOff,
                  shortExpOff=shortExpOff, noTweak=noTweak, skipFiducialInterferenceCheck=skipFiducialInterferenceCheck,
                  aimLanding=aimLanding, **dotKeys, timeLim=600)
 
@@ -134,11 +137,18 @@ class MoveToPfsDesign(FpsSequence):
         # maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
         # Removing maskFile for now, it's broken on fps side (per INSTRM-2192)
         maskFile = False
+        targetMaskFile = False
+        if 'targetMaskFile' in cmdKeys:
+            targetMaskFile = translate.constructMaskFilePath(cmdKeys['targetMaskFile'].values[0],
+                                                             iicActor.actorConfig)
+            if not os.path.isfile(targetMaskFile):
+                raise ValueError(f'targetMaskFile {targetMaskFile} does not exist')
 
         moveToPfsDesignConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'moveToPfsDesign')
         illuminators = translate.illuminatorKeys(iicActor.actorConfig)
 
-        return cls(designId, maskFile=maskFile, **moveToPfsDesignConfig, **seqKeys, **illuminators)
+        return cls(designId, maskFile=maskFile, targetMaskFile=targetMaskFile, **moveToPfsDesignConfig, **seqKeys,
+                   **illuminators)
 
 
 class MoveToHome(FpsSequence):
