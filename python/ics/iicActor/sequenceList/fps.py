@@ -184,6 +184,23 @@ class NearDotConvergence(MoveToPfsDesign):
         return cls(designId, maskFile=maskFile, **nearDotConvergenceConfig, **seqKeys, **illuminators)
 
 
+class FastRoach(MoveToPfsDesign):
+    """A convergence of the cobras of a black-dot design onto their dots, with the fastRoach config.
+
+    The maskFile goes to fps moveToPfsDesign too: fps sends every cobra it may move and the design
+    leaves unassigned onto its black dot, so the cobras out of the mask would move otherwise.
+    """
+    seqtype = 'fastRoach'
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys, designId):
+        seqKeys = translate.seqKeys(cmdKeys)
+        maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
+        illuminators = translate.illuminatorKeys(iicActor.actorConfig)
+        fastRoachConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'fastRoach')
+        return cls(designId, maskFile=maskFile, **fastRoachConfig, **seqKeys, **illuminators)
+
+
 class BlindMoveRun(MoveToPfsDesign):
     """A convergence on turned black dots, then the frame that measures its two blind moves.
 
