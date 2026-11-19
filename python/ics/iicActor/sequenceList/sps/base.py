@@ -51,10 +51,10 @@ class Arcs(TimedLampsSequence):
     seqtype = 'arcs'
     exptype = 'arc'
 
-    def __init__(self, cams, lampsKeys, duplicate, **seqKeys):
-        SpsSequence.__init__(self, cams, **seqKeys)
+    def __init__(self, cams, lampsKeys, duplicate, windowKeys=None, **seqKeys):
+        SpsSequence.__init__(self, cams, windowKeys=windowKeys, **seqKeys)
 
-        self.expose(self.exptype, lampsKeys, cams, duplicate=duplicate)
+        self.expose(self.exptype, lampsKeys, cams, duplicate=duplicate, windowKeys=windowKeys)
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys):
@@ -62,10 +62,11 @@ class Arcs(TimedLampsSequence):
         cams = SpsSequence.keysToCam(iicActor, cmdKeys)
         seqKeys = translate.seqKeys(cmdKeys)
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
+        windowKeys = translate.windowKeys(cmdKeys)
         lampsKeys = translate.lampsKeys(cmdKeys)
         lampsKeys.update(iicActor.engine.keyRepo.getNirTiming(cams))
 
-        return cls(cams, lampsKeys, duplicate, **seqKeys)
+        return cls(cams, lampsKeys, duplicate, windowKeys=windowKeys, **seqKeys)
 
 
 class Flats(TimedLampsSequence):
@@ -74,7 +75,7 @@ class Flats(TimedLampsSequence):
     exptype = 'flat'
 
     def __init__(self, cams, lampsKeys, duplicate, windowKeys, **seqKeys):
-        SpsSequence.__init__(self, cams, isWindowed=bool(windowKeys), **seqKeys)
+        SpsSequence.__init__(self, cams, windowKeys=windowKeys, **seqKeys)
 
         self.expose(self.exptype, lampsKeys, cams, duplicate=duplicate, windowKeys=windowKeys)
 

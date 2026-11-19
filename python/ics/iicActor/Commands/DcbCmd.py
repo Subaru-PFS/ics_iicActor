@@ -20,7 +20,7 @@ class DcbCmd(object):
         commonArgs = f'{identArgs} [<duplicate>] {translate.seqArgs}'
         arcArgs = f'<exptime> [noLampCtl] [<switchOn>] [<switchOff>] [<warmingTime>] [force]'
         flatArgs = f'<exptime> [noLampCtl] [switchOff] [<warmingTime>] [force]'
-        windowingArgs = '[<window>] [<blueWindow>] [<redWindow>]'
+        windowingArgs = '[<window>] [<blueWindow>] [<redWindow>] [<rowbin>]'
 
         self.vocab = [
             ('ditheredFlats', f'{flatArgs} [<pixelRange>] {commonArgs}', self.ditheredFlats),
@@ -86,6 +86,8 @@ class DcbCmd(object):
                                                  help='first row, total number of rows to read'),
                                         keys.Key("redWindow", types.Int() * (1, 2),
                                                  help='first row, total number of rows to read'),
+                                        keys.Key("rowbin", types.Int(),
+                                                 help='number of rows binned together on a full-frame read'),
                                         keys.Key('interleaveDark', types.Float(),
                                                  help='darkTime for interleaved darks)'),
                                         keys.Key('nTraceBefore', types.Int(),
@@ -185,11 +187,13 @@ class DcbCmd(object):
     def scienceTrace(self, cmd):
         """
         `iic scienceTrace exptime=FF.F [warmingTime=FF.F] [force] [noLampCtl] [switchOff] [window=???] [blueWindow=???]
-        [redWindow=???] [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"] [@doTest]`
+        [redWindow=???] [rowbin=N] [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"] [comments=\"SSS\"]
+        [@doTest]`
 
         Check focus and take a set of fiberTrace.
         Sequence is referenced in opdb as iic_sequence.seqtype=scienceTrace.
-        Note that if the exposure is windowed, the seqtype will actually be scienceTrace_windowed.
+        Note that if the exposure is windowed, the seqtype will actually be scienceTrace_windowed,
+        and scienceTrace_binned if it is binned.
 
         Parameters
         ---------
@@ -209,6 +213,8 @@ class DcbCmd(object):
             first row, total number of rows. (blue arm)
         redWindow : `int`,`int`
             first row, total number of rows. (red arm)
+        rowbin : `int`
+            number of rows binned together on a full-frame read, instead of a window.
         cam : list of `str`
            List of camera to expose, default=all
         arm : list of `str`

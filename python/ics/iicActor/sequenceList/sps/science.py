@@ -10,9 +10,8 @@ class ScienceObject(SpsSequence):
     doScienceCheck = True
 
     def __init__(self, cams, exptime, duplicate, windowKeys, mcsExposureBefore, iisKeys=None, **seqKeys):
-        isWindowed = bool(windowKeys)
         doIIS = bool(iisKeys)
-        SpsSequence.__init__(self, cams, isWindowed=isWindowed, doIIS=doIIS, **seqKeys)
+        SpsSequence.__init__(self, cams, windowKeys=windowKeys, doIIS=doIIS, **seqKeys)
 
         self.expose('object', exptime, cams,
                     duplicate=duplicate, windowKeys=windowKeys, mcsExposureBefore=mcsExposureBefore,
@@ -25,7 +24,6 @@ class ScienceObject(SpsSequence):
         seqKeys = translate.seqKeys(cmdKeys)
         exptime, duplicate = translate.spsExposureKeys(cmdKeys)
         windowKeys = translate.windowKeys(cmdKeys)
-        isWindowed = bool(windowKeys)
         iisKeys = translate.iisKeys(cmdKeys)
 
         # the lamp is fired inside the shutter window, so it has to fit in the shortest one.
@@ -36,8 +34,8 @@ class ScienceObject(SpsSequence):
         config = iicActor.actorConfig['scienceExposure']
         mcsExposureBefore = config.get('mcsExposureBefore').copy()
 
-        # Forcing to False for windowed exposure if specified in config file or directly specified in command.
-        if (isWindowed and mcsExposureBefore['skipWindowed']) or 'skipMcsExposure' in cmdKeys:
+        # Forcing to False for windowed or binned exposure if specified in config file or directly specified in command.
+        if (windowKeys and mcsExposureBefore['skipWindowed']) or 'skipMcsExposure' in cmdKeys:
             mcsExposureBefore['enabled'] = False
 
         return cls(cams, exptime, duplicate, windowKeys, mcsExposureBefore, iisKeys=iisKeys, **seqKeys)

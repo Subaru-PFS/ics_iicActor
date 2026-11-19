@@ -12,7 +12,7 @@ class SpsSequence(sequence.Sequence):
     doScienceCheck = False
     """"""
 
-    def __init__(self, cams, *args, isWindowed=False, doIIS=False, returnWhenShutterClose=False,
+    def __init__(self, cams, *args, windowKeys=None, doIIS=False, returnWhenShutterClose=False,
                  skipBiaCheck=False, forcePfsConfig=False, **kwargs):
         self.cams = cams
         self.preparedIlluminators = set()
@@ -22,7 +22,8 @@ class SpsSequence(sequence.Sequence):
         self.returnWhenShutterClose = returnWhenShutterClose
         self.skipBiaCheck = skipBiaCheck
         self.forcePfsConfig = forcePfsConfig
-        self.seqtype = f'{self.seqtype}_windowed' if isWindowed else self.seqtype
+        if windowKeys:
+            self.seqtype = f'{self.seqtype}_binned' if 'rowbin' in windowKeys else f'{self.seqtype}_windowed'
         # frames deliberately lit by IIS must not be mistaken for clean science.
         self.seqtype = f'{self.seqtype}_iis' if doIIS else self.seqtype
 

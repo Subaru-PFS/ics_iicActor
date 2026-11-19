@@ -193,8 +193,8 @@ def illuminatorKeys(actorConfig, requiredState=True):
 
 
 def windowKeys(cmdKeys, configDict=None):
-    """Resolve window-related keys from cmdKeys first, then configDict."""
-    resolved = resolveKeys(cmdKeys, configDict, 'window', 'blueWindow', 'redWindow')
+    """Resolve window and row binning keys from cmdKeys first, then configDict."""
+    resolved = resolveKeys(cmdKeys, configDict, 'window', 'blueWindow', 'redWindow', 'rowbin')
     filtered = {k: v for k, v in resolved.items() if v is not None}  # remove undefined values
     return filtered
 
