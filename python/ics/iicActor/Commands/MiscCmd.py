@@ -15,6 +15,7 @@ import opscore.protocols.types as types
 from ics.iicActor.utils.sequenceStatus import Flag
 from ics.utils.threading import singleShot
 from opscore.utility.qstr import qstr
+from pfs.datamodel import InstrumentStatusFlag
 
 reload(iicUtils)
 
@@ -59,7 +60,7 @@ class MiscCmd(object):
              self.takeNextThetaPhiScan),
             ('thetaPhiScan', f'takeNextPhi [<groupId>] [<phiAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
              self.takeNextPhiThetaScan),
-            ('thetaPhiScan', 'continue', self.continueThetaPhiScan),
+            ('thetaPhiScan', 'continue [@noMove]', self.continueThetaPhiScan),
             ('declareHomeDesign', '[@skipGenVisit0]', self.declareHomeDesign),
             ('calibrateBlindMove', f'start [<nRuns>] [<nValidationRuns>] '
                                    f'[<dotThetaOffset>] [<maskFile>] {translate.seqArgs}',
@@ -442,7 +443,11 @@ class MiscCmd(object):
 
     @singleShot
     def continueThetaPhiScan(self, cmd):
-        """Resume the thetaPhiScan of this session from its first step not done."""
+        """Resume the thetaPhiScan of this session from its first step not done.
+
+        The cobras are moved to that step again before its trace.  With noMove they are left in place,
+        which requires the current pfsConfig0 to be the one of that step's design.
+        """
         self._thetaPhiScanCommand(cmd, self._continueThetaPhiScan)
 
     def _thetaPhiScanCommand(self, cmd, step):
@@ -539,11 +544,33 @@ class MiscCmd(object):
         if run.isDone:
             cmd.fail(f'text="nothing to continue: {run}"')
             return
-        cmd.inform(f'text="continuing {run}"')
-        self._advanceThetaPhiScan(cmd, run, isContinued=True)
+        noMove = 'noMove' in cmd.cmd.keywords
+        if noMove:
+            self._checkCobrasAt(run, run.nextStep)
+        cmd.inform(f'text="continuing {run}{", cobras left in place" if noMove else ""}"')
+        self._advanceThetaPhiScan(cmd, run, isContinued=True, noMove=noMove)
 
-    def _advanceThetaPhiScan(self, cmd, run, isContinued=False):
-        """Do every step of `run` not done yet, in order, and finish or fail `cmd`."""
+    def _checkCobrasAt(self, run, step):
+        """Raise ValueError unless the current pfsConfig0 is a converged one of the design of `step`."""
+        designId = run.designIds.get(step)
+        activeField = self.engine.visitManager.activeField
+        pfsConfig0 = activeField.pfsConfig0 if activeField else None
+
+        if designId is None or pfsConfig0 is None or pfsConfig0.pfsDesignId != designId:
+            current = 'no pfsConfig0' if pfsConfig0 is None else f'pfsConfig0 of 0x{pfsConfig0.pfsDesignId:016x}'
+            target = 'no design yet' if designId is None else f'0x{designId:016x}'
+            why = f'cobras are not at {step} ({target}), {current}'
+        elif pfsConfig0.instStatusFlag & InstrumentStatusFlag.CONVERGENCE_FAILED:
+            why = f'the convergence to {step} (0x{designId:016x}) failed'
+        else:
+            return
+        raise ValueError(f'{why}: iic thetaPhiScan continue moves them there again')
+
+    def _advanceThetaPhiScan(self, cmd, run, isContinued=False, noMove=False):
+        """Do every step of `run` not done yet, in order, and finish or fail `cmd`.
+
+        With `noMove`, the cobras are not moved for the first step.
+        """
         mcsExptime = self.actor.actorConfig['mcs']['exptime']
         illuminators = self.actor.actorConfig['illuminators']
 
@@ -589,22 +616,26 @@ class MiscCmd(object):
                 move = fpsSequenceList.MoveToPfsDesign(designId=designId, **run.moveConfig, **illuminators)
 
             self.actor.declareFpsDesign(cmd, designId=designId)
+            run.designIds[designName] = designId
             return None if ran(move) else f'cobra move to {designName} not completed'
 
         if not run.homeTraced:
-            try:
-                homeDesignId = self.declareHomeDesign(cmd, doFinish=False)
-            except Exception as e:
-                return stop(f'home design not declared: {e}')
-            moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True,
-                                                       **illuminators)
-            if not ran(moveToHomeAll):
-                return stop('moveToHome not completed')
+            if not noMove:
+                try:
+                    homeDesignId = self.declareHomeDesign(cmd, doFinish=False)
+                except Exception as e:
+                    return stop(f'home design not declared: {e}')
+                moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True,
+                                                           **illuminators)
+                run.designIds['cobraHome'] = homeDesignId
+                if not ran(moveToHomeAll):
+                    return stop('moveToHome not completed')
+            noMove = False
             if not ran(trace('cobraHome')):
                 return stop('cobraHome scienceTrace not completed')
             run.homeTraced = True
 
-        elif isContinued and run.remaining[0] == 0 and run.innerAngles.index(0) > 0:
+        elif isContinued and not noMove and run.remaining[0] == 0 and run.innerAngles.index(0) > 0:
             # Only the inner axis goes home at that step: the cobras are first put back on the constant
             # angle, through the inner angle scanned before it.
             previous = run.innerAngles[run.innerAngles.index(0) - 1]
@@ -615,7 +646,8 @@ class MiscCmd(object):
 
         for innerAngle in run.remaining:
             designName = run.designName(innerAngle)
-            why = moveTo(innerAngle)
+            why = None if noMove else moveTo(innerAngle)
+            noMove = False
             if why is not None:
                 return stop(why)
             if not ran(trace(designName)):

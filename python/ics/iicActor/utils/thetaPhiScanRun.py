@@ -10,7 +10,8 @@ class ThetaPhiScanRun:
     that angle's design and takes a trace there.
 
     Progress is the cobraHome trace and the inner angles traced, so a scan that stopped can be
-    continued from the first step not done.
+    continued from the first step not done.  `designIds` maps each step to the design its cobra
+    move went to.
 
     Parameters
     ----------
@@ -38,6 +39,7 @@ class ThetaPhiScanRun:
 
         self.homeTraced = False
         self.traced = []
+        self.designIds = dict()
 
     @property
     def innerAxis(self):
@@ -52,6 +54,13 @@ class ThetaPhiScanRun:
     def remaining(self):
         """Inner angles not traced yet, in scan order."""
         return [angle for angle in self.innerAngles if angle not in self.traced]
+
+    @property
+    def nextStep(self):
+        """The step to do next: 'cobraHome', or the design name of the next inner angle; None when done."""
+        if not self.homeTraced:
+            return 'cobraHome'
+        return self.designName(self.remaining[0]) if self.remaining else None
 
     @property
     def isDone(self):

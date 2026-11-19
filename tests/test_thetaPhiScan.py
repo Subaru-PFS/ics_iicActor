@@ -7,6 +7,7 @@ import ics.iicActor.Commands.MiscCmd as miscCmdModule
 import ics.iicActor.sequenceList.fps as fpsSequenceList
 import ics.iicActor.sequenceList.sps.calib as calib
 from ics.iicActor.utils.sequenceStatus import Flag
+from pfs.datamodel import InstrumentStatusFlag
 
 CONFIG = dict(thetaPhiScan=dict(scienceTrace=dict(exptime=20, idDict=dict(arm='b,r')),
                                 phiAngles=[25, 55, 85],
@@ -73,6 +74,8 @@ def scan(monkeypatch):
 
     Each fps design gets a designId from its name; `scan.failOn` holds step labels to fail, once each.
     A failed step fails the user command unless it is run with failCmd=False, as the iic engine does.
+    A cobra move resets the active field's pfsConfig0 and, if it completes, sets the one of its design,
+    as fps' pfsConfig keyword does.
     """
     done = []
     failOn = set()
@@ -84,6 +87,9 @@ def scan(monkeypatch):
         failOn.discard(label)
         sequence.status.flag = Flag.FAILED if failed else Flag.FINISHED
         done.append(label + (' FAILED' if failed else ''))
+        if sequence.kind in ('home', 'move'):
+            field.pfsConfig0 = None if failed else types.SimpleNamespace(pfsDesignId=sequence.kwargs['designId'],
+                                                                         instStatusFlag=0)
         if failed:
             (cmd.fail if failCmd else cmd.warn)(f'text="{label} failed"')
 
@@ -94,11 +100,13 @@ def scan(monkeypatch):
         keyword = types.SimpleNamespace(name='fpsDesignId', values=[f'0x{designId:x}'])
         return types.SimpleNamespace(replyList=[types.SimpleNamespace(keywords=[keyword])])
 
+    field = types.SimpleNamespace(pfsConfig0=None)
     opdb = types.SimpleNamespace(latestThetaPhiScanId=lambda: 1246,
                                  getScannedPhiFromThetaPhiScanId=lambda groupId, thetaAngles: [],
                                  getScannedThetaFromThetaPhiScanId=lambda groupId, phiAngles: [])
     actor = types.SimpleNamespace(actorConfig=CONFIG,
-                                  engine=types.SimpleNamespace(run=run, opdb=opdb),
+                                  engine=types.SimpleNamespace(run=run, opdb=opdb,
+                                                               visitManager=types.SimpleNamespace(activeField=field)),
                                   spsConfig=types.SimpleNamespace(keysToCam=lambda cmdKeys, configDict=None: ['b1']),
                                   declareFpsDesign=lambda cmd, designId=None: None)
 
@@ -111,7 +119,7 @@ def scan(monkeypatch):
     misc._callFps = callFps
     misc.declareHomeDesign = lambda cmd, doFinish=True: designs.setdefault('home all', len(designs) + 1)
 
-    misc.done, misc.failOn, misc.designs = done, failOn, designs
+    misc.done, misc.failOn, misc.designs, misc.field = done, failOn, designs, field
     return misc
 
 
@@ -127,8 +135,8 @@ def takeNextTheta(scan, **keywords):
     return cmd
 
 
-def resume(scan):
-    cmd = Cmd()
+def resume(scan, **keywords):
+    cmd = Cmd(**keywords)
     scan._thetaPhiScanCommand(cmd, scan._continueThetaPhiScan)
     return cmd
 
@@ -289,3 +297,67 @@ def test_exceptionMidStepIsReportedAndCanBeContinued(scan):
 
     assert not resume(scan).didFail
     assert traces(scan)[-1] == 'trace thetaPhiScan_080_025'
+
+
+def test_noMoveRetakesTheTraceWhereTheCobrasAre(scan):
+    scan.failOn.add('trace thetaPhiScan_050_055')
+    assert takeNextPhi(scan, phiAngle=[55]).didFail
+
+    nDone = len(scan.done)
+    cmd = resume(scan, noMove=True)
+    assert not cmd.didFail, cmd.replies
+    assert scan.done[nDone] == 'trace thetaPhiScan_050_055'
+    # Negative control: the next angle is moved to as usual.
+    assert scan.done[nDone + 2] == 'move thetaPhiScan_080_055'
+
+
+def test_noMoveIsRefusedWhenTheMoveDidNotComplete(scan):
+    """Refused without touching the scan, which a plain continue then resumes with the convergence."""
+    scan.failOn.add('move thetaPhiScan_050_055')
+    assert takeNextPhi(scan, phiAngle=[55]).didFail
+
+    nDone = len(scan.done)
+    with pytest.raises(ValueError, match='cobras are not at thetaPhiScan_050_055 .* no pfsConfig0: '
+                                         'iic thetaPhiScan continue moves them there again'):
+        resume(scan, noMove=True)
+    assert len(scan.done) == nDone and not scan.thetaPhiScanLock.locked()
+
+    assert not resume(scan).didFail
+    assert scan.done[nDone + 1:nDone + 3] == ['move thetaPhiScan_050_055', 'trace thetaPhiScan_050_055']
+
+
+def test_noMoveIsRefusedWhenTheCobrasWereMovedElsewhere(scan):
+    scan.failOn.add('trace thetaPhiScan_050_055')
+    assert takeNextPhi(scan, phiAngle=[55]).didFail
+
+    scan.field.pfsConfig0 = types.SimpleNamespace(pfsDesignId=scan.designs['home all'], instStatusFlag=0)
+    with pytest.raises(ValueError, match=f'pfsConfig0 of 0x{scan.designs["home all"]:016x}'):
+        resume(scan, noMove=True)
+
+
+def test_noMoveAtTheInnerHomeSkipsTheMoveBack(scan):
+    scan.failOn.add('trace thetaPhiScan_home_085')
+    assert takeNextPhi(scan, phiAngle=[85]).didFail
+
+    nDone = len(scan.done)
+    assert not resume(scan, noMove=True).didFail
+    assert scan.done[nDone] == 'trace thetaPhiScan_home_085'
+
+
+def test_noMoveAtTheCobraHomeTrace(scan):
+    scan.failOn.add('trace cobraHome')
+    assert takeNextPhi(scan, phiAngle=[25]).didFail
+
+    nDone = len(scan.done)
+    assert not resume(scan, noMove=True).didFail
+    assert scan.done[nDone] == 'trace cobraHome'
+
+
+def test_noMoveIsRefusedAfterAFailedConvergence(scan):
+    """fps reports the design reached, flagged CONVERGENCE_FAILED: the cobras are not on target."""
+    scan.failOn.add('trace thetaPhiScan_050_055')
+    assert takeNextPhi(scan, phiAngle=[55]).didFail
+
+    scan.field.pfsConfig0.instStatusFlag = InstrumentStatusFlag.CONVERGENCE_FAILED
+    with pytest.raises(ValueError, match='the convergence to thetaPhiScan_050_055 .* failed'):
+        resume(scan, noMove=True)
