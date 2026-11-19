@@ -8,12 +8,14 @@ import ics.iicActor.sps.sequence as spsSequence
 import ics.iicActor.utils.lib as iicUtils
 import ics.iicActor.utils.translate as translate
 from ics.iicActor.utils.blindMoveCalibration import BlindMoveCalibration
+from ics.iicActor.utils.thetaPhiScanRun import ThetaPhiScanRun
 import ics.utils.cmd as cmdUtils
 import opscore.protocols.keys as keys
 import opscore.protocols.types as types
 from ics.iicActor.utils.sequenceStatus import Flag
 from ics.utils.threading import singleShot
 from opscore.utility.qstr import qstr
+from pfs.datamodel import InstrumentStatusFlag
 
 reload(iicUtils)
 
@@ -36,6 +38,10 @@ class MiscCmd(object):
         # one calibrateBlindMove command holds while it runs.
         self.blindMoveCalibration = None
         self.blindMoveLock = threading.Lock()
+        # The thetaPhiScan angle of this session, see thetaPhiScan continue, and the lock one
+        # thetaPhiScan command holds while it runs.
+        self.thetaPhiScanRun = None
+        self.thetaPhiScanLock = threading.Lock()
 
         # Declare the commands we implement. When the actor is started
         # these are registered with the parser, which will call the
@@ -54,6 +60,7 @@ class MiscCmd(object):
              self.takeNextThetaPhiScan),
             ('thetaPhiScan', f'takeNextPhi [<groupId>] [<phiAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
              self.takeNextPhiThetaScan),
+            ('thetaPhiScan', 'continue [@noMove]', self.continueThetaPhiScan),
             ('declareHomeDesign', '[@skipGenVisit0]', self.declareHomeDesign),
             ('calibrateBlindMove', f'start [<nRuns>] [<nValidationRuns>] '
                                    f'[<dotThetaOffset>] [<maskFile>] {translate.seqArgs}',
@@ -428,58 +435,71 @@ class MiscCmd(object):
 
     @singleShot
     def takeNextThetaPhiScan(self, cmd):
-        self._thetaPhiScan(cmd, constantAxis='theta')
+        self._thetaPhiScanCommand(cmd, lambda cmd: self._startThetaPhiScan(cmd, constantAxis='theta'))
 
     @singleShot
     def takeNextPhiThetaScan(self, cmd):
-        self._thetaPhiScan(cmd, constantAxis='phi')
+        self._thetaPhiScanCommand(cmd, lambda cmd: self._startThetaPhiScan(cmd, constantAxis='phi'))
 
-    def _thetaPhiScan(self, cmd, constantAxis):
-        innerAxis = 'phi' if constantAxis == 'theta' else 'theta'
+    @singleShot
+    def continueThetaPhiScan(self, cmd):
+        """Resume the thetaPhiScan of this session from its first step not done.
 
-        def bailIfNotFinished(seq, label):
-            if seq.status.flag == Flag.FINISHED:
-                return True
-            if cmd.alive:
-                cmd.fail(f'text="{label} not completed (status={seq.status.flag}), stopping here."')
-            return False
+        The cobras are moved to that step again before its trace.  With noMove they are left in place,
+        which requires the current pfsConfig0 to be the one of that step's design.
+        """
+        self._thetaPhiScanCommand(cmd, self._continueThetaPhiScan)
 
+    def _thetaPhiScanCommand(self, cmd, step):
+        """Run `step(cmd)` holding the thetaPhiScan lock, or refuse if another holds it."""
+        if not self.thetaPhiScanLock.acquire(blocking=False):
+            cmd.fail('text="a thetaPhiScan command is already running"')
+            return
+        try:
+            step(cmd)
+        finally:
+            self.thetaPhiScanLock.release()
+
+    def _thetaPhiScanAngles(self, constantAxis):
+        """(constantAngles, innerAngles) the config scans with `constantAxis` held, inner home included."""
+        config = self.actor.actorConfig['thetaPhiScan']
+        if constantAxis == 'theta':
+            constantAngles, innerAngles = config['thetaAngles'], config['phiAngles']
+            scanInnerHome = config['scanPhiHome']
+        else:
+            constantAngles, innerAngles = config['phiAngles'], config['thetaAngles']
+            scanInnerHome = config['scanThetaHome']
+
+        if scanInnerHome and 0 not in innerAngles:
+            innerAngles = [innerAngles[0], 0] + innerAngles[1:]
+        return list(constantAngles), list(innerAngles)
+
+    def _remainingThetaPhiScanAngles(self, groupId, constantAxis):
+        """Configured `constantAxis` angles not fully scanned yet under `groupId`, from opdb."""
+        constantAngles, innerAngles = self._thetaPhiScanAngles(constantAxis)
+        if constantAxis == 'theta':
+            scanned = self.engine.opdb.getScannedThetaFromThetaPhiScanId(groupId, phiAngles=innerAngles)
+        else:
+            scanned = self.engine.opdb.getScannedPhiFromThetaPhiScanId(groupId, thetaAngles=innerAngles)
+        return sorted(set(constantAngles) - set(scanned))
+
+    def _startThetaPhiScan(self, cmd, constantAxis):
         cmdKeys = cmd.cmd.keywords
         constantAngleKey = f'{constantAxis}Angle'
         constantAngle = cmdKeys[constantAngleKey].values[0] if constantAngleKey in cmdKeys else None
         groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
 
-        mcsExptime = self.actor.actorConfig['mcs']['exptime']
-        illuminators = self.actor.actorConfig['illuminators']
-        thetaPhiScanConfig = self.actor.actorConfig['thetaPhiScan']
-        scienceTraceConfig = thetaPhiScanConfig['scienceTrace']
-        moveToPfsDesignConfig = thetaPhiScanConfig['moveToPfsDesign']
-        phiAngles = thetaPhiScanConfig['phiAngles']
-        thetaAngles = thetaPhiScanConfig['thetaAngles']
-        scanPhiHome = thetaPhiScanConfig['scanPhiHome']
-        scanThetaHome = thetaPhiScanConfig['scanThetaHome']
-
-        constantAngles = thetaAngles if constantAxis == 'theta' else phiAngles
-        scanAngles  = phiAngles if constantAxis == 'theta' else thetaAngles
-        scanInnerHome = scanPhiHome if constantAxis == 'theta' else scanThetaHome
-
-        if scanInnerHome:
-            scanAngles = [scanAngles[0], 0] + scanAngles[1:]
-
-        def getRemainingAngles(groupId):
-            if constantAxis == 'theta':
-                scanned = self.engine.opdb.getScannedThetaFromThetaPhiScanId(groupId, phiAngles=scanAngles)
-            else:
-                scanned = self.engine.opdb.getScannedPhiFromThetaPhiScanId(groupId, thetaAngles=scanAngles)
-            remaining = list(set(constantAngles) - set(scanned))
-            remaining.sort()
-            return remaining
+        constantAngles, innerAngles = self._thetaPhiScanAngles(constantAxis)
+        if constantAngle is not None and constantAngle not in constantAngles:
+            cmd.fail(f'text="{constantAngleKey}={constantAngle} is not one of the configured {constantAxis} angles '
+                     f'({",".join(map(str, constantAngles))})"')
+            return
 
         if groupId is None:
             groupId = self.engine.opdb.latestThetaPhiScanId()
 
         try:
-            remainingAngles = getRemainingAngles(groupId)
+            remainingAngles = self._remainingThetaPhiScanAngles(groupId, constantAxis)
             cmd.inform(f'text="thetaPhiScan groupId={groupId} remaining {constantAxis}Angles: '
                        f'{",".join(map(str, remainingAngles))}"')
         except Exception as e:
@@ -489,7 +509,7 @@ class MiscCmd(object):
         if constantAngle is None:
             if remainingAngles is None:
                 cmd.fail(f'text="cannot determine remaining {constantAxis} angles for groupId={groupId}; '
-                         f'pass {constantAxis}Angle=<deg> explicitly"')
+                         f'pass {constantAngleKey}=<deg> explicitly"')
                 return
             elif len(remainingAngles) == 0:
                 cmd.finish(f'text="thetaPhiScan groupId={groupId} already covers all configured {constantAxis} angles '
@@ -497,62 +517,151 @@ class MiscCmd(object):
                 return
             constantAngle = remainingAngles[0]
 
-        cmd.inform(f'text="thetaPhiScan groupId={groupId} {constantAxis}Angle={constantAngle:d} deg START"')
-
-        name = f'{constantAxis}_{constantAngle:03d}'
-        lampsKeys = dict(halogen=int(translate.resolveExptime(cmdKeys, scienceTraceConfig)))
+        thetaPhiScanConfig = self.actor.actorConfig['thetaPhiScan']
+        scienceTraceConfig = thetaPhiScanConfig['scienceTrace']
         __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
-        windowKeys = translate.windowKeys(cmdKeys, scienceTraceConfig)
-        cams = spsSequence.SpsSequence.keysToCam(self.actor, cmdKeys, configDict=scienceTraceConfig['idDict'])
+        traceKeys = dict(cams=spsSequence.SpsSequence.keysToCam(self.actor, cmdKeys,
+                                                                configDict=scienceTraceConfig['idDict']),
+                         lampsKeys=dict(halogen=int(translate.resolveExptime(cmdKeys, scienceTraceConfig))),
+                         duplicate=duplicate,
+                         windowKeys=translate.windowKeys(cmdKeys, scienceTraceConfig))
 
-        homeDesignId = self.declareHomeDesign(cmd, doFinish=False)
-        moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True, **illuminators)
-        self.engine.run(cmd, moveToHomeAll, doFinish=False)
-        if not bailIfNotFinished(moveToHomeAll, 'moveToHome'):
+        previous = self.thetaPhiScanRun
+        if previous is not None and not previous.isDone:
+            cmd.warn(f'text="replacing the unfinished {previous}"')
+
+        run = ThetaPhiScanRun(groupId, constantAxis, constantAngle, innerAngles, traceKeys=traceKeys,
+                              moveConfig=thetaPhiScanConfig['moveToPfsDesign'])
+        self.thetaPhiScanRun = run
+        cmd.inform(f'text="thetaPhiScan groupId={groupId} {constantAxis}Angle={constantAngle:d} deg START"')
+        self._advanceThetaPhiScan(cmd, run)
+
+    def _continueThetaPhiScan(self, cmd):
+        run = self.thetaPhiScanRun
+        if run is None:
+            cmd.fail('text="no thetaPhiScan to continue; iic thetaPhiScan takeNextPhi|takeNextTheta"')
             return
-
-        scienceTrace = spsSequenceList.calib.ScienceTrace(cams, lampsKeys, duplicate, windowKeys,
-                                                          groupId=groupId,
-                                                          name=name,
-                                                          comments='cobraHome')
-        self.engine.run(cmd, scienceTrace, doFinish=False)
-        if not bailIfNotFinished(scienceTrace, 'cobraHome scienceTrace'):
+        if run.isDone:
+            cmd.fail(f'text="nothing to continue: {run}"')
             return
+        noMove = 'noMove' in cmd.cmd.keywords
+        if noMove:
+            self._checkCobrasAt(run, run.nextStep)
+        cmd.inform(f'text="continuing {run}{", cobras left in place" if noMove else ""}"')
+        self._advanceThetaPhiScan(cmd, run, isContinued=True, noMove=noMove)
 
-        for innerAngle in scanAngles:
-            thetaAngle, phiAngle = (constantAngle, innerAngle) if constantAxis == 'theta' else (innerAngle, constantAngle)
-            designName = iicUtils.thetaPhiScanDesignName(thetaAngle, phiAngle,
-                                                         atHome=innerAxis if innerAngle == 0 else None)
+    def _checkCobrasAt(self, run, step):
+        """Raise ValueError unless the current pfsConfig0 is a converged one of the design of `step`."""
+        designId = run.designIds.get(step)
+        activeField = self.engine.visitManager.activeField
+        pfsConfig0 = activeField.pfsConfig0 if activeField else None
+
+        if designId is None or pfsConfig0 is None or pfsConfig0.pfsDesignId != designId:
+            current = 'no pfsConfig0' if pfsConfig0 is None else f'pfsConfig0 of 0x{pfsConfig0.pfsDesignId:016x}'
+            target = 'no design yet' if designId is None else f'0x{designId:016x}'
+            why = f'cobras are not at {step} ({target}), {current}'
+        elif pfsConfig0.instStatusFlag & InstrumentStatusFlag.CONVERGENCE_FAILED:
+            why = f'the convergence to {step} (0x{designId:016x}) failed'
+        else:
+            return
+        raise ValueError(f'{why}: iic thetaPhiScan continue moves them there again')
+
+    def _advanceThetaPhiScan(self, cmd, run, isContinued=False, noMove=False):
+        """Do every step of `run` not done yet, in order, and finish or fail `cmd`.
+
+        With `noMove`, the cobras are not moved for the first step.
+        """
+        mcsExptime = self.actor.actorConfig['mcs']['exptime']
+        illuminators = self.actor.actorConfig['illuminators']
+
+        def stop(why):
+            if cmd.alive:
+                cmd.fail(f'text={qstr(f"{why}; {run}. iic thetaPhiScan continue resumes here.")}')
+
+        def ran(sequence):
+            """Whether `sequence` ran to completion; a failure is only warned, `stop` fails `cmd`."""
+            self.engine.run(cmd, sequence, doFinish=False, failCmd=False)
+            return sequence.status.flag == Flag.FINISHED
+
+        def trace(comments):
+            return spsSequenceList.calib.ScienceTrace(run.traceKeys['cams'], run.traceKeys['lampsKeys'],
+                                                      run.traceKeys['duplicate'], run.traceKeys['windowKeys'],
+                                                      groupId=run.groupId, name=run.name, comments=comments)
+
+        def moveTo(innerAngle):
+            """Move the cobras to the design of `innerAngle`; why it failed, None if it did not."""
+            try:
+                return _moveTo(innerAngle)
+            except Exception as e:
+                return f'cobra move to {run.designName(innerAngle)} failed: {e}'
+
+        def _moveTo(innerAngle):
+            designName = run.designName(innerAngle)
+            thetaAngle, phiAngle = run.angles(innerAngle)
+            if innerAngle == 0:
+                cmdStr = f'createHomeDesign {run.innerAxis} designName={designName}'
+            else:
+                cmdStr = (f'createThetaPhiScanDesign thetaAngle={thetaAngle:d} phiAngle={phiAngle:d} '
+                          f'designName={designName}')
+
+            cmdVar = self._callFps(cmd, cmdStr, 10, failCmd=False)
+            if cmdVar is None:
+                return f'fps {cmdStr} failed'
+            designId = int(cmdUtils.cmdVarToKeys(cmdVar)['fpsDesignId'].values[0], 16)
 
             if innerAngle == 0:
-                designId = self._runFpsCreateDesign(f'createHomeDesign {innerAxis} designName={designName}')
-                moveCobra = fpsSequenceList.MoveToHome(designId=designId, exptime=mcsExptime,
-                                                       **{innerAxis: True}, **illuminators)
+                move = fpsSequenceList.MoveToHome(designId=designId, exptime=mcsExptime,
+                                                  **{run.innerAxis: True}, **illuminators)
             else:
-                designId = self._runFpsCreateDesign(
-                    f'createThetaPhiScanDesign thetaAngle={thetaAngle:d} phiAngle={phiAngle:d} designName={designName}')
-                moveCobra = fpsSequenceList.MoveToPfsDesign(designId=designId, **moveToPfsDesignConfig, **illuminators)
+                move = fpsSequenceList.MoveToPfsDesign(designId=designId, **run.moveConfig, **illuminators)
 
             self.actor.declareFpsDesign(cmd, designId=designId)
-            self.engine.run(cmd, moveCobra, doFinish=False)
-            if not bailIfNotFinished(moveCobra, f'cobra move to {designName}'):
-                return
+            run.designIds[designName] = designId
+            return None if ran(move) else f'cobra move to {designName} not completed'
 
-            scienceTrace = spsSequenceList.calib.ScienceTrace(cams, lampsKeys, duplicate, windowKeys,
-                                                              name=name,
-                                                              comments=designName,
-                                                              groupId=groupId)
-            self.engine.run(cmd, scienceTrace, doFinish=False)
-            if not bailIfNotFinished(scienceTrace, f'{designName} scienceTrace'):
-                return
-            cmd.inform(f'text="thetaPhiScan groupId={groupId} {constantAxis}Angle={constantAngle:d} deg '
-                       f'{innerAxis}Angle={innerAngle:d} deg DONE"')
+        if not run.homeTraced:
+            if not noMove:
+                try:
+                    homeDesignId = self.declareHomeDesign(cmd, doFinish=False)
+                except Exception as e:
+                    return stop(f'home design not declared: {e}')
+                moveToHomeAll = fpsSequenceList.MoveToHome(exptime=mcsExptime, designId=homeDesignId, all=True,
+                                                           **illuminators)
+                run.designIds['cobraHome'] = homeDesignId
+                if not ran(moveToHomeAll):
+                    return stop('moveToHome not completed')
+            noMove = False
+            if not ran(trace('cobraHome')):
+                return stop('cobraHome scienceTrace not completed')
+            run.homeTraced = True
 
-        cmd.inform(f'text="thetaPhiScan groupId={groupId} {constantAxis}Angle={constantAngle:d} deg FINISHED"')
-        remainingAngles = getRemainingAngles(groupId)
-        cmd.inform(f'text="thetaPhiScan groupId={groupId} remaining {constantAxis}Angles: '
+        elif isContinued and not noMove and run.remaining[0] == 0 and run.innerAngles.index(0) > 0:
+            # Only the inner axis goes home at that step: the cobras are first put back on the constant
+            # angle, through the inner angle scanned before it.
+            previous = run.innerAngles[run.innerAngles.index(0) - 1]
+            cmd.inform(f'text="moving back to {run.designName(previous)} before homing {run.innerAxis}"')
+            why = moveTo(previous)
+            if why is not None:
+                return stop(why)
+
+        for innerAngle in run.remaining:
+            designName = run.designName(innerAngle)
+            why = None if noMove else moveTo(innerAngle)
+            noMove = False
+            if why is not None:
+                return stop(why)
+            if not ran(trace(designName)):
+                return stop(f'{designName} scienceTrace not completed')
+            run.traced.append(innerAngle)
+            cmd.inform(f'text="thetaPhiScan groupId={run.groupId} {run.constantAxis}Angle={run.constantAngle:d} deg '
+                       f'{run.innerAxis}Angle={innerAngle:d} deg DONE"')
+
+        cmd.inform(f'text="thetaPhiScan groupId={run.groupId} {run.constantAxis}Angle={run.constantAngle:d} deg '
+                   f'FINISHED"')
+        remainingAngles = self._remainingThetaPhiScanAngles(run.groupId, run.constantAxis)
+        cmd.inform(f'text="thetaPhiScan groupId={run.groupId} remaining {run.constantAxis}Angles: '
                    f'{",".join(map(str, remainingAngles))}"')
-        cmd.finish(f'nRemaining{constantAxis.capitalize()}s={len(remainingAngles)}')
+        cmd.finish(f'nRemaining{run.constantAxis.capitalize()}s={len(remainingAngles)}')
 
     def declareHomeDesign(self, cmd, doFinish=True, genVisit0=True):
         """Create a fresh home design and declare it as the current FPS design."""
