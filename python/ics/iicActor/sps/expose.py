@@ -161,10 +161,11 @@ class SpsExpose(VisitedCmd):
         if not self.visitManager.activeField:
             raise RuntimeError('No active pfsDesign is declared!')
 
-        # Bump up ag visit whenever sps is taking object.
-        if self.sequence.isPfiExposure and self.exptype == 'object':
+        # ag tags its frames with the visit it was last given, so it is bumped on every visit.
+        if self.sequence.isPfiExposure:
             self.iicActor.cmdr.call(actor='ag', cmdStr=f'autoguide reconfigure visit={self.visitId}', timeLim=10)
 
+        if self.sequence.isPfiExposure and self.exptype == 'object':
             # Compute the change in INSROT since convergence.
             dINSROT = self.getDeltaINSROT()
 
