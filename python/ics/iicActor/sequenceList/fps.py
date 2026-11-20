@@ -4,6 +4,9 @@ import ics.iicActor.utils.translate as translate
 import ics.utils.cmd as cmdUtils
 from ics.iicActor.utils.visited import VisitedSequence
 
+TARGET_MASK_MIN_ITERATIONS = 10
+"""Least number of iterations of a convergence with a targetMaskFile, whose parked cobras ramp onto their dots."""
+
 
 class FpsSequence(VisitedSequence):
     caller = 'fps'
@@ -145,6 +148,8 @@ class MoveToPfsDesign(FpsSequence):
                 raise ValueError(f'targetMaskFile {targetMaskFile} does not exist')
 
         moveToPfsDesignConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'moveToPfsDesign')
+        if targetMaskFile:
+            moveToPfsDesignConfig['nIteration'] = max(TARGET_MASK_MIN_ITERATIONS, moveToPfsDesignConfig['nIteration'])
         illuminators = translate.illuminatorKeys(iicActor.actorConfig)
 
         return cls(designId, maskFile=maskFile, targetMaskFile=targetMaskFile, **moveToPfsDesignConfig, **seqKeys,

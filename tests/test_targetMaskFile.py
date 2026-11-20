@@ -43,3 +43,12 @@ def test_missingTargetMaskFile(monkeypatch):
     monkeypatch.setattr(fpsSequenceList.os.path, 'isfile', lambda path: False)
     with pytest.raises(ValueError, match='MOD4_group9.csv does not exist'):
         fpsCommand(CmdKeys(targetMaskFile=['MOD4_group9']))
+
+
+def test_targetMaskFileIterations(monkeypatch):
+    """At least TARGET_MASK_MIN_ITERATIONS with a targetMaskFile, more if asked; the config's otherwise."""
+    monkeypatch.setattr(fpsSequenceList.os.path, 'isfile', lambda path: True)
+    assert 'iteration=10' in fpsCommand(CmdKeys(targetMaskFile=['MOD4_group1'])).split()
+    assert 'iteration=12' in fpsCommand(CmdKeys(targetMaskFile=['MOD4_group1'], nIteration=[12])).split()
+    assert 'iteration=8' in fpsCommand(CmdKeys()).split()
+    assert 'iteration=6' in fpsCommand(CmdKeys(nIteration=[6])).split()
