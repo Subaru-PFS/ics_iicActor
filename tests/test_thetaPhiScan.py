@@ -155,10 +155,10 @@ def test_fullScanOrder(scan):
     assert cmd.replies[-1] == (':', 'nRemainingPhis=3')
 
 
-def test_unconfiguredAngleIsRejected(scan):
+def test_unconfiguredAngleIsScanned(scan):
     cmd = takeNextPhi(scan, phiAngle=[10])
-    assert cmd.didFail and 'not one of the configured phi angles (25,55,85)' in cmd.replies[-1][1], cmd.replies
-    assert scan.done == [] and scan.thetaPhiScanRun is None
+    assert not cmd.didFail, cmd.replies
+    assert 'trace thetaPhiScan_020_010' in traces(scan) and scan.thetaPhiScanRun.isDone
 
 
 def test_continueResumesAtTheFailedTrace(scan):

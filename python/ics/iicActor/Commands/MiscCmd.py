@@ -512,11 +512,6 @@ class MiscCmd(object):
         groupId = cmdKeys['groupId'].values[0] if 'groupId' in cmdKeys else None
 
         constantAngles, innerAngles = self._thetaPhiScanAngles(constantAxis)
-        if constantAngle is not None and constantAngle not in constantAngles:
-            cmd.fail(f'text="{constantAngleKey}={constantAngle} is not one of the configured {constantAxis} angles '
-                     f'({",".join(map(str, constantAngles))})"')
-            return
-
         if groupId is None:
             groupId = self.engine.opdb.latestThetaPhiScanId()
 
