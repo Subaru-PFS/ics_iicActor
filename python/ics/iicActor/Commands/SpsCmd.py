@@ -57,6 +57,7 @@ class SpsCmd(object):
             ('ditheredArcs', f'{timedArcArgs} <pixelStep> {commonArgs}', self.ditheredArcs),
             ('defocusedArcs', f'{timedArcArgs} <position> {commonArgs}', self.defocusedArcs),
             ('fpa', f'throughfocus <micronsRange> {timedArcArgs} {commonArgs}', self.fpaThroughFocus),
+            ('slit', f'throughfocus <position> {timedArcArgs} {commonArgs}', self.slitThroughFocus),
             ('test', f'hexapodStability {timedArcArgs} [<position>] {commonArgs}', self.hexapodStability),
 
             ('sps', 'rdaMove (low|med) [<specNum>]', self.rdaMove),
@@ -100,7 +101,7 @@ class SpsCmd(object):
                                         keys.Key('pixelStep', types.Float(),
                                                  help='pixel step for ditheredArcs'),
                                         keys.Key('position', types.Float() * (1, 3),
-                                                 help='slit position(start, stop, step) for defocusedArcs'),
+                                                 help='slit position(start, stop, num) for defocusedArcs and slit throughfocus'),
                                         keys.Key('micronsRange', types.Float() * (1, 3),
                                                  help='fpa range from focus(start, stop, nPosition)'),
 
@@ -898,6 +899,57 @@ class SpsCmd(object):
         """
         fpaThroughFocus = base.FpaThroughFocus.fromCmdKeys(self.actor, cmd.cmd.keywords)
         self.engine.runInThread(cmd, fpaThroughFocus)
+
+    def slitThroughFocus(self, cmd):
+        """
+        `iic slit throughfocus position=??? [hgar=FF.F] [hgcd=FF.F] [argon=FF.F] [neon=FF.F] [krypton=FF.F]
+        [xenon=FF.F] [@doShutterTiming] [cam=???] [arm=???] [specNum=???] [duplicate=N] [name=\"SSS\"]
+        [comments=\"SSS\"] [@doTest] [head=???] [tail=???]`
+
+        Take Arc dataset through focus using the slit hexapod, with the same lamp times at every position.
+        Sequence is referenced in opdb as iic_sequence.seqtype=slitThroughFocus.
+
+        Parameters
+        ---------
+        position: `float`, `float`, `int`
+            slit focus positions, same logic as np.linspace(start, stop, num).
+        hgar : `float`
+            number of second to trigger mercury-argon lamp.
+        hgcd : `float`
+            number of second to trigger mercury-cadmium lamp.
+        argon : `float`
+            number of second to trigger argon lamp.
+        neon : `float`
+            number of second to trigger neon lamp.
+        krypton : `float`
+            number of second to trigger krypton lamp.
+        xenon : `float`
+            number of second to trigger xenon lamp.
+        doShutterTiming : `bool`
+           if True, use the shutters to control exposure time, ie fire the lamps before opening the shutters.
+        cam : list of `str`
+           List of camera to expose, default=all
+        arm : list of `str`
+           List of arm to expose, default=all
+        specNum : list of `int`
+           List of spectrograph module to expose, default=all
+        duplicate : `int`
+           Number of exposure, default=1
+        name : `str`
+           To be inserted in opdb:iic_sequence.name.
+        comments : `str`
+           To be inserted in opdb:iic_sequence.comments.
+        doTest : `bool`
+           image/exposure type will be labelled as test, default=arc.
+        head : list of `str`
+            list of command to be launched before the sequence.
+        tail : list of `str`
+            list of command to be launched after the sequence.
+        groupId : `int`
+           optional sequence group id.
+        """
+        slitThroughFocus = base.SlitThroughFocus.fromCmdKeys(self.actor, cmd.cmd.keywords)
+        self.engine.runInThread(cmd, slitThroughFocus)
 
     def hexapodStability(self, cmd):
         """

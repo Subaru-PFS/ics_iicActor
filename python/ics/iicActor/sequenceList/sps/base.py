@@ -196,6 +196,41 @@ class DefocusedArcs(TimedLampsSequence):
         return cls(cams, lampsKeys, iisKeys, duplicate, positions, slitControl, **seqKeys)
 
 
+class SlitThroughFocus(TimedLampsSequence):
+    """Arcs through the slit focus, with the same lamp times at every slit position."""
+    seqtype = 'slitThroughFocus'
+
+    def __init__(self, cams, lampsKeys, duplicate, positions, slitControl, **seqKeys):
+        SpsSequence.__init__(self, cams, **seqKeys)
+        # start hexapod and move home.
+        slitControl.start(self, cams)
+        self.add('sps', 'slit home', cams=cams)
+
+        for position in positions:
+            self.add('sps', 'slit', focus=position, abs=True, cams=cams)
+            self.expose('arc', lampsKeys, cams, duplicate=duplicate)
+
+        # move back home and stop hexapod, even if the sequence fails.
+        self.tail.add('sps', 'slit home', cams=cams)
+        # Turn back off the hexapods powered on, unless deferred.
+        slitControl.stop(self.tail)
+
+    @classmethod
+    def fromCmdKeys(cls, iicActor, cmdKeys):
+        """Defining rules to construct SlitThroughFocus object."""
+        cams = SpsSequence.keysToCam(iicActor, cmdKeys)
+        seqKeys = translate.seqKeys(cmdKeys)
+        __, duplicate = translate.spsExposureKeys(cmdKeys, doRaise=False)
+        lampsKeys = translate.lampsKeys(cmdKeys)
+        start, stop, num = cmdKeys['position'].values
+        positions = np.linspace(start, stop, num=int(num)).round(6)
+
+        slitControl = SlitControl.fromConfig(iicActor, cams, cmdKeys, cls.seqtype)
+        lampsKeys.update(iicActor.engine.keyRepo.getNirTiming(cams))
+
+        return cls(cams, lampsKeys, duplicate, positions, slitControl, **seqKeys)
+
+
 class FpaThroughFocus(TimedLampsSequence):
     """ FpaThroughFocus sequence. """
     seqtype = 'fpaThroughFocus'
