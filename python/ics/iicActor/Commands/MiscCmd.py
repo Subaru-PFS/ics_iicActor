@@ -363,8 +363,10 @@ class MiscCmd(object):
 
     @singleShot
     def fastRoach(self, cmd):
-        """Converge every working cobra, or those of maskFile, onto its black dot in one convergence;
-        with postFrame, then take one MCS frame of where they ended."""
+        """Converge every working cobra, or those of maskFile, onto its black dot in one convergence.
+
+        With postFrame, then take one MCS frame of where they ended.
+        """
         self._fastRoach(cmd)
 
     def _fastRoach(self, cmd):

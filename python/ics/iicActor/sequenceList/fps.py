@@ -223,7 +223,7 @@ class FastRoach(MoveToPfsDesign):
         maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
         illuminators = translate.illuminatorKeys(iicActor.actorConfig)
         fastRoachConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'fastRoach')
-        postFrame = 'postFrame' in cmdKeys or bool(fastRoachConfig.pop('postFrame', False))
+        postFrame = bool(fastRoachConfig.pop('postFrame', False)) or 'postFrame' in cmdKeys
         return cls(designId, maskFile=maskFile, postFrame=postFrame, **fastRoachConfig, **seqKeys, **illuminators)
 
 
