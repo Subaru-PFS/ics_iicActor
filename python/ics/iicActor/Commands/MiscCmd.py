@@ -55,7 +55,7 @@ class MiscCmd(object):
             ('fiberIdentification', f'[<fiberGroups>] {commonArgs}', self.fiberIdentification),
             ('dotRoach', f'[<exptime>] [<maskFile>] [@(hscLamps)] [<mode>] {identArgs} {translate.seqArgs}',
              self.dotRoach),
-            ('fastRoach', f'[<maskFile>] {translate.seqArgs}', self.fastRoach),
+            ('fastRoach', f'[<maskFile>] [@postFrame] {translate.seqArgs}', self.fastRoach),
             ('thetaPhiScan', 'start', self.startNewThetaPhiScan),
             ('thetaPhiScan', f'takeNextTheta [<groupId>] [<thetaAngle>] [<exptime>] {identArgs} {translate.seqArgs}',
              self.takeNextThetaPhiScan),
@@ -363,7 +363,8 @@ class MiscCmd(object):
 
     @singleShot
     def fastRoach(self, cmd):
-        """Converge every working cobra, or those of maskFile, onto its black dot in one convergence."""
+        """Converge every working cobra, or those of maskFile, onto its black dot in one convergence;
+        with postFrame, then take one MCS frame of where they ended."""
         self._fastRoach(cmd)
 
     def _fastRoach(self, cmd):

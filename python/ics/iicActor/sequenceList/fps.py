@@ -204,8 +204,18 @@ class FastRoach(MoveToPfsDesign):
 
     The maskFile goes to fps moveToPfsDesign too: fps sends every cobra it may move and the design
     leaves unassigned onto its black dot, so the cobras out of the mask would move otherwise.
+
+    With postFrame, fps measureBlindMove follows the convergence: one MCS frame, the next of the same
+    visit, without moving any cobra -- where every cobra ended after the blind moves.  No pfsConfig is
+    made for it, and on real dots nothing else is recorded.
     """
     seqtype = 'fastRoach'
+
+    def __init__(self, designId, postFrame=False, **kwargs):
+        super().__init__(designId, **kwargs)
+
+        if postFrame:
+            self.add('fps', 'measureBlindMove', timeLim=60 + kwargs['exptime'])
 
     @classmethod
     def fromCmdKeys(cls, iicActor, cmdKeys, designId):
@@ -213,7 +223,8 @@ class FastRoach(MoveToPfsDesign):
         maskFile = translate.getMaskFilePathFromCmd(cmdKeys, iicActor.actorConfig)
         illuminators = translate.illuminatorKeys(iicActor.actorConfig)
         fastRoachConfig = translate.resolveCmdConfig(cmdKeys, iicActor.actorConfig, 'fastRoach')
-        return cls(designId, maskFile=maskFile, **fastRoachConfig, **seqKeys, **illuminators)
+        postFrame = 'postFrame' in cmdKeys or bool(fastRoachConfig.pop('postFrame', False))
+        return cls(designId, maskFile=maskFile, postFrame=postFrame, **fastRoachConfig, **seqKeys, **illuminators)
 
 
 class BlindMoveRun(MoveToPfsDesign):

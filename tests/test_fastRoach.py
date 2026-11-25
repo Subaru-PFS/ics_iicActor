@@ -108,3 +108,30 @@ def test_fastRoachStopsWhenFpsCannotCreateTheDesign():
     cmd = Cmd()
     misc._fastRoach(cmd)
     assert misc.log == [('fps', 'createBlackDotDesign')] and cmd.replies, (misc.log, cmd.replies)
+
+
+
+def fullCommands(sequence):
+    """'actor cmdStr' of every subcommand of `sequence`, in order."""
+    return [f'{subCmd.actor} {subCmd.cmdStr}' for subCmd in sequence.cmdList]
+
+
+def test_fastRoachPostFrame():
+    """postFrame follows the convergence with fps measureBlindMove: one frame of where the cobras ended."""
+    actor = types.SimpleNamespace(actorConfig=CONFIG)
+    fastRoach = fpsSequenceList.FastRoach.fromCmdKeys(actor, CmdKeys(postFrame=[]), designId=0x1234)
+    commands = fullCommands(fastRoach)
+    assert len(commands) == 2 and commands[0].startswith('fps moveToPfsDesign '), commands
+    assert commands[1] == 'fps measureBlindMove', commands
+    assert 'postFrame' not in commands[0], commands
+
+
+def test_fastRoachPostFrameFromConfig():
+    """The iic config can make postFrame the default; without either, the convergence stands alone."""
+    actor = types.SimpleNamespace(actorConfig=dict(CONFIG, fastRoach=dict(CONFIG['fastRoach'], postFrame=True)))
+    fastRoach = fpsSequenceList.FastRoach.fromCmdKeys(actor, CmdKeys(), designId=0x1234)
+    assert fullCommands(fastRoach)[1:] == ['fps measureBlindMove']
+
+    plain = fpsSequenceList.FastRoach.fromCmdKeys(types.SimpleNamespace(actorConfig=CONFIG), CmdKeys(),
+                                                  designId=0x1234)
+    assert len(fullCommands(plain)) == 1
